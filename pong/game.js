@@ -1,0 +1,176 @@
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const WINNING_SCORE = 5;
+const PADDLE_WIDTH = 12;
+const PADDLE_HEIGHT = 90;
+const PADDLE_SPEED = 6;
+const AI_SPEED = 4;
+const BALL_RADIUS = 8;
+
+const player = {
+  x: 20,
+  y: canvas.height / 2 - PADDLE_HEIGHT / 2,
+  width: PADDLE_WIDTH,
+  height: PADDLE_HEIGHT,
+  score: 0,
+};
+
+const ai = {
+  x: canvas.width - 20 - PADDLE_WIDTH,
+  y: canvas.height / 2 - PADDLE_HEIGHT / 2,
+  width: PADDLE_WIDTH,
+  height: PADDLE_HEIGHT,
+  score: 0,
+};
+
+const ball = {
+  x: canvas.width / 2,
+  y: canvas.height / 2,
+  radius: BALL_RADIUS,
+  vx: 0,
+  vy: 0,
+};
+
+const keysPressed = {};
+document.addEventListener('keydown', (e) => { keysPressed[e.key] = true; });
+document.addEventListener('keyup', (e) => { keysPressed[e.key] = false; });
+
+let gameOver = false;
+
+function resetBall(direction) {
+  ball.x = canvas.width / 2;
+  ball.y = canvas.height / 2;
+  const angle = (Math.random() * 0.6 - 0.3) * Math.PI; // ~[-54°, 54°]
+  const speed = 5;
+  ball.vx = Math.cos(angle) * speed * direction;
+  ball.vy = Math.sin(angle) * speed;
+}
+
+function movePlayer() {
+  if (keysPressed['ArrowUp'] || keysPressed['z'] || keysPressed['Z']) {
+    player.y -= PADDLE_SPEED;
+  }
+  if (keysPressed['ArrowDown'] || keysPressed['s'] || keysPressed['S']) {
+    player.y += PADDLE_SPEED;
+  }
+  player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
+}
+
+function moveAI() {
+  const aiCenter = ai.y + ai.height / 2;
+  const ballY = ball.y;
+  if (aiCenter < ballY - 10) {
+    ai.y += AI_SPEED;
+  } else if (aiCenter > ballY + 10) {
+    ai.y -= AI_SPEED;
+  }
+  ai.y = Math.max(0, Math.min(canvas.height - ai.height, ai.y));
+}
+
+function paddleCollision(paddle) {
+  return (
+    ball.x - ball.radius < paddle.x + paddle.width &&
+    ball.x + ball.radius > paddle.x &&
+    ball.y - ball.radius < paddle.y + paddle.height &&
+    ball.y + ball.radius > paddle.y
+  );
+}
+
+function updateBall() {
+  ball.x += ball.vx;
+  ball.y += ball.vy;
+
+  if (ball.y - ball.radius < 0) {
+    ball.y = ball.radius;
+    ball.vy *= -1;
+  } else if (ball.y + ball.radius > canvas.height) {
+    ball.y = canvas.height - ball.radius;
+    ball.vy *= -1;
+  }
+
+  if (ball.vx < 0 && paddleCollision(player)) {
+    ball.x = player.x + player.width + ball.radius;
+    const hitPos = (ball.y - (player.y + player.height / 2)) / (player.height / 2);
+    ball.vx = Math.abs(ball.vx) * 1.05;
+    ball.vy = hitPos * 5;
+  } else if (ball.vx > 0 && paddleCollision(ai)) {
+    ball.x = ai.x - ball.radius;
+    const hitPos = (ball.y - (ai.y + ai.height / 2)) / (ai.height / 2);
+    ball.vx = -Math.abs(ball.vx) * 1.05;
+    ball.vy = hitPos * 5;
+  }
+
+  if (ball.x + ball.radius < 0) {
+    ai.score += 1;
+    checkWin();
+    if (!gameOver) resetBall(1);
+  } else if (ball.x - ball.radius > canvas.width) {
+    player.score += 1;
+    checkWin();
+    if (!gameOver) resetBall(-1);
+  }
+}
+
+function checkWin() {
+  if (player.score >= WINNING_SCORE || ai.score >= WINNING_SCORE) {
+    gameOver = true;
+  }
+}
+
+function drawRect(x, y, w, h, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, w, h);
+}
+
+function drawCircle(x, y, r, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawNet() {
+  ctx.strokeStyle = '#555';
+  ctx.setLineDash([8, 10]);
+  ctx.beginPath();
+  ctx.moveTo(canvas.width / 2, 0);
+  ctx.lineTo(canvas.width / 2, canvas.height);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function draw() {
+  drawRect(0, 0, canvas.width, canvas.height, '#000');
+  drawNet();
+  drawRect(player.x, player.y, player.width, player.height, '#fff');
+  drawRect(ai.x, ai.y, ai.width, ai.height, '#fff');
+  drawCircle(ball.x, ball.y, ball.radius, '#fff');
+
+  ctx.fillStyle = '#fff';
+  ctx.font = '32px "Courier New", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(player.score, canvas.width / 4, 50);
+  ctx.fillText(ai.score, (canvas.width / 4) * 3, 50);
+
+  if (gameOver) {
+    const winner = player.score >= WINNING_SCORE ? 'Joueur' : 'Ordinateur';
+    ctx.font = '28px "Courier New", monospace';
+    ctx.fillText(`${winner} gagne !`, canvas.width / 2, canvas.height / 2 - 10);
+    ctx.font = '16px "Courier New", monospace';
+    ctx.fillText('Recharge la page pour rejouer', canvas.width / 2, canvas.height / 2 + 20);
+  }
+}
+
+function loop() {
+  if (!gameOver) {
+    movePlayer();
+    moveAI();
+    updateBall();
+  }
+  draw();
+  requestAnimationFrame(loop);
+}
+
+resetBall(Math.random() < 0.5 ? 1 : -1);
+loop();
