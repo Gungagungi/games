@@ -37,6 +37,24 @@ document.addEventListener('keydown', (e) => { keysPressed[e.key] = true; });
 document.addEventListener('keyup', (e) => { keysPressed[e.key] = false; });
 
 let gameOver = false;
+let mode = null; // 'solo' | 'two'
+
+document.addEventListener('keydown', (e) => {
+  if (mode) return;
+  if (e.key === '1') startGame('solo');
+  else if (e.key === '2') startGame('two');
+});
+
+function startGame(chosenMode) {
+  mode = chosenMode;
+  const instructions = document.querySelector('.instructions');
+  if (instructions) {
+    instructions.textContent = mode === 'two'
+      ? 'Joueur 1 (gauche) : Z / S — Joueur 2 (droite) : ↑ / ↓'
+      : 'Toi (gauche) : ↑ / ↓ ou Z / S';
+  }
+  resetBall(Math.random() < 0.5 ? 1 : -1);
+}
 
 function resetBall(direction) {
   ball.x = canvas.width / 2;
@@ -48,13 +66,21 @@ function resetBall(direction) {
 }
 
 function movePlayer() {
-  if (keysPressed['ArrowUp'] || keysPressed['z'] || keysPressed['Z']) {
-    player.y -= PADDLE_SPEED;
-  }
-  if (keysPressed['ArrowDown'] || keysPressed['s'] || keysPressed['S']) {
-    player.y += PADDLE_SPEED;
-  }
+  const up = mode === 'two'
+    ? (keysPressed['z'] || keysPressed['Z'])
+    : (keysPressed['ArrowUp'] || keysPressed['z'] || keysPressed['Z']);
+  const down = mode === 'two'
+    ? (keysPressed['s'] || keysPressed['S'])
+    : (keysPressed['ArrowDown'] || keysPressed['s'] || keysPressed['S']);
+  if (up) player.y -= PADDLE_SPEED;
+  if (down) player.y += PADDLE_SPEED;
   player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
+}
+
+function movePlayer2() {
+  if (keysPressed['ArrowUp']) ai.y -= PADDLE_SPEED;
+  if (keysPressed['ArrowDown']) ai.y += PADDLE_SPEED;
+  ai.y = Math.max(0, Math.min(canvas.height - ai.height, ai.y));
 }
 
 function moveAI() {
@@ -154,23 +180,37 @@ function draw() {
   ctx.fillText(ai.score, (canvas.width / 4) * 3, 50);
 
   if (gameOver) {
-    const winner = player.score >= WINNING_SCORE ? 'Joueur' : 'Ordinateur';
+    const winner = player.score >= WINNING_SCORE
+      ? (mode === 'two' ? 'Joueur 1' : 'Joueur')
+      : (mode === 'two' ? 'Joueur 2' : 'Ordinateur');
     ctx.font = '28px "Courier New", monospace';
     ctx.fillText(`${winner} gagne !`, canvas.width / 2, canvas.height / 2 - 10);
     ctx.font = '16px "Courier New", monospace';
     ctx.fillText('Recharge la page pour rejouer', canvas.width / 2, canvas.height / 2 + 20);
   }
+
+  if (!mode) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#fff';
+    ctx.font = '24px "Courier New", monospace';
+    ctx.fillText('Appuie sur 1 : Solo (vs IA)', canvas.width / 2, canvas.height / 2 - 20);
+    ctx.fillText('Appuie sur 2 : 2 Joueurs', canvas.width / 2, canvas.height / 2 + 20);
+  }
 }
 
 function loop() {
-  if (!gameOver) {
+  if (mode && !gameOver) {
     movePlayer();
-    moveAI();
+    if (mode === 'two') {
+      movePlayer2();
+    } else {
+      moveAI();
+    }
     updateBall();
   }
   draw();
   requestAnimationFrame(loop);
 }
 
-resetBall(Math.random() < 0.5 ? 1 : -1);
 loop();
