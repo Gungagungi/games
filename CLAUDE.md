@@ -4,22 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Aperçu du dépôt
 
-Collection de petits jeux navigateur, chacun dans son propre dossier à la racine. Chaque jeu est autonome : HTML/CSS/JS pur, sans dépendance externe ni étape de build. Il n'y a pas de `package.json`, pas de bundler, pas de framework de test — ce dépôt reste volontairement minimal.
-
-Jeu actuel : `pong/` — un Pong classique (joueur humain à gauche, IA à droite).
+Collection de petits jeux navigateur, chacun dans son propre dossier à la racine. Chaque jeu est autonome : HTML/CSS/JS pur, sans dépendance externe ni étape de build.
 
 ## Lancer un jeu
 
-Chaque jeu s'ouvre directement dans un navigateur, sans build :
-
-```bash
-# Option 1 : ouvrir directement le fichier
-xdg-open pong/index.html   # ou double-clic depuis l'explorateur de fichiers
-
-# Option 2 : servir en local (utile si le fichier:// pose problème)
-cd pong && python3 -m http.server 8000
-# puis ouvrir http://localhost:8000
-```
+Chaque jeu s'ouvre directement dans un navigateur, sans build (ouvrir `index.html`, ou servir le dossier en local si `file://` pose problème).
 
 Pas de commande de build, de lint ou de test — la vérification se fait manuellement dans le navigateur (interagir avec le jeu, vérifier `console --errors` s'il y a un outil de type chromium-cli disponible).
 
