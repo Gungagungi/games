@@ -16,7 +16,7 @@ Pas de commande de build, de lint ou de test — la vérification se fait manuel
 
 - Chaque nouveau jeu doit suivre la même convention que `pong/` : son propre dossier avec `index.html`, `style.css`, `game.js` (ou équivalent), sans dépendance sur d'autres jeux du dépôt.
 - `pong/game.js` illustre le patron à réutiliser pour un jeu basé sur Canvas 2D :
-  - État du jeu dans des objets simples (`player`, `ai`, `ball`) plutôt que des classes.
+  - État du jeu dans des objets simples (`player`, `opponent`, `ball`) plutôt que des classes.
   - Contrôles clavier via une map `keysPressed` peuplée par les listeners `keydown`/`keyup`, lue à chaque frame (pas de logique dans les handlers eux-mêmes).
   - Boucle de jeu unique pilotée par `requestAnimationFrame` (`loop()`), qui enchaîne update (mouvement, collisions, score) puis rendu (`draw()`).
   - Le rendu redessine l'intégralité du canvas à chaque frame (pas de diffing).

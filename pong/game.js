@@ -16,7 +16,7 @@ const player = {
   score: 0,
 };
 
-const ai = {
+const opponent = {
   x: canvas.width - 20 - PADDLE_WIDTH,
   y: canvas.height / 2 - PADDLE_HEIGHT / 2,
   width: PADDLE_WIDTH,
@@ -78,20 +78,20 @@ function movePlayer() {
 }
 
 function movePlayer2() {
-  if (keysPressed['ArrowUp']) ai.y -= PADDLE_SPEED;
-  if (keysPressed['ArrowDown']) ai.y += PADDLE_SPEED;
-  ai.y = Math.max(0, Math.min(canvas.height - ai.height, ai.y));
+  if (keysPressed['ArrowUp']) opponent.y -= PADDLE_SPEED;
+  if (keysPressed['ArrowDown']) opponent.y += PADDLE_SPEED;
+  opponent.y = Math.max(0, Math.min(canvas.height - opponent.height, opponent.y));
 }
 
 function moveAI() {
-  const aiCenter = ai.y + ai.height / 2;
+  const opponentCenter = opponent.y + opponent.height / 2;
   const ballY = ball.y;
-  if (aiCenter < ballY - 10) {
-    ai.y += AI_SPEED;
-  } else if (aiCenter > ballY + 10) {
-    ai.y -= AI_SPEED;
+  if (opponentCenter < ballY - 10) {
+    opponent.y += AI_SPEED;
+  } else if (opponentCenter > ballY + 10) {
+    opponent.y -= AI_SPEED;
   }
-  ai.y = Math.max(0, Math.min(canvas.height - ai.height, ai.y));
+  opponent.y = Math.max(0, Math.min(canvas.height - opponent.height, opponent.y));
 }
 
 function paddleCollision(paddle) {
@@ -120,15 +120,15 @@ function updateBall() {
     const hitPos = (ball.y - (player.y + player.height / 2)) / (player.height / 2);
     ball.vx = Math.abs(ball.vx) * 1.05;
     ball.vy = hitPos * 5;
-  } else if (ball.vx > 0 && paddleCollision(ai)) {
-    ball.x = ai.x - ball.radius;
-    const hitPos = (ball.y - (ai.y + ai.height / 2)) / (ai.height / 2);
+  } else if (ball.vx > 0 && paddleCollision(opponent)) {
+    ball.x = opponent.x - ball.radius;
+    const hitPos = (ball.y - (opponent.y + opponent.height / 2)) / (opponent.height / 2);
     ball.vx = -Math.abs(ball.vx) * 1.05;
     ball.vy = hitPos * 5;
   }
 
   if (ball.x + ball.radius < 0) {
-    ai.score += 1;
+    opponent.score += 1;
     checkWin();
     if (!gameOver) resetBall(1);
   } else if (ball.x - ball.radius > canvas.width) {
@@ -139,7 +139,7 @@ function updateBall() {
 }
 
 function checkWin() {
-  if (player.score >= WINNING_SCORE || ai.score >= WINNING_SCORE) {
+  if (player.score >= WINNING_SCORE || opponent.score >= WINNING_SCORE) {
     gameOver = true;
   }
 }
@@ -170,14 +170,14 @@ function draw() {
   drawRect(0, 0, canvas.width, canvas.height, '#000');
   drawNet();
   drawRect(player.x, player.y, player.width, player.height, '#fff');
-  drawRect(ai.x, ai.y, ai.width, ai.height, '#fff');
+  drawRect(opponent.x, opponent.y, opponent.width, opponent.height, '#fff');
   drawCircle(ball.x, ball.y, ball.radius, '#fff');
 
   ctx.fillStyle = '#fff';
   ctx.font = '32px "Courier New", monospace';
   ctx.textAlign = 'center';
   ctx.fillText(player.score, canvas.width / 4, 50);
-  ctx.fillText(ai.score, (canvas.width / 4) * 3, 50);
+  ctx.fillText(opponent.score, (canvas.width / 4) * 3, 50);
 
   if (gameOver) {
     const winner = player.score >= WINNING_SCORE
