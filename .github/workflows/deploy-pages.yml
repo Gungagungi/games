@@ -1,0 +1,41 @@
+name: Déploiement GitHub Pages
+
+# Les jeux sont du HTML/CSS/JS statique : il n'y a rien à construire,
+# on publie le dépôt tel quel.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Une seule publication à la fois ; on ne coupe pas un déploiement en cours.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Configurer Pages
+        uses: actions/configure-pages@v5
+
+      - name: Empaqueter le site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Publier
+        id: deployment
+        uses: actions/deploy-pages@v4
