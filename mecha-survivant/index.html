@@ -211,7 +211,9 @@
   }
 
   #soundBtn {
-    position:absolute; top:14px; right:20px;
+    /* sous le bloc Score, qui occupe le coin haut droit ; le coin bas gauche est
+       déjà pris par l'onde de choc et les pouvoirs acquis */
+    position:absolute; top:66px; right:20px;
     background: rgba(20,25,33,0.85); border:1px solid #3a4760; color:#cddbe8;
     border-radius:6px; padding:6px 10px; cursor:pointer; font-size:13px;
     z-index:10;
@@ -575,6 +577,16 @@ function sfxFlamelingDeath() {
   playNoise({dur:0.35, vol:0.22, filterFreq:1400, type:"bandpass"});
   playTone({freq:300, freqEnd:60, type:"square", dur:0.3, vol:0.18});
 }
+function sfxBoneSummon() {
+  if (!audioCtx || !soundOn) return;
+  for (let i=0;i<6;i++) playTone({freq:rand2(500,1600), type:"square", dur:0.05, vol:0.12, delay:i*0.05});
+  playTone({freq:120, freqEnd:60, type:"sawtooth", dur:0.5, vol:0.18});
+}
+function sfxBoneSweep() {
+  if (!audioCtx || !soundOn) return;
+  playNoise({dur:0.9, vol:0.22, filterFreq:1800, type:"bandpass"});
+  playTone({freq:140, freqEnd:90, type:"sawtooth", dur:0.9, vol:0.2});
+}
 function sfxGameOver() {
   if (!audioCtx || !soundOn) return;
   [0,0.15,0.3,0.5].forEach((d,i)=> playTone({freq:300-i*60, type:"sawtooth", dur:0.4, vol:0.25, delay:d}));
@@ -752,6 +764,9 @@ function drawFloatTexts() {
 let telegraphs = []; // {x,y,timer,maxTimer, spawnFn}
 let groundHazards = []; // poison puddles: {x,y,r,life}
 let laserWarnings = []; // {x1,y1,x2,y2,timer,maxTimer,firing}
+// Balayage d'ossements du Colosse d'os : un secteur qui tourne autour du boss
+// et couvre presque tout l'écran. {ex, angle, arc, radius, windup, duration, dir, hitCooldown}
+let boneSweeps = [];
 
 // ---------- Health potions ----------
 let potions = [];
@@ -812,7 +827,19 @@ let enemyBullets = [];
 
 function shoot() {
   if (player.fireCooldown > 0) return;
-  player.fireCooldown = player.fireRate;
+  // `fireRate` est un délai en frames, éventuellement fractionnaire : sous 1 frame
+  // la boucle relance plusieurs salves dans la même frame, si bien que la cadence
+  // n'a aucun palier maximum. Garde-fou pour ne pas boucler à l'infini.
+  let salvos = 0;
+  while (player.fireCooldown <= 0 && salvos < 20) {
+    fireSalvo();
+    player.fireCooldown += Math.max(player.fireRate, 0.02);
+    salvos++;
+  }
+  if (salvos > 0) sfxShoot(); // un seul son par frame, même à cadence très élevée
+}
+
+function fireSalvo() {
   const ang = Math.atan2(mouseY - player.y, mouseX - player.x);
   const spreadCount = player.multiShot;
   const spreadArc = spreadCount > 1 ? 0.28 : 0;
@@ -826,7 +853,6 @@ function shoot() {
     });
   }
   spawnParticles(player.x + Math.cos(ang)*20, player.y + Math.sin(ang)*20, "#ffd27a", 3, 2, 12);
-  sfxShoot();
 }
 
 function triggerAoe() {
@@ -949,7 +975,9 @@ function makeBoss(bossIndex) {
     animT: 0,
     shootCooldown: 90,
     specialCooldown: 220,
-    shadeSummonCooldown: 260, // le Fossoyeur uniquement
+    shadeSummonCooldown: 260,  // le Fossoyeur uniquement
+    skeletonSummonCooldown: 200, // le Colosse d'os uniquement
+    sweepCooldown: 420,          // idem : balayage d'ossements
     phase: 0,
     enteringArena: true,
   };
@@ -1035,6 +1063,13 @@ function spawnTelegraphThenRisen(x, y, tier) {
   });
 }
 
+function spawnTelegraphThenSkeleton(x, y, tier) {
+  telegraphs.push({
+    x, y, timer: 45, maxTimer: 45, bone: true,
+    spawnFn: () => { enemies.push(makeSkeleton(x, y, tier)); sfxSkeletonRattle(); }
+  });
+}
+
 function spawnTelegraphThenShade(x, y, tier) {
   telegraphs.push({
     x, y, timer: 45, maxTimer: 45, shadow: true,
@@ -1088,6 +1123,7 @@ function beginBossWave(n) {
   waveEnemiesSpawned = 0;
   enemies = [];
   telegraphs = [];
+  boneSweeps = [];
   const bossIndex = Math.floor(n/5) - 1;
   currentBoss = makeBoss(bossIndex);
   enemies.push(currentBoss);
@@ -1116,6 +1152,7 @@ function beginMegaBossWave() {
   waveEnemiesSpawned = 0;
   enemies = [];
   telegraphs = [];
+  boneSweeps = [];
   currentBoss = makeMegaZombie();
   enemies.push(currentBoss);
   waveLabel.textContent = "VAGUE 15";
@@ -1143,6 +1180,7 @@ function beginTitanBossWave() {
   waveEnemiesSpawned = 0;
   enemies = [];
   telegraphs = [];
+  boneSweeps = [];
   currentBoss = makeTitan();
   enemies.push(currentBoss);
   waveLabel.textContent = "VAGUE 20";
@@ -1166,7 +1204,7 @@ function beginTitanBossWave() {
 
 function attackTypeLabel(t) {
   if (t === "aoe") return "Attaque : explosions de zone, invoque des créatures de l'ombre";
-  if (t === "laser") return "Attaque : rayon laser";
+  if (t === "laser") return "Attaque : rayon laser, relève des squelettes, balayage d'ossements";
   if (t === "poison") return "Attaque : projectiles empoisonnés";
   if (t === "megazombie") return "Attaque : charge dévastatrice, 3 phases";
   return "";
@@ -1227,15 +1265,15 @@ function checkWaveComplete() {
 
 // ---------- Upgrades ----------
 const ALL_UPGRADES = [
-  { id: "firerate", icon:"⚡", name:"Cadence de tir", desc:"Le canon tire nettement plus vite.",
-    apply: () => { player.fireRate = Math.max(8, player.fireRate - 5); } },
+  { id: "firerate", icon:"⚡", name:"Cadence de tir", desc:"Le canon tire nettement plus vite. Cumulable sans limite.",
+    apply: () => { player.fireRate *= 0.78; } },
   { id: "damage", icon:"💥", name:"Puissance de feu", desc:"Chaque tir inflige plus de dégâts.",
     apply: () => { player.bulletDamage += 7; } },
   { id: "maxhp", icon:"🛡️", name:"Coque renforcée", desc:"Augmente la vie maximale et soigne le mech.",
     apply: () => { player.maxHp += 30; player.hp = player.maxHp; } },
   { id: "speed", icon:"🚀", name:"Propulseurs", desc:"Le mech se déplace plus rapidement.",
     apply: () => { player.speed += 0.5; } },
-  { id: "multishot", icon:"🔱", name:"Tir triple", desc:"Tire plusieurs projectiles à la fois.",
+  { id: "multishot", icon:"🔱", name:"Tir supplémentaire", desc:"Ajoute un projectile à chaque salve.",
     apply: () => { player.multiShot += 1; } },
   { id: "shield", icon:"🔵", name:"Bouclier d'énergie", desc:"Absorbe les dégâts, se recharge avec le temps.",
     apply: () => { player.hasShield = true; player.shieldMax += 50; player.shield = player.shieldMax; } },
@@ -1461,6 +1499,48 @@ function updateBoss(e) {
         spawnParticles(e.x, e.y, "#7b5cc4", 26, 5, 30);
         sfxShadeSummon();
       }
+    }
+  }
+
+  // Le Colosse d'os relève des squelettes et balaie l'arène d'un bras d'ossements.
+  if (e.bossKey === "colossus") {
+    e.skeletonSummonCooldown--;
+    if (e.skeletonSummonCooldown <= 0) {
+      e.skeletonSummonCooldown = 300;
+      const living = enemies.filter(x => x.type === "skeleton").length;
+      if (living < 8) {
+        // plus nombreux à mi-vie, sans jamais dépasser 8 squelettes en jeu
+        const count = Math.min(3 + (e.hp / e.maxHp < 0.5 ? 1 : 0), 8 - living);
+        const tier = Math.floor(wave / 5) + 1;
+        for (let i=0;i<count;i++) {
+          const a = rand(0, Math.PI*2), rad = rand(80, 150);
+          const gx = clamp(e.x + Math.cos(a)*rad, 40, W-40);
+          const gy = clamp(e.y + Math.sin(a)*rad, 80, H-40);
+          spawnTelegraphThenSkeleton(gx, gy, tier);
+        }
+        spawnFloatText(e.x, e.y - e.r - 24, "OSSUAIRE", "#e0d090");
+        spawnParticles(e.x, e.y, "#e0d090", 24, 5, 28);
+        sfxBoneSummon();
+      }
+    }
+
+    e.sweepCooldown--;
+    if (e.sweepCooldown <= 0 && boneSweeps.length === 0) {
+      e.sweepCooldown = 620;
+      boneSweeps.push({
+        ex: e,
+        angle: Math.atan2(player.y - e.y, player.x - e.x), // démarre sur le joueur
+        arc: BONE_SWEEP_ARC,
+        radius: BONE_SWEEP_RADIUS,
+        speed: 0.028,   // ~360° en 225 frames
+        dir: chance(0.5) ? 1 : -1,
+        windup: 75,     // avertissement avant que le bras ne blesse
+        duration: 280,  // un tour complet et un peu plus
+        damage: Math.round(e.damage * 0.8),
+        hitCooldown: 0,
+      });
+      spawnFloatText(e.x, e.y - e.r - 24, "BALAYAGE D'OSSEMENTS", "#e0d090");
+      sfxLaserCharge();
     }
   }
 
@@ -2032,6 +2112,43 @@ function updateLaserWarnings() {
   }
 }
 
+const BONE_SWEEP_RADIUS = 560; // couvre presque tout l'écran depuis le boss
+const BONE_SWEEP_ARC = 0.8;    // demi-ouverture du secteur, en radians
+function updateBoneSweeps() {
+  for (let i = boneSweeps.length-1; i>=0; i--) {
+    const sw = boneSweeps[i];
+    if (!sw.ex || sw.ex.hp <= 0) { boneSweeps.splice(i,1); continue; }
+    if (sw.hitCooldown > 0) sw.hitCooldown--;
+
+    if (sw.windup > 0) {
+      sw.windup--;
+      if (sw.windup === 0) { sfxBoneSweep(); shakeScreen(7); }
+      continue; // l'avertissement ne blesse pas encore
+    }
+
+    sw.duration--;
+    sw.angle += sw.dir * sw.speed;
+    if (sw.duration <= 0) { boneSweeps.splice(i,1); continue; }
+
+    // poussière d'os le long du bras qui tourne
+    if (sw.duration % 3 === 0) {
+      const rr = rand(60, BONE_SWEEP_RADIUS);
+      spawnParticles(sw.ex.x + Math.cos(sw.angle)*rr, sw.ex.y + Math.sin(sw.angle)*rr, "#e0d090", 1, 1.5, 16);
+    }
+
+    // le joueur est-il dans le secteur ?
+    const d = dist(sw.ex, player);
+    if (d < sw.radius && sw.hitCooldown <= 0) {
+      const toPlayer = Math.atan2(player.y - sw.ex.y, player.x - sw.ex.x);
+      let diff = Math.atan2(Math.sin(toPlayer - sw.angle), Math.cos(toPlayer - sw.angle));
+      if (Math.abs(diff) < sw.arc) {
+        damagePlayer(sw.damage);
+        sw.hitCooldown = 45;
+      }
+    }
+  }
+}
+
 function updateGroundHazards() {
   for (let i = groundHazards.length-1; i>=0; i--) {
     const g = groundHazards[i];
@@ -2183,6 +2300,7 @@ function update() {
   }
 
   updateLaserWarnings();
+  updateBoneSweeps();
   updateGroundHazards();
 
   // enemies
@@ -2402,6 +2520,61 @@ function drawGroundHazards() {
     ctx.beginPath(); ctx.arc(0,0,g.r,0,Math.PI*2); ctx.fill();
     ctx.restore();
     ctx.globalAlpha = 1;
+  }
+}
+
+function drawBoneSweeps() {
+  for (const sw of boneSweeps) {
+    if (!sw.ex) continue;
+    const warning = sw.windup > 0;
+    ctx.save();
+    ctx.translate(sw.ex.x, sw.ex.y);
+    ctx.rotate(sw.angle);
+
+    // secteur
+    const grad = ctx.createRadialGradient(0, 0, 20, 0, 0, sw.radius);
+    if (warning) {
+      const pulse = 0.18 + 0.16*Math.abs(Math.sin(sw.windup*0.22));
+      grad.addColorStop(0, `rgba(224,208,144,${pulse+0.12})`);
+      grad.addColorStop(1, `rgba(224,208,144,0)`);
+    } else {
+      grad.addColorStop(0, "rgba(255,240,190,0.55)");
+      grad.addColorStop(0.6, "rgba(224,208,144,0.32)");
+      grad.addColorStop(1, "rgba(224,208,144,0.06)");
+    }
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.arc(0, 0, sw.radius, -sw.arc, sw.arc);
+    ctx.closePath();
+    ctx.fill();
+
+    // arêtes du secteur
+    ctx.strokeStyle = warning ? "rgba(224,208,144,0.7)" : "rgba(255,245,205,0.95)";
+    ctx.lineWidth = warning ? 2 : 3;
+    ctx.beginPath();
+    ctx.moveTo(0,0); ctx.lineTo(Math.cos(-sw.arc)*sw.radius, Math.sin(-sw.arc)*sw.radius);
+    ctx.moveTo(0,0); ctx.lineTo(Math.cos(sw.arc)*sw.radius, Math.sin(sw.arc)*sw.radius);
+    ctx.stroke();
+
+    // ossements portés par le bras, une fois l'attaque active
+    if (!warning) {
+      ctx.strokeStyle = "rgba(240,230,200,0.9)";
+      ctx.lineWidth = 4;
+      ctx.lineCap = "round";
+      for (let i=1;i<=7;i++) {
+        const rr = i * (sw.radius/8);
+        const tilt = Math.sin(sw.duration*0.12 + i) * 0.5;
+        ctx.save();
+        ctx.rotate(tilt * sw.arc * 0.5);
+        ctx.beginPath();
+        ctx.moveTo(rr - 9, 0); ctx.lineTo(rr + 9, 0);
+        ctx.stroke();
+        ctx.restore();
+      }
+      ctx.lineCap = "butt";
+    }
+    ctx.restore();
   }
 }
 
@@ -3083,14 +3256,15 @@ function drawTelegraph(t) {
   const prog = 1 - t.timer/t.maxTimer;
   ctx.save();
   ctx.translate(t.x, t.y);
-  ctx.strokeStyle = t.shadow
-    ? `rgba(150,110,255,${0.4 + 0.5*Math.sin(prog*20)})`
-    : `rgba(255,80,80,${0.4 + 0.5*Math.sin(prog*20)})`;
+  const pulse = 0.4 + 0.5*Math.sin(prog*20);
+  ctx.strokeStyle = t.shadow ? `rgba(150,110,255,${pulse})`
+    : t.bone ? `rgba(224,208,144,${pulse})`
+    : `rgba(255,80,80,${pulse})`;
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.arc(0,0, 22 - prog*6, 0, Math.PI*2);
   ctx.stroke();
-  ctx.fillStyle = t.shadow ? "rgba(40,20,70,0.55)" : "rgba(122,74,90,0.25)";
+  ctx.fillStyle = t.shadow ? "rgba(40,20,70,0.55)" : t.bone ? "rgba(120,110,70,0.3)" : "rgba(122,74,90,0.25)";
   ctx.beginPath();
   ctx.arc(0,0, 22, 0, Math.PI*2);
   ctx.fill();
@@ -3144,6 +3318,7 @@ function render() {
   drawGrid();
 
   drawGroundHazards();
+  drawBoneSweeps();
   for (const t of telegraphs) drawTelegraph(t);
   drawLaserWarnings();
   drawPotions();
@@ -3206,7 +3381,7 @@ document.getElementById("restartBtn").addEventListener("click", () => {
 function beginGame(startLevel) {
   startLevel = startLevel || 1;
   resetPlayer();
-  enemies = []; bullets = []; enemyBullets = []; telegraphs = []; potions = [];
+  enemies = []; bullets = []; enemyBullets = []; telegraphs = []; potions = []; boneSweeps = [];
   groundHazards = []; laserWarnings = [];
   particles = []; floatTexts = [];
   score = 0;
