@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jeux — Gungagungi</title>
+<meta name="description" content="Collection de petits jeux navigateur en HTML/CSS/JS pur, sans dépendance ni installation.">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: #0a0d12;
+    color: #cddbe8;
+    font-family: "Segoe UI", Roboto, system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 20px 32px;
+  }
+  /* grille discrète, comme le fond d'arène de Mecha Survivant */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(58,71,96,0.16) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(58,71,96,0.16) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  main { position: relative; z-index: 1; width: 100%; max-width: 900px; }
+
+  h1 {
+    margin: 0 0 6px;
+    font-size: clamp(30px, 6vw, 46px);
+    letter-spacing: 3px;
+    color: #ffd27a;
+    text-shadow: 0 0 18px rgba(255,180,80,0.35);
+    text-transform: uppercase;
+  }
+  .subtitle { margin: 0 0 40px; color: #8fa0b3; font-size: 15px; line-height: 1.6; }
+
+  .games { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+
+  .game {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    background: rgba(20,25,33,0.85);
+    border: 1px solid #3a4760;
+    border-radius: 10px;
+    padding: 22px 24px;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+  .game:hover, .game:focus-visible {
+    border-color: #ffd27a;
+    transform: translateY(-3px);
+    outline: none;
+  }
+  .game-icon { font-size: 34px; line-height: 1; margin-bottom: 12px; }
+  .game-name { font-size: 21px; font-weight: bold; color: #8effa8; margin-bottom: 8px; }
+  .game-desc { font-size: 14px; color: #9fb3c8; line-height: 1.6; }
+  .game-meta { margin-top: 14px; font-size: 12px; color: #5c6c80; letter-spacing: 1px; text-transform: uppercase; }
+
+  footer {
+    position: relative;
+    z-index: 1;
+    margin-top: 48px;
+    font-size: 13px;
+    color: #5c6c80;
+    text-align: center;
+    line-height: 1.8;
+  }
+  footer a { color: #8fa0b3; }
+  footer a:hover { color: #ffd27a; }
+</style>
+</head>
+<body>
+
+<main>
+  <h1>Jeux</h1>
+  <p class="subtitle">
+    Petits jeux navigateur en HTML, CSS et JavaScript pur — aucune dépendance, aucune installation.
+    Clique et joue.
+  </p>
+
+  <div class="games">
+    <a class="game" href="mecha-survivant/">
+      <div class="game-icon">🤖</div>
+      <div class="game-name">Mecha Survivant</div>
+      <div class="game-desc">
+        Survie roguelite en vue de dessus. Pilote un mech, encaisse des vagues de morts-vivants,
+        de créatures de l'ombre et de mobs de feu, choisis un pouvoir entre chaque vague.
+        Un boss toutes les 5 vagues, et le Titan de la Mort en embuscade à la vague 20.
+      </div>
+      <div class="game-meta">Clavier + souris · Canvas 2D</div>
+    </a>
+
+    <a class="game" href="pong/">
+      <div class="game-icon">🏓</div>
+      <div class="game-name">Pong</div>
+      <div class="game-desc">
+        Le classique de 1972, en solo contre l'ordinateur ou à deux sur le même clavier.
+      </div>
+      <div class="game-meta">Clavier · Canvas 2D</div>
+    </a>
+  </div>
+</main>
+
+<footer>
+  Code source : <a href="https://github.com/Gungagungi/games">github.com/Gungagungi/games</a>
+</footer>
+
+</body>
+</html>
