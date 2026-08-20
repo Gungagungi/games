@@ -14,6 +14,7 @@ Pas de commande de build, de lint ou de test — la vérification se fait manuel
 
 ## Architecture
 
+- Exception assumée : `mecha-survivant/` est une série de fichiers HTML monolithiques (`mecha-survivant.html` → `-4`, tout inline, versionnés par suffixe numérique). Voir son propre `CLAUDE.md` ; ne pas l'aligner sur la convention ci-dessous sans demande explicite.
 - Chaque nouveau jeu doit suivre la même convention que `pong/` : son propre dossier avec `index.html`, `style.css`, `game.js` (ou équivalent), sans dépendance sur d'autres jeux du dépôt.
 - `pong/game.js` illustre le patron à réutiliser pour un jeu basé sur Canvas 2D :
   - État du jeu dans des objets simples (`player`, `opponent`, `ball`) plutôt que des classes.
