@@ -12,6 +12,19 @@ Chaque jeu s'ouvre directement dans un navigateur, sans build (ouvrir `index.htm
 
 Pas de commande de build, de lint ou de test — la vérification se fait manuellement dans le navigateur (interagir avec le jeu, vérifier `console --errors` s'il y a un outil de type chromium-cli disponible).
 
+## Vérification visuelle
+
+Il n'y a ni test ni lint, mais `tools/` permet de regarder un jeu tourner sans écran (Chromium headless piloté par puppeteer-core) :
+
+```sh
+sudo apt install chromium && (cd tools && npm install)   # une fois
+node tools/capture.js <jeu.html> <sortie.png>
+```
+
+La sortie remonte aussi les erreurs de console de la page. Pour un effet qui ne dure que quelques frames (un projectile rapide), `--frames N` et les scénarios de `tools/scenarios/` pilotent la boucle **image par image**. Voir `tools/README.md`.
+
+C'est de l'outillage de développement : les jeux n'en dépendent pas et restent sans dépendance.
+
 ## Architecture
 
 - Exception assumée : `mecha-survivant/` tient dans un unique `index.html` monolithique (CSS, HTML et JS inline) ; les itérations antérieures dorment dans `mecha-survivant/archives/`. Voir son propre `CLAUDE.md` ; ne pas l'éclater en `style.css` + `game.js` sans demande explicite.

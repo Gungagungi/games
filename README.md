@@ -13,6 +13,10 @@ Chaque jeu s'ouvre directement dans un navigateur. Si `file://` pose problème (
 
 > Mecha Survivant est un fichier HTML unique et autoportant. Les itérations qui l'ont précédé sont figées dans [`mecha-survivant/archives/`](mecha-survivant/archives/).
 
+## Développement
+
+Les jeux n'ont besoin de rien : ouvrir le fichier HTML suffit. Pour les inspecter sur une machine sans écran, [`tools/`](tools/) capture un jeu dans un Chromium headless, image par image si besoin — voir [`tools/README.md`](tools/README.md).
+
 ## Mise en ligne
 
 Le site est publié sur GitHub Pages par [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml), à chaque poussée sur `main`. Rien n'est construit : le dépôt est publié tel quel, `index.html` à la racine servant de portail vers les jeux.

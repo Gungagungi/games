@@ -1,0 +1,11 @@
+{
+  "name": "games-tools",
+  "private": true,
+  "description": "Outillage de développement : captures d'écran des jeux dans un Chromium headless. Aucun jeu n'en dépend.",
+  "scripts": {
+    "capture": "node capture.js"
+  },
+  "dependencies": {
+    "puppeteer-core": "^24.0.0"
+  }
+}

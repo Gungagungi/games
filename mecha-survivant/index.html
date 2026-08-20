@@ -120,6 +120,13 @@
     transition: all 0.15s ease;
     font-family:inherit;
   }
+  #testUltimateBtn {
+    margin-top:12px;
+    font-size:14px; padding:9px 20px;
+    border-color:#7a4a2a; color:#ffb03a;
+    background: linear-gradient(180deg, #2e2118, #1d1611);
+  }
+  #testUltimateBtn:hover { border-color:#ff8a2a; color:#ffd08a; }
   .bigBtn:hover {
     border-color:#ffd27a;
     background: linear-gradient(180deg, #3a4760, #232c3d);
@@ -309,6 +316,7 @@
     </div>
 
     <button class="bigBtn" id="startBtn">DÉMARRER</button>
+    <button class="bigBtn" id="testUltimateBtn" title="Saute directement au combat final, Titan en phase 5 à 5 % de vie">⚡ TEST : TITAN À 5 %</button>
     <div id="controlsInfo">
       <b>ZQSD</b> ou <b>flèches</b> pour se déplacer<br>
       <b>Espace</b> ou <b>clic</b> pour tirer (vers la souris)<br>
@@ -1814,10 +1822,32 @@ function updateMegaZombie(e) {
 // dans l'invulnérabilité.
 const TITAN_ULTIMATE_RADIUS = 46;
 const TITAN_ULTIMATE_SPEED = 11.5;
+const TITAN_ULTIMATE_RANGE = 340; // distance de recul visée pendant la charge
+// Cherche autour du joueur une position à distance de tir qui tienne dans
+// l'arène, et y téléporte le Titan — il en a déjà le pouvoir.
+function anchorTitanForUltimate(e) {
+  if (dist(e, player) >= TITAN_ULTIMATE_RANGE) return;
+  const base = Math.atan2(e.y - player.y, e.x - player.x); // direction actuelle, opposée au joueur
+  for (let i = 0; i < 24; i++) {
+    // on s'écarte progressivement de la direction de départ, d'un côté puis de l'autre
+    const a = base + Math.ceil(i/2) * (i % 2 ? 1 : -1) * (Math.PI/12);
+    const nx = player.x + Math.cos(a)*TITAN_ULTIMATE_RANGE;
+    const ny = player.y + Math.sin(a)*TITAN_ULTIMATE_RANGE;
+    if (nx >= e.r && nx <= W-e.r && ny >= e.r+40 && ny <= H-e.r) {
+      spawnParticles(e.x, e.y, "#3a1f1f", 30, 6, 25);
+      e.x = nx; e.y = ny;
+      spawnParticles(e.x, e.y, "#ff6a2a", 30, 6, 25);
+      sfxDash();
+      return;
+    }
+  }
+}
+
 function launchTitanUltimate(e) {
   const a = Math.atan2(player.y - e.y, player.x - e.x);
+  const muzzle = e.r + TITAN_ULTIMATE_RADIUS*0.6; // sort devant l'armure, pas de son centre
   enemyBullets.push({
-    x: e.x, y: e.y,
+    x: e.x + Math.cos(a)*muzzle, y: e.y + Math.sin(a)*muzzle,
     vx: Math.cos(a)*TITAN_ULTIMATE_SPEED, vy: Math.sin(a)*TITAN_ULTIMATE_SPEED,
     r: TITAN_ULTIMATE_RADIUS,
     damage: 0,          // les dégâts passent par damagePlayerUltimate(), pas par damagePlayer()
@@ -1873,6 +1903,26 @@ function updateTitan(e) {
       e.ultimateInvuln = TITAN_ULTIMATE_INVULN;
       e.ultimateWindup = 180; // 3 s de charge très telegraphée, dans la fenêtre d'invulnérabilité
       e.ultimateFired = false;
+      // Il cesse toute autre attaque et abandonne son bouclier : plus rien ne
+      // vient masquer la charge, l'attaque finale se voit venir de loin.
+      e.shieldTimer = 0;
+      e.shieldCooldown = 99999;
+      e.scytheSwing = 0;
+      e.scytheCooldown = 99999;
+      e.teleporting = 0;
+      e.teleportCooldown = 99999;
+      e.charging = 0;
+      e.chargeCooldown = 99999;
+      e.slamCooldown = 99999;
+      e.poisonShotCooldown = 99999;
+      e.acidCooldown = 99999;
+      e.barrageTimer = 0;
+      e.barrageCooldown = 99999;
+      e.summonCooldown = 99999;
+      e.lineSlamCooldown = 99999;
+      // Il se replace à distance de tir avant de charger : collé au joueur ou
+      // plaqué contre un bord, la boule le toucherait avant d'être visible.
+      anchorTitanForUltimate(e);
       spawnFloatText(e.x, e.y-e.r-20, "ATTAQUE ULTIME !", "#ff4d1a");
       spawnFloatText(e.x, e.y-e.r-46, "INVULNÉRABLE", "#ffd27a");
       sfxLaserCharge();
@@ -1898,6 +1948,13 @@ function updateTitan(e) {
     e.animT += 0.15;
     spawnParticles(e.x, e.y, "#ff6a2a", 4, 4, 20);
     if (e.ultimateWindup % 30 === 0) sfxLaserCharge();
+    // Il prend du champ pendant la charge : collé au joueur, la boule le
+    // toucherait dans la frame du tir sans jamais être visible.
+    const away = Math.atan2(e.y - player.y, e.x - player.x);
+    if (dist(e, player) < TITAN_ULTIMATE_RANGE) {
+      e.x = clamp(e.x + Math.cos(away)*2.6, e.r, W-e.r);
+      e.y = clamp(e.y + Math.sin(away)*2.6, e.r+40, H-e.r);
+    }
     if (e.ultimateWindup === 0 && !e.ultimateFired) {
       e.ultimateFired = true;
       e.ultimateUsed = true;
@@ -3507,6 +3564,25 @@ document.getElementById("startBtn").addEventListener("click", () => {
   const startLevel = parseInt(levelSelectEl.value, 10) || 1;
   beginGame(startLevel);
 });
+// Raccourci de test : le combat final, Titan déjà en phase 5 à 5 % de vie —
+// quelques tirs suffisent alors à déclencher son attaque ultime.
+document.getElementById("testUltimateBtn").addEventListener("click", () => {
+  ensureAudio();
+  if (audioCtx.state === "suspended") audioCtx.resume();
+  startScreen.classList.add("hidden");
+  beginGame(20);
+  if (currentBoss && currentBoss.bossKey === "titan") {
+    const e = currentBoss;
+    e.enteringArena = false;
+    e.y = 160;
+    e.phase = 5;
+    e.maxHp = TITAN_PHASE_HP[4];
+    e.hp = Math.round(e.maxHp * 0.05);
+    bossPhaseLabel.textContent = "Phase 5 / 5";
+    bossBarFill.style.width = "5%";
+  }
+});
+
 document.getElementById("restartBtn").addEventListener("click", () => {
   gameOverScreen.classList.add("hidden");
   startScreen.classList.remove("hidden");

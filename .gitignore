@@ -2,3 +2,7 @@
 *.swp
 *.swo
 *~
+
+# outillage de dev (tools/)
+node_modules/
+tools/shots/
