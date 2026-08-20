@@ -10,24 +10,24 @@ Le dossier ne contient **que des fichiers HTML monolithiques** — tout (CSS, HT
 
 ## Versions
 
-`mecha-survivant.html` → `-2` → `-3` → `-4` sont des **itérations successives, pas des variantes** : chacune est une copie complète de la précédente enrichie.
+`index.html` est la **version principale**, seul fichier de jeu à la racine du dossier — c'est l'ancien `mecha-survivant-4.html`. Les itérations précédentes (`mecha-survivant.html`, `-2`, `-3`) sont conservées telles quelles dans `archives/` : ce sont des **étapes successives, pas des variantes**, chacune étant une copie complète de la précédente enrichie.
 
 | Fichier | Ajouts |
 | --- | --- |
-| `mecha-survivant.html` | base : vagues, 3 ennemis (zombie/squelette/revenant), boss tous les 5 niveaux, upgrades, audio WebAudio généré |
-| `mecha-survivant-2.html` | méga-boss à 3 phases (vague 15) |
-| `mecha-survivant-3.html` | sélecteur de vague de départ sur l'écran d'accueil |
-| `mecha-survivant-4.html` | Titan de la Mort, boss à 5 phases (vague 20), faux au corps à corps, attaque ultime |
+| `archives/mecha-survivant.html` | base : vagues, 3 ennemis (zombie/squelette/revenant), boss tous les 5 niveaux, upgrades, audio WebAudio généré |
+| `archives/mecha-survivant-2.html` | méga-boss à 3 phases (vague 15) |
+| `archives/mecha-survivant-3.html` | sélecteur de vague de départ sur l'écran d'accueil |
+| `index.html` (ex-`-4`) | Titan de la Mort, boss à 5 phases (vague 20), faux au corps à corps, attaque ultime |
 
-**`mecha-survivant-4.html` est la version courante.** Toute évolution part de là. Créer `-5` en copiant `-4` si l'on veut préserver l'existant ; sinon modifier `-4` en place. Ne jamais rétroporter un correctif dans les anciennes versions.
+Toute évolution se fait désormais dans `index.html` en place. Pour préserver un jalon avant un gros changement, en copier l'état dans `archives/` sous le prochain suffixe libre (`mecha-survivant-5.html`, etc.). Ne jamais rétroporter un correctif dans `archives/` — ces fichiers sont figés.
 
-Note : les fichiers portaient auparavant le préfixe `mech-survivant` ; ils ont été renommés en `mecha-survivant` pour s'aligner sur le nom du dossier. Conserver ce préfixe pour toute version future.
+Note : les fichiers portaient auparavant le préfixe `mech-survivant`, renommé en `mecha-survivant` pour s'aligner sur le nom du dossier. Ce préfixe ne concerne plus que les archives ; le fichier joué s'appelle `index.html`.
 
 ## Écart assumé avec la convention du dépôt
 
-Le `CLAUDE.md` parent impose `index.html` + `style.css` + `game.js`. Ce jeu ne le suit pas (fichier unique, versionné par suffixe numérique). C'est délibéré : le fichier est autoportant et se partage tel quel. Ne pas éclater les fichiers en trois sans demande explicite.
+Le `CLAUDE.md` parent impose `index.html` + `style.css` + `game.js`. Ce jeu ne respecte que le premier : tout (CSS, HTML, JS) reste inline dans `index.html`. C'est délibéré : le fichier est autoportant et se partage tel quel. Ne pas l'éclater en trois sans demande explicite.
 
-## Architecture (dans `mecha-survivant-4.html`)
+## Architecture (dans `index.html`)
 
 Tout le JS est dans une IIFE `(() => { "use strict"; ... })()` en fin de fichier, organisée en sections séparées par des bannières de commentaires, dans cet ordre :
 
