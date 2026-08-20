@@ -861,12 +861,21 @@ function triggerAoe() {
   spawnParticles(player.x, player.y, "#b98bff", 30, 6, 40);
   for (const e of enemies) {
     if (dist(e, player) < 130) {
+      if (isDamageImmune(e)) {
+        spawnFloatText(e.x, e.y - 20, "IMMUNISÉ", "#ffd27a");
+        continue;
+      }
       e.hp -= 40;
       spawnFloatText(e.x, e.y - 20, "-40", "#e6c8ff");
     }
   }
   sfxAoe();
   shakeScreen(8);
+}
+
+// Un ennemi immunisé n'encaisse aucun dégât, quelle qu'en soit la source.
+function isDamageImmune(e) {
+  return e.shieldTimer > 0 || e.ultimateInvuln > 0 || e.intangible > 0;
 }
 
 // ---------- Enemies ----------
@@ -1016,6 +1025,7 @@ function makeMegaZombie() {
 
 // --- Final boss at wave 20: 5 phases, melee scythe, teleport, ultimate fireball ---
 const TITAN_PHASE_HP = [1000, 1300, 1600, 1900, 2300]; // phases 1-5, each bar resets full
+const TITAN_ULTIMATE_INVULN = 600; // 10 s à 60 fps
 function makeTitan() {
   return {
     id: enemyIdCounter++, type: "boss", bossKey: "titan", name: "LE TITAN DE LA MORT", attackType: "titan",
@@ -1051,8 +1061,9 @@ function makeTitan() {
     teleporting: 0, // frames of teleport-out/in animation
     teleportPhaseOut: true,
     ultimateUsed: false,
-    ultimateWindup: 0, // frames charging the fireball
+    ultimateWindup: 0,   // frames charging the fireball
     ultimateFired: false,
+    ultimateInvuln: 0,   // frames d'invulnérabilité couvrant l'attaque ultime
   };
 }
 
@@ -1828,18 +1839,37 @@ function updateTitan(e) {
   // --- Ultimate attack: triggers once, right before death, on the final phase ---
   if (e.phase >= 5 && !e.ultimateUsed) {
     if (e.hp <= 0) e.hp = 1; // stay alive just long enough to unleash the ultimate
-    if (e.hp <= e.maxHp*0.12 && e.ultimateWindup === 0) {
-      e.ultimateWindup = 90; // ~1.5s charge-up, telegraphed
+    // À 1 % de vie sur la dernière phase, le Titan se rend invulnérable 10 s :
+    // le temps de charger et de lâcher son attaque ultime de feu.
+    if (e.hp <= e.maxHp*0.01 && e.ultimateWindup === 0) {
+      e.ultimateInvuln = TITAN_ULTIMATE_INVULN;
+      e.ultimateWindup = 180; // 3 s de charge très telegraphée, dans la fenêtre d'invulnérabilité
       e.ultimateFired = false;
       spawnFloatText(e.x, e.y-e.r-20, "ATTAQUE ULTIME !", "#ff4d1a");
+      spawnFloatText(e.x, e.y-e.r-46, "INVULNÉRABLE", "#ffd27a");
       sfxLaserCharge();
       shakeScreen(6);
+    }
+  }
+
+  // décompte de l'invulnérabilité ; elle court même après le tir
+  if (e.ultimateInvuln > 0) {
+    e.ultimateInvuln--;
+    if (e.ultimateInvuln % 20 === 0) {
+      spawnParticles(e.x, e.y, "#ffb03a", 3, 5, 26);
+    }
+    bossPhaseLabel.textContent = "Phase 5 / 5 — INVULNÉRABLE " + Math.ceil(e.ultimateInvuln/60) + " s";
+    if (e.ultimateInvuln === 0) {
+      bossPhaseLabel.textContent = "Phase 5 / 5";
+      spawnFloatText(e.x, e.y-e.r-20, "VULNÉRABLE !", "#8effa8");
+      spawnParticles(e.x, e.y, "#8effa8", 26, 5, 30);
     }
   }
   if (e.ultimateWindup > 0) {
     e.ultimateWindup--;
     e.animT += 0.15;
     spawnParticles(e.x, e.y, "#ff6a2a", 4, 4, 20);
+    if (e.ultimateWindup % 30 === 0) sfxLaserCharge();
     if (e.ultimateWindup === 0 && !e.ultimateFired) {
       e.ultimateFired = true;
       e.ultimateUsed = true;
@@ -2259,9 +2289,9 @@ function update() {
     for (const e of enemies) {
       if (e.intangible > 0) continue; // ombre déphasée : le tir la traverse
       if (dist(b, e) < b.r + e.r) {
-        if (e.shieldTimer > 0) {
-          // shielded: bullet is absorbed, no damage, visual spark only
-          spawnParticles(b.x, b.y, "#b98bff", 5, 2, 10);
+        if (isDamageImmune(e)) {
+          // absorbé : aucun dégât, seulement une étincelle
+          spawnParticles(b.x, b.y, e.ultimateInvuln > 0 ? "#ff9a3a" : "#b98bff", 5, 2, 10);
           bullets.splice(i,1);
           break;
         }
@@ -2309,7 +2339,8 @@ function update() {
 
     if (e.type === "boss") {
       updateBoss(e);
-      if (e.hp <= 0 && !(e.bossKey === "titan" && e.phase >= 5 && !e.ultimateUsed)) {
+      const titanBusy = e.bossKey === "titan" && e.phase >= 5 && (!e.ultimateUsed || e.ultimateInvuln > 0);
+      if (e.hp <= 0 && !titanBusy) {
         killBoss(e);
         enemies.splice(i,1);
         currentBoss = null;
@@ -3136,9 +3167,25 @@ function drawTitan(e) {
   const pulse = 1 + Math.sin(e.animT*1.1)*0.02;
   ctx.scale(pulse, pulse);
 
+  // fenêtre d'invulnérabilité : anneau doré tournant autour de l'armure
+  if (e.ultimateInvuln > 0) {
+    const spin = e.animT*0.9;
+    ctx.save();
+    ctx.rotate(spin);
+    ctx.strokeStyle = `rgba(255,210,122,${0.5 + 0.35*Math.abs(Math.sin(e.animT*2))})`;
+    ctx.lineWidth = 5;
+    for (let i=0;i<6;i++) {
+      const a0 = i*(Math.PI/3) + 0.12;
+      ctx.beginPath();
+      ctx.arc(0, 0, e.r*1.35, a0, a0 + Math.PI/3 - 0.24);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   // ultimate charge-up: intense growing orange aura
   if (e.ultimateWindup > 0) {
-    const t = 1 - e.ultimateWindup/90;
+    const t = 1 - e.ultimateWindup/180;
     const auraR = e.r*(1.5 + t*1.8);
     const grad = ctx.createRadialGradient(0,0,e.r*0.3,0,0,auraR);
     grad.addColorStop(0, `rgba(255,120,30,${0.3+t*0.5})`);
