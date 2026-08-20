@@ -545,6 +545,36 @@ function sfxPoisonSplat() {
   playNoise({dur:0.2, vol:0.2, filterFreq:900, type:"bandpass"});
   playTone({freq:300, freqEnd:120, type:"sine", dur:0.25, vol:0.15});
 }
+function sfxShadeWhisper() {
+  if (!audioCtx || !soundOn) return;
+  playNoise({dur:0.5, vol:0.09, filterFreq:1200, type:"bandpass"});
+  playTone({freq:320, freqEnd:180, type:"sine", dur:0.5, vol:0.07});
+}
+function sfxShadeDeath() {
+  if (!audioCtx || !soundOn) return;
+  playTone({freq:420, freqEnd:60, type:"sine", dur:0.5, vol:0.2});
+  playNoise({dur:0.4, vol:0.16, filterFreq:800, type:"bandpass"});
+}
+function sfxShadeSummon() {
+  if (!audioCtx || !soundOn) return;
+  playTone({freq:60, freqEnd:260, type:"sine", dur:0.7, vol:0.22});
+  playNoise({dur:0.6, vol:0.14, filterFreq:700, type:"bandpass"});
+}
+function sfxFireball() {
+  if (!audioCtx || !soundOn) return;
+  playNoise({dur:0.28, vol:0.2, filterFreq:1100, type:"bandpass"});
+  playTone({freq:220, freqEnd:520, type:"sawtooth", dur:0.22, vol:0.14});
+}
+function sfxFireImpact() {
+  if (!audioCtx || !soundOn) return;
+  playNoise({dur:0.3, vol:0.26, filterFreq:800, type:"lowpass"});
+  playTone({freq:180, freqEnd:50, type:"sawtooth", dur:0.3, vol:0.2});
+}
+function sfxFlamelingDeath() {
+  if (!audioCtx || !soundOn) return;
+  playNoise({dur:0.35, vol:0.22, filterFreq:1400, type:"bandpass"});
+  playTone({freq:300, freqEnd:60, type:"square", dur:0.3, vol:0.18});
+}
 function sfxGameOver() {
   if (!audioCtx || !soundOn) return;
   [0,0.15,0.3,0.5].forEach((d,i)=> playTone({freq:300-i*60, type:"sawtooth", dur:0.4, vol:0.25, delay:d}));
@@ -858,6 +888,46 @@ function makeRisen(x, y, tier) {
   };
 }
 
+// Créature de l'ombre : rapide, translucide, devient intangible par intermittence
+// (les balles la traversent). Élément ombre — opposé à la lumière.
+function makeShade(x, y, tier) {
+  return {
+    id: enemyIdCounter++, type: "shade", x, y,
+    r: 14,
+    hp: 24 + tier*12, maxHp: 24 + tier*12,
+    speed: 1.45 + tier*0.11,
+    damage: 10 + tier*2,
+    hitCooldown: 0,
+    color: "#7b5cc4",
+    animT: Math.random()*10,
+    // cycle de matérialisation : intangible pendant `intangible` frames, puis solide
+    intangible: 0,
+    phaseCooldown: rand(120, 200),
+    whisperCooldown: rand(60, 220),
+    emerging: 20,
+  };
+}
+
+// Mob de feu : garde ses distances et lance une boule de feu toutes les 3 s
+// (180 frames à 60 fps) infligeant 5 % des PV max du joueur.
+const FLAMELING_SHOT_INTERVAL = 180; // 3 s à 60 fps, incantation comprise
+const FLAMELING_WINDUP = 26;
+function makeFlameling(x, y, tier) {
+  return {
+    id: enemyIdCounter++, type: "flameling", x, y,
+    r: 15,
+    hp: 26 + tier*14, maxHp: 26 + tier*14,
+    speed: 0.75 + tier*0.07,
+    damage: 9 + tier*2,
+    hitCooldown: 0,
+    color: "#ff8a3a",
+    animT: Math.random()*10,
+    fireCooldown: Math.floor(rand(60, FLAMELING_SHOT_INTERVAL)),
+    castWindup: 0,
+    keepDistance: rand(190, 260),
+  };
+}
+
 const BOSS_TYPES = [
   { key:"reaper", name:"LE FOSSOYEUR", color:"#8a2be2", attack:"aoe" },
   { key:"colossus", name:"COLOSSE D'OS", color:"#e0d090", attack:"laser" },
@@ -879,6 +949,7 @@ function makeBoss(bossIndex) {
     animT: 0,
     shootCooldown: 90,
     specialCooldown: 220,
+    shadeSummonCooldown: 260, // le Fossoyeur uniquement
     phase: 0,
     enteringArena: true,
   };
@@ -961,6 +1032,13 @@ function spawnTelegraphThenRisen(x, y, tier) {
   telegraphs.push({
     x, y, timer: 50, maxTimer: 50,
     spawnFn: () => enemies.push(makeRisen(x, y, tier))
+  });
+}
+
+function spawnTelegraphThenShade(x, y, tier) {
+  telegraphs.push({
+    x, y, timer: 45, maxTimer: 45, shadow: true,
+    spawnFn: () => { enemies.push(makeShade(x, y, tier)); sfxShadeWhisper(); }
   });
 }
 
@@ -1087,7 +1165,7 @@ function beginTitanBossWave() {
 
 
 function attackTypeLabel(t) {
-  if (t === "aoe") return "Attaque : explosions de zone";
+  if (t === "aoe") return "Attaque : explosions de zone, invoque des créatures de l'ombre";
   if (t === "laser") return "Attaque : rayon laser";
   if (t === "poison") return "Attaque : projectiles empoisonnés";
   if (t === "megazombie") return "Attaque : charge dévastatrice, 3 phases";
@@ -1105,10 +1183,20 @@ function trySpawnEnemy() {
   const pos = edgeSpawnPos();
   const roll = Math.random();
 
-  if (wave >= 3 && roll < 0.22) {
+  // Les mobs de feu n'apparaissent jamais vague 1 ni sur une vague de boss
+  // (trySpawnEnemy sort déjà plus haut quand isBossWave).
+  const fireAllowed = wave >= 2;
+  const shadeAllowed = wave >= 4;
+
+  if (fireAllowed && roll < 0.16) {
+    enemies.push(makeFlameling(pos.x, pos.y, tier));
+  } else if (shadeAllowed && roll < 0.30) {
+    const gx = rand(80, W-80), gy = rand(80, H-80);
+    spawnTelegraphThenShade(gx, gy, tier);
+  } else if (wave >= 3 && roll < 0.46) {
     const gx = rand(80, W-80), gy = rand(80, H-80);
     spawnTelegraphThenRisen(gx, gy, tier);
-  } else if (wave >= 2 && roll < 0.55) {
+  } else if (wave >= 2 && roll < 0.72) {
     enemies.push(makeSkeleton(pos.x, pos.y, tier));
   } else {
     enemies.push(makeZombie(pos.x, pos.y, tier));
@@ -1237,12 +1325,31 @@ function damagePlayer(amount) {
   }
 }
 
+const ENEMY_SCORE = { risen: 30, skeleton: 20, shade: 35, flameling: 40, zombie: 15 };
+
+// Boule de feu : 5 % des PV max du joueur, comme demandé — recalculé au tir
+// pour rester à 5 % même après les upgrades de PV max.
+function fireballAt(e) {
+  const a = Math.atan2(player.y - e.y, player.x - e.x);
+  enemyBullets.push({
+    x: e.x, y: e.y - e.r*0.4,
+    vx: Math.cos(a)*3.9, vy: Math.sin(a)*3.9,
+    r: 8, damage: Math.max(1, Math.round(player.maxHp * 0.05)),
+    life: 200, fire: true, angle: a, animT: 0,
+  });
+  spawnParticles(e.x, e.y - e.r*0.4, "#ff8a3a", 10, 3, 18);
+  sfxFireball();
+}
+
 function killEnemy(e) {
-  score += e.type === "risen" ? 30 : e.type === "skeleton" ? 20 : 15;
+  const gain = ENEMY_SCORE[e.type] || 15;
+  score += gain;
   spawnParticles(e.x, e.y, e.color, 16, 4, 25);
-  spawnFloatText(e.x, e.y - 10, "+" + (e.type === "risen" ? 30 : e.type === "skeleton" ? 20 : 15), "#8effa8");
+  spawnFloatText(e.x, e.y - 10, "+" + gain, "#8effa8");
   if (e.type === "skeleton") sfxSkeletonDeath();
   else if (e.type === "risen") sfxRisenDeath();
+  else if (e.type === "shade") sfxShadeDeath();
+  else if (e.type === "flameling") sfxFlamelingDeath();
   else sfxZombieDeath();
 }
 
@@ -1333,6 +1440,28 @@ function updateBoss(e) {
     bossRangedBurst(e, 8);
   } else {
     bossRangedBurst(e, 10);
+  }
+
+  // Le Fossoyeur appelle des créatures de l'ombre pendant tout le combat.
+  if (e.bossKey === "reaper") {
+    e.shadeSummonCooldown--;
+    if (e.shadeSummonCooldown <= 0) {
+      e.shadeSummonCooldown = 300;
+      const living = enemies.filter(x => x.type === "shade").length;
+      if (living < 6) {
+        const count = 2 + (e.hp / e.maxHp < 0.5 ? 1 : 0); // plus nombreuses à mi-vie
+        const tier = Math.floor(wave / 5) + 1;
+        for (let i=0;i<count;i++) {
+          const a = rand(0, Math.PI*2), rad = rand(70, 130);
+          const gx = clamp(e.x + Math.cos(a)*rad, 40, W-40);
+          const gy = clamp(e.y + Math.sin(a)*rad, 80, H-40);
+          spawnTelegraphThenShade(gx, gy, tier);
+        }
+        spawnFloatText(e.x, e.y - e.r - 24, "INVOCATION", "#b98bff");
+        spawnParticles(e.x, e.y, "#7b5cc4", 26, 5, 30);
+        sfxShadeSummon();
+      }
+    }
   }
 
   // special attacks
@@ -2011,6 +2140,7 @@ function update() {
     b.x += b.vx; b.y += b.vy;
     if (b.x < -20 || b.x > W+20 || b.y < -20 || b.y > H+20) { bullets.splice(i,1); continue; }
     for (const e of enemies) {
+      if (e.intangible > 0) continue; // ombre déphasée : le tir la traverse
       if (dist(b, e) < b.r + e.r) {
         if (e.shieldTimer > 0) {
           // shielded: bullet is absorbed, no damage, visual spark only
@@ -2033,9 +2163,11 @@ function update() {
     b.x += b.vx; b.y += b.vy;
     b.life--;
     if (b.life <= 0 || b.x < -20 || b.x > W+20 || b.y < -20 || b.y > H+20) { enemyBullets.splice(i,1); continue; }
+    if (b.fire) { b.animT = (b.animT||0) + 0.3; if (chance(0.5)) spawnParticles(b.x, b.y, "#ff7a2a", 1, 1, 12); }
     if (dist(b, player) < b.r + player.r) {
       damagePlayer(b.damage);
       if (b.poison) applyPoison(2);
+      if (b.fire) { spawnParticles(b.x, b.y, "#ffb03a", 16, 4, 22); sfxFireImpact(); shakeScreen(5); }
       enemyBullets.splice(i,1);
     }
   }
@@ -2073,11 +2205,38 @@ function update() {
       e.emerging--;
     } else if (gameState === "playing") {
       const ang = Math.atan2(player.y - e.y, player.x - e.x);
-      e.x += Math.cos(ang) * e.speed;
-      e.y += Math.sin(ang) * e.speed;
+      const d = dist(e, player);
+
+      if (e.type === "flameling") {
+        // reste à portée de tir : avance si trop loin, recule si le joueur colle
+        if (e.castWindup > 0) {
+          // immobile pendant l'incantation
+        } else if (d > e.keepDistance + 30) {
+          e.x += Math.cos(ang) * e.speed;
+          e.y += Math.sin(ang) * e.speed;
+        } else if (d < e.keepDistance - 40) {
+          e.x -= Math.cos(ang) * e.speed * 1.1;
+          e.y -= Math.sin(ang) * e.speed * 1.1;
+        } else {
+          e.x += Math.cos(ang + Math.PI/2) * e.speed * 0.6;
+          e.y += Math.sin(ang + Math.PI/2) * e.speed * 0.6;
+        }
+        e.x = clamp(e.x, e.r, W-e.r);
+        e.y = clamp(e.y, e.r+40, H-e.r);
+      } else if (e.type === "shade") {
+        // glisse vers le joueur avec une légère ondulation, plus vite en phase intangible
+        const drift = Math.sin(e.animT*1.6) * 0.5;
+        const sp = e.speed * (e.intangible > 0 ? 1.35 : 1);
+        e.x += Math.cos(ang + drift) * sp;
+        e.y += Math.sin(ang + drift) * sp;
+      } else {
+        e.x += Math.cos(ang) * e.speed;
+        e.y += Math.sin(ang) * e.speed;
+      }
 
       if (e.hitCooldown > 0) e.hitCooldown--;
-      if (dist(e, player) < e.r + player.r) {
+      // une ombre déphasée traverse le joueur sans le toucher
+      if (dist(e, player) < e.r + player.r && !(e.type === "shade" && e.intangible > 0)) {
         if (e.hitCooldown <= 0) {
           damagePlayer(e.damage);
           e.hitCooldown = 40;
@@ -2113,6 +2272,42 @@ function update() {
             e.shootCooldown = rand(90,140);
             e.drawBow = 22; // draw animation before firing
             sfxSkeletonRattle();
+          }
+        }
+      }
+
+      if (e.type === "shade") {
+        // cycle de déphasage : invulnérable et inoffensive le temps de se dissiper
+        if (e.intangible > 0) {
+          e.intangible--;
+          if (e.intangible % 4 === 0) spawnParticles(e.x, e.y, "#3d2a6b", 1, 1, 12);
+        } else {
+          e.phaseCooldown--;
+          if (e.phaseCooldown <= 0) {
+            e.phaseCooldown = rand(150, 240);
+            e.intangible = 55;
+            spawnParticles(e.x, e.y, "#7b5cc4", 10, 2.5, 18);
+            sfxShadeWhisper();
+          }
+        }
+        e.whisperCooldown--;
+        if (e.whisperCooldown <= 0 && dist(e, player) < 300) {
+          e.whisperCooldown = rand(200, 400);
+          sfxShadeWhisper();
+        }
+      }
+
+      if (e.type === "flameling") {
+        if (e.castWindup > 0) {
+          e.castWindup--;
+          spawnParticles(e.x, e.y - e.r*0.8, "#ffb03a", 1, 1.5, 14);
+          if (e.castWindup === 0) fireballAt(e);
+        } else {
+          e.fireCooldown--;
+          if (e.fireCooldown <= 0 && dist(e, player) < 480) {
+            // l'incantation fait partie des 3 s : cycle complet = 180 frames
+            e.fireCooldown = FLAMELING_SHOT_INTERVAL - FLAMELING_WINDUP;
+            e.castWindup = FLAMELING_WINDUP; // incantation visible avant le jet
           }
         }
       }
@@ -2433,6 +2628,85 @@ function drawEnemy(e) {
     ctx.beginPath(); ctx.arc(e.r*0.2, -e.r*0.6, 1.3, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = "#1a1c1f";
     ctx.beginPath(); ctx.moveTo(0,-e.r*0.5); ctx.lineTo(-2,-e.r*0.38); ctx.lineTo(2,-e.r*0.38); ctx.closePath(); ctx.fill();
+
+  } else if (e.type === "shade") {
+    // silhouette spectrale sans jambes, plus transparente quand elle est déphasée
+    const solid = e.intangible > 0 ? 0.28 : 0.82;
+    const pulse = Math.sin(e.animT*1.5) * 2;
+    ctx.globalAlpha *= solid;
+    // halo
+    ctx.fillStyle = "rgba(60,30,110,0.45)";
+    ctx.beginPath(); ctx.arc(0, 0, e.r*1.5 + pulse, 0, Math.PI*2); ctx.fill();
+    // corps : capuche fuselée terminée en volutes
+    ctx.fillStyle = "#241239";
+    ctx.beginPath();
+    ctx.moveTo(0, -e.r*1.15);
+    ctx.quadraticCurveTo(e.r*0.95, -e.r*0.3, e.r*0.7, e.r*0.55);
+    for (let i=0;i<4;i++) {
+      const px = e.r*0.7 - i*(e.r*0.47);
+      const dy = e.r*0.55 + Math.sin(e.animT*2.4 + i)*e.r*0.3;
+      ctx.quadraticCurveTo(px - e.r*0.22, dy + e.r*0.35, px - e.r*0.47, e.r*0.5);
+    }
+    ctx.quadraticCurveTo(-e.r*0.95, -e.r*0.3, 0, -e.r*1.15);
+    ctx.closePath(); ctx.fill();
+    // liseré violet
+    ctx.strokeStyle = "#7b5cc4"; ctx.lineWidth = 1.6;
+    ctx.stroke();
+    // yeux
+    ctx.fillStyle = "#d3b6ff";
+    ctx.beginPath(); ctx.ellipse(-e.r*0.24, -e.r*0.55, 2.6, 4, 0.3, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(e.r*0.24, -e.r*0.55, 2.6, 4, -0.3, 0, Math.PI*2); ctx.fill();
+    // griffes de fumée
+    ctx.strokeStyle = "rgba(123,92,196,0.8)"; ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(-e.r*0.75, -e.r*0.1); ctx.lineTo(-e.r*1.25, e.r*0.2 + wob);
+    ctx.moveTo(e.r*0.75, -e.r*0.1); ctx.lineTo(e.r*1.25, e.r*0.2 - wob);
+    ctx.stroke();
+
+  } else if (e.type === "flameling") {
+    const flick = 1 + Math.sin(e.animT*3.2) * 0.09;
+    const charging = e.castWindup > 0;
+    // aura de chaleur
+    ctx.fillStyle = charging ? "rgba(255,140,40,0.35)" : "rgba(255,110,30,0.18)";
+    ctx.beginPath(); ctx.arc(0, 0, e.r*(charging ? 1.9 : 1.45)*flick, 0, Math.PI*2); ctx.fill();
+    // corps en braise
+    ctx.fillStyle = "#5a2410";
+    ctx.beginPath();
+    ctx.ellipse(0, 3, e.r*0.8, e.r*0.9, 0, 0, Math.PI*2);
+    ctx.fill();
+    // fissures incandescentes
+    ctx.strokeStyle = "#ff7a2a"; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-e.r*0.4, -e.r*0.1); ctx.lineTo(-e.r*0.1, e.r*0.25); ctx.lineTo(-e.r*0.35, e.r*0.6);
+    ctx.moveTo(e.r*0.4, -e.r*0.15); ctx.lineTo(e.r*0.12, e.r*0.3);
+    ctx.stroke();
+    // bras
+    ctx.strokeStyle = "#7a3418"; ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.moveTo(-e.r*0.65, -2); ctx.lineTo(-e.r*1.1, 5+wob);
+    ctx.moveTo(e.r*0.65, -2); ctx.lineTo(e.r*1.1, 5-wob);
+    ctx.stroke();
+    // tête casquée de flammes
+    ctx.fillStyle = "#6b2a12";
+    ctx.beginPath(); ctx.arc(0, -e.r*0.6, e.r*0.5, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = "#ffb03a";
+    ctx.beginPath();
+    ctx.moveTo(-e.r*0.45, -e.r*0.85);
+    for (let i=0;i<5;i++) {
+      const fx = -e.r*0.45 + i*(e.r*0.225);
+      ctx.quadraticCurveTo(fx + e.r*0.1, -e.r*(1.35 + Math.sin(e.animT*4 + i)*0.18), fx + e.r*0.225, -e.r*0.85);
+    }
+    ctx.closePath(); ctx.fill();
+    // yeux
+    ctx.fillStyle = "#ffe6a8";
+    ctx.beginPath(); ctx.arc(-e.r*0.2, -e.r*0.6, 2.4, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(e.r*0.2, -e.r*0.6, 2.4, 0, Math.PI*2); ctx.fill();
+    // boule de feu en formation pendant l'incantation
+    if (charging) {
+      const t = 1 - e.castWindup/FLAMELING_WINDUP;
+      ctx.fillStyle = "rgba(255,180,60,0.85)";
+      ctx.beginPath(); ctx.arc(0, -e.r*1.5, 3 + t*7, 0, Math.PI*2); ctx.fill();
+    }
 
   } else { // risen
     ctx.fillStyle = "#5a3a45";
@@ -2809,15 +3083,38 @@ function drawTelegraph(t) {
   const prog = 1 - t.timer/t.maxTimer;
   ctx.save();
   ctx.translate(t.x, t.y);
-  ctx.strokeStyle = `rgba(255,80,80,${0.4 + 0.5*Math.sin(prog*20)})`;
+  ctx.strokeStyle = t.shadow
+    ? `rgba(150,110,255,${0.4 + 0.5*Math.sin(prog*20)})`
+    : `rgba(255,80,80,${0.4 + 0.5*Math.sin(prog*20)})`;
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.arc(0,0, 22 - prog*6, 0, Math.PI*2);
   ctx.stroke();
-  ctx.fillStyle = "rgba(122,74,90,0.25)";
+  ctx.fillStyle = t.shadow ? "rgba(40,20,70,0.55)" : "rgba(122,74,90,0.25)";
   ctx.beginPath();
   ctx.arc(0,0, 22, 0, Math.PI*2);
   ctx.fill();
+  ctx.restore();
+}
+
+function drawFireball(b) {
+  const flick = 1 + Math.sin((b.animT||0)*3) * 0.12;
+  ctx.save();
+  ctx.translate(b.x, b.y);
+  // traînée
+  ctx.rotate((b.angle||0) + Math.PI);
+  ctx.fillStyle = "rgba(255,110,30,0.35)";
+  ctx.beginPath();
+  ctx.moveTo(0, -b.r*0.7); ctx.lineTo(b.r*2.6, 0); ctx.lineTo(0, b.r*0.7);
+  ctx.closePath(); ctx.fill();
+  ctx.rotate(-((b.angle||0) + Math.PI));
+  // noyau
+  ctx.fillStyle = "rgba(255,120,20,0.5)";
+  ctx.beginPath(); ctx.arc(0,0, b.r*1.7*flick, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = "#ff7a2a";
+  ctx.beginPath(); ctx.arc(0,0, b.r*flick, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = "#ffd08a";
+  ctx.beginPath(); ctx.arc(0,0, b.r*0.5*flick, 0, Math.PI*2); ctx.fill();
   ctx.restore();
 }
 
@@ -2826,9 +3123,9 @@ function drawBullets() {
   for (const b of bullets) {
     ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill();
   }
-  ctx.fillStyle = "#ff8a8a";
   for (const b of enemyBullets) {
     if (b.isArrow) continue;
+    if (b.fire) { drawFireball(b); continue; }
     if (b.poison) ctx.fillStyle = "#8aff5a"; else ctx.fillStyle = "#ff8a8a";
     ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill();
   }
