@@ -587,6 +587,12 @@ function sfxBoneSweep() {
   playNoise({dur:0.9, vol:0.22, filterFreq:1800, type:"bandpass"});
   playTone({freq:140, freqEnd:90, type:"sawtooth", dur:0.9, vol:0.2});
 }
+function sfxTitanUltimate() {
+  if (!audioCtx || !soundOn) return;
+  playTone({freq:90, freqEnd:35, type:"sawtooth", dur:1.4, vol:0.42});
+  playNoise({dur:1.2, vol:0.34, filterFreq:700, type:"lowpass"});
+  playTone({freq:1400, freqEnd:180, type:"square", dur:0.5, vol:0.2});
+}
 function sfxGameOver() {
   if (!audioCtx || !soundOn) return;
   [0,0.15,0.3,0.5].forEach((d,i)=> playTone({freq:300-i*60, type:"sawtooth", dur:0.4, vol:0.25, delay:d}));
@@ -1802,6 +1808,28 @@ function updateMegaZombie(e) {
   bossBarFill.style.width = clamp(e.hp/e.maxHp,0,1)*100 + "%";
 }
 
+// L'attaque ultime part maintenant comme une énorme boule de feu qui traverse
+// l'arène : elle vise la position du joueur au moment du tir, file vite, et ne
+// fait ses dégâts qu'à l'impact. On l'esquive en se déplaçant, pas en dashant
+// dans l'invulnérabilité.
+const TITAN_ULTIMATE_RADIUS = 46;
+const TITAN_ULTIMATE_SPEED = 11.5;
+function launchTitanUltimate(e) {
+  const a = Math.atan2(player.y - e.y, player.x - e.x);
+  enemyBullets.push({
+    x: e.x, y: e.y,
+    vx: Math.cos(a)*TITAN_ULTIMATE_SPEED, vy: Math.sin(a)*TITAN_ULTIMATE_SPEED,
+    r: TITAN_ULTIMATE_RADIUS,
+    damage: 0,          // les dégâts passent par damagePlayerUltimate(), pas par damagePlayer()
+    life: 240,
+    ultimate: true, angle: a, animT: 0,
+  });
+  spawnParticles(e.x, e.y, "#ff4d1a", 60, 11, 45);
+  spawnFloatText(e.x, e.y - e.r - 20, "ESQUIVE !", "#ffd27a");
+  shakeScreen(20);
+  sfxTitanUltimate();
+}
+
 function damagePlayerUltimate() {
   // The titan's fireball: instant kill unless the player has an active
   // energy shield. If shielded, the shield is fully consumed by the blast
@@ -1873,9 +1901,7 @@ function updateTitan(e) {
     if (e.ultimateWindup === 0 && !e.ultimateFired) {
       e.ultimateFired = true;
       e.ultimateUsed = true;
-      damagePlayerUltimate();
-      spawnParticles(e.x, e.y, "#ff4d1a", 50, 9, 45);
-      shakeScreen(18);
+      launchTitanUltimate(e);
       sfxLaserFire();
     }
     bossBarFill.style.width = clamp(e.hp/e.maxHp,0,1)*100 + "%";
@@ -2309,7 +2335,17 @@ function update() {
     const b = enemyBullets[i];
     b.x += b.vx; b.y += b.vy;
     b.life--;
-    if (b.life <= 0 || b.x < -20 || b.x > W+20 || b.y < -20 || b.y > H+20) { enemyBullets.splice(i,1); continue; }
+    const margin = b.ultimate ? b.r + 40 : 20;
+    if (b.life <= 0 || b.x < -margin || b.x > W+margin || b.y < -margin || b.y > H+margin) { enemyBullets.splice(i,1); continue; }
+    if (b.ultimate) {
+      b.animT += 0.4;
+      spawnParticles(b.x - b.vx*0.6, b.y - b.vy*0.6, chance(0.5) ? "#ff4d1a" : "#ffb03a", 3, 3, 20);
+      if (dist(b, player) < b.r + player.r) {
+        damagePlayerUltimate();
+        enemyBullets.splice(i,1);
+      }
+      continue; // ne passe jamais par les dégâts ordinaires
+    }
     if (b.fire) { b.animT = (b.animT||0) + 0.3; if (chance(0.5)) spawnParticles(b.x, b.y, "#ff7a2a", 1, 1, 12); }
     if (dist(b, player) < b.r + player.r) {
       damagePlayer(b.damage);
@@ -3339,6 +3375,56 @@ function drawFireball(b) {
   ctx.restore();
 }
 
+function drawTitanUltimate(b) {
+  const t = b.animT || 0;
+  const flick = 1 + Math.sin(t*4) * 0.06;
+  ctx.save();
+  ctx.translate(b.x, b.y);
+
+  // longue traînée de feu derrière la boule
+  ctx.save();
+  ctx.rotate((b.angle||0) + Math.PI);
+  const trail = ctx.createLinearGradient(0, 0, b.r*5, 0);
+  trail.addColorStop(0, "rgba(255,120,30,0.55)");
+  trail.addColorStop(1, "rgba(255,60,0,0)");
+  ctx.fillStyle = trail;
+  ctx.beginPath();
+  ctx.moveTo(0, -b.r*0.85);
+  ctx.quadraticCurveTo(b.r*3, -b.r*0.35, b.r*5, 0);
+  ctx.quadraticCurveTo(b.r*3, b.r*0.35, 0, b.r*0.85);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // halo
+  const halo = ctx.createRadialGradient(0, 0, b.r*0.4, 0, 0, b.r*2.1);
+  halo.addColorStop(0, "rgba(255,140,40,0.5)");
+  halo.addColorStop(1, "rgba(255,60,0,0)");
+  ctx.fillStyle = halo;
+  ctx.beginPath(); ctx.arc(0, 0, b.r*2.1*flick, 0, Math.PI*2); ctx.fill();
+
+  // couronne de flammes déchiquetée
+  ctx.fillStyle = "#ff4d1a";
+  ctx.beginPath();
+  for (let i=0;i<=16;i++) {
+    const a = (i/16)*Math.PI*2;
+    const rr = b.r * (1.12 + Math.sin(t*3 + i*1.7)*0.14);
+    const px = Math.cos(a)*rr, py = Math.sin(a)*rr;
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.closePath(); ctx.fill();
+
+  // noyau incandescent
+  ctx.fillStyle = "#ff8a2a";
+  ctx.beginPath(); ctx.arc(0, 0, b.r*0.78*flick, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = "#ffd08a";
+  ctx.beginPath(); ctx.arc(0, 0, b.r*0.46*flick, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = "#fff6e0";
+  ctx.beginPath(); ctx.arc(0, 0, b.r*0.2*flick, 0, Math.PI*2); ctx.fill();
+
+  ctx.restore();
+}
+
 function drawBullets() {
   ctx.fillStyle = "#ffe08a";
   for (const b of bullets) {
@@ -3346,6 +3432,7 @@ function drawBullets() {
   }
   for (const b of enemyBullets) {
     if (b.isArrow) continue;
+    if (b.ultimate) { drawTitanUltimate(b); continue; }
     if (b.fire) { drawFireball(b); continue; }
     if (b.poison) ctx.fillStyle = "#8aff5a"; else ctx.fillStyle = "#ff8a8a";
     ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill();
