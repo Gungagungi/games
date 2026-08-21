@@ -35,4 +35,5 @@ func _cast() -> void:
 	var fireball := EnemyProjectile.new()
 	fireball.setup(global_position, dir, 220.0, player.max_hp * 0.05, 10.0,
 		Color(0.98, 0.55, 0.18), "proj_fireball")
+	fireball.impact_sfx = "fireball_impact"
 	get_parent().add_child(fireball)

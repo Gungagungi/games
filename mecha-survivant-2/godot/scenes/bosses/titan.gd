@@ -112,6 +112,7 @@ func _behaviour(delta: float) -> void:
 func _scythe() -> void:
 	if global_position.distance_to(player.global_position) > SCYTHE_RANGE:
 		return
+	_play_attack("scythe")
 	_telegraph_strike(global_position, SCYTHE_RANGE, hit_damage(), 0.45,
 		Color(0.9, 0.2, 0.25), 9.0)
 
@@ -126,6 +127,7 @@ func _teleport() -> void:
 	EventBus.screen_shake_requested.emit(6.0)
 
 func _charge() -> void:
+	_play_attack("charge")
 	var dir := (player.global_position - global_position).normalized()
 	global_position += dir * 180.0
 	_clamp_inside()

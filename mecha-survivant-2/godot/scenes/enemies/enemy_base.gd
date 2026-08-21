@@ -49,7 +49,6 @@ func _ready() -> void:
 	add_child(_collision)
 	_visual = SpriteOrShape.new()
 	_visual.texture_name = _sprite_name()
-	_visual.frame_count = 4
 	_visual.radius = radius
 	_visual.shape_color = xp_color
 	_visual.shape = _shape_kind()
@@ -102,6 +101,7 @@ func take_damage(amount: float) -> void:
 		return
 	hp -= amount
 	_visual.flash()
+	HitSpark.spawn(get_parent(), global_position, xp_color.lightened(0.5))
 	AudioManager.sfx("boss_hurt" if is_boss else "hit_enemy")
 	EventBus.float_text_requested.emit(
 		global_position + Vector2(0, -radius), str(int(amount)), Color(1.0, 0.9, 0.5))
@@ -123,4 +123,18 @@ func die() -> void:
 	EventBus.enemy_died.emit(global_position, is_boss)
 	if is_boss:
 		EventBus.boss_defeated.emit()
+	_play_death_then_free()
+
+## Sans planche de mort déposée, l'ennemi disparaît dans la frame — le
+## comportement d'origine. Avec, il reste le temps de dérouler ses cases de
+## mort : `alive` est déjà faux, il ne bouge plus, ne blesse plus et n'est plus
+## compté par le gestionnaire de vagues.
+func _play_death_then_free() -> void:
+	var duration := _visual.animation_duration("death")
+	if duration <= 0.0:
+		queue_free()
+		return
+	_visual.play("death", false)
+	_collision.set_deferred("disabled", true)
+	await get_tree().create_timer(duration).timeout
 	queue_free()

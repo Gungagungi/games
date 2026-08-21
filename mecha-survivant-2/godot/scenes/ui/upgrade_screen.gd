@@ -1,8 +1,15 @@
 class_name UpgradeScreen
 extends CanvasLayer
 ## Trois pouvoirs tirés au sort entre deux vagues.
+##
+## Chaque bouton porte l'icône du pouvoir, découpée dans `ui_upgrades.png` : la
+## case d'un pouvoir est son rang dans `UpgradeManager.ALL`, l'ordre du manifeste.
+## Sans la planche, les boutons restent purement textuels.
 
 signal upgrade_chosen(id: String)
+
+const ICON_SHEET := "ui_upgrades"
+const ICON_SIZE := 32
 
 var _list := VBoxContainer.new()
 
@@ -31,6 +38,10 @@ func present(choices: Array[Dictionary]) -> void:
 		var b := Button.new()
 		b.text = "%s\n%s" % [up["name"], up["desc"]]
 		b.custom_minimum_size = Vector2(440, 62)
+		var icon := _icon_for(str(up["id"]))
+		if icon != null:
+			b.icon = icon
+			b.expand_icon = false
 		var id: String = up["id"]
 		b.pressed.connect(func() -> void:
 			AudioManager.sfx("upgrade_pick")
@@ -38,3 +49,18 @@ func present(choices: Array[Dictionary]) -> void:
 			upgrade_chosen.emit(id))
 		_list.add_child(b)
 	visible = true
+
+## Icône d'un pouvoir, ou `null` tant que `ui_upgrades.png` n'est pas déposé.
+func _icon_for(id: String) -> AtlasTexture:
+	var sheet := SpriteOrShape.sheet_texture(ICON_SHEET)
+	if sheet == null:
+		return null
+	var index := 0
+	for i in UpgradeManager.ALL.size():
+		if UpgradeManager.ALL[i]["id"] == id:
+			index = i
+			break
+	var icon := AtlasTexture.new()
+	icon.atlas = sheet
+	icon.region = Rect2(index * ICON_SIZE, 0, ICON_SIZE, ICON_SIZE)
+	return icon

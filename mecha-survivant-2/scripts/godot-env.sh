@@ -25,9 +25,18 @@ fi
 # qu'il génère à l'import. Ce dossier est volontairement hors du dépôt : au
 # premier lancement d'un clone, il manque, et tous les types déclarés par
 # `class_name` sont introuvables. On l'amorce donc si besoin.
+# Un `class_name` ajouté après coup n'est pas non plus dans le cache : tant
+# qu'on n'a pas réimporté, le nouveau type est « introuvable » et rien ne
+# démarre. On réimporte donc aussi dès qu'un script est plus récent que le
+# cache — un import à vide coûte deux secondes, la panne coûte plus cher.
 ensure_import() {
-  if [ ! -f "$ROOT/godot/.godot/global_script_class_cache.cfg" ]; then
+  cache="$ROOT/godot/.godot/global_script_class_cache.cfg"
+  if [ ! -f "$cache" ]; then
     echo "Premier lancement : import des ressources…" >&2
-    "$GODOT" --headless --path "$ROOT/godot" --import >/dev/null 2>&1 || true
+  elif [ -n "$(find "$ROOT/godot" -name '*.gd' -newer "$cache" -print -quit)" ]; then
+    echo "Scripts modifiés depuis le dernier import : réimport…" >&2
+  else
+    return 0
   fi
+  "$GODOT" --headless --path "$ROOT/godot" --import >/dev/null 2>&1 || true
 }

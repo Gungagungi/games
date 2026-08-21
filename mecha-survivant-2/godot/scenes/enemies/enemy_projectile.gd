@@ -12,6 +12,8 @@ var color := Color.WHITE
 var ultimate := false
 var poison := false
 var life := 5.0
+## Bruitage joué quand le projectile touche le joueur, vide si aucun.
+var impact_sfx := ""
 
 var _visual: SpriteOrShape
 
@@ -28,7 +30,6 @@ func setup(from: Vector2, dir: Vector2, spd: float, dmg: float, r: float,
 func _ready() -> void:
 	_visual = SpriteOrShape.new()
 	_visual.texture_name = str(get_meta("sprite", ""))
-	_visual.frame_count = 4 if ultimate else 1
 	_visual.radius = radius
 	_visual.shape_color = color
 	add_child(_visual)
@@ -49,4 +50,6 @@ func _process(delta: float) -> void:
 			p.take_ultimate_damage()
 		else:
 			p.take_damage(damage)
+		if impact_sfx != "":
+			AudioManager.sfx(impact_sfx)
 		queue_free()

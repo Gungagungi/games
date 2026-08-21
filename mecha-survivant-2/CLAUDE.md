@@ -70,11 +70,13 @@ rendent cela tenable :
   GDScript**, pas des `.tres` : plus sûrs à éditer à l'aveugle.
 - `.godot/` est ignoré ; les `.import` sont versionnés. Après tout ajout
   d'asset, relancer `scripts/build.sh` (qui fait l'`--import`).
-- **Un clone frais n'a pas de `.godot/`**, donc pas de
-  `global_script_class_cache.cfg` : Godot ne connaît alors aucun `class_name` et
-  le jeu ne démarre pas (« Could not find type "Arena" »). `ensure_import()`
-  dans `godot-env.sh` amorce cet import au premier lancement de `play.sh` et de
-  `check.sh` ; tout nouveau script d'entrée doit l'appeler aussi.
+- **Le cache de `class_name` se périme.** Il vit dans
+  `.godot/global_script_class_cache.cfg`, hors du dépôt : un clone frais ne l'a
+  pas, et un `class_name` ajouté depuis le dernier import n'y est pas non plus —
+  dans les deux cas rien ne démarre (« Could not find type "Arena" »).
+  `ensure_import()` dans `godot-env.sh` réimporte quand le cache manque ou
+  qu'un `.gd` est plus récent que lui ; `play.sh` et `check.sh` l'appellent, tout
+  nouveau script d'entrée doit le faire aussi.
 
 ## Vérification
 
@@ -133,13 +135,24 @@ Autoloads (`autoload/`) : `EventBus` (tous les signaux transverses),
   s'esquive en se déplaçant, pas en dashant, et tue net sauf bouclier actif.
 - `scenes/fx/sprite_or_shape.gd` — visuel tolérant à l'absence d'asset : sprite
   s'il existe, placeholder géométrique sinon. C'est ce qui permet de livrer le
-  jeu jouable avant les assets.
+  jeu jouable avant les assets. Le même principe vaut hors des entités : le sol
+  d'`arena.gd`, l'onde de choc, le télégraphe et la flaque de poison gardent
+  chacun leur rendu géométrique en secours, et `HitSpark` ne s'instancie pas du
+  tout tant que `fx_hit.png` manque.
 
 ## Assets
 
 Aucun n'est encore présent : voir `godot/assets/MANIFEST.md` pour la liste
 exacte des fichiers attendus, leurs dimensions et leur découpage. Déposer un
 fichier au bon nom suffit à le brancher, sans toucher au code.
+
+Le découpage des planches vit dans `SHEETS` (`scenes/fx/sprite_or_shape.gd`) :
+combien de cases, et quelles plages forment `idle`, `walk`, `death`, `attack`…
+Les appelants ne nomment jamais un numéro de case, seulement une animation
+(`_visual.play("walk")`, ou `play_once("attack", "idle")` pour un geste
+ponctuel). Ajouter une planche, c'est ajouter une entrée dans `SHEETS` — la
+régler chez l'appelant, c'est se garantir un découpage faux le jour où le
+fichier arrive.
 
 La police par défaut de Godot **ne rend pas les emoji** : ne pas en mettre dans
 l'UI (le HUD affiche des libellés courts pour cette raison).

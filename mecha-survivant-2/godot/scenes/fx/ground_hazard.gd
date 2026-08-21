@@ -1,6 +1,11 @@
 class_name GroundHazard
 extends Node2D
 ## Flaque de poison : blesse tant que le joueur reste dedans.
+##
+## Avec `hazard_poison.png` déposé, la flaque est cette planche animée mise à
+## l'échelle du rayon ; sans, elle reste un disque dessiné à la main.
+
+const SHEET := "hazard_poison"
 
 var radius := 60.0
 var lifetime := 6.0
@@ -8,6 +13,18 @@ var damage_per_second := 10.0
 var color := Color(0.45, 0.85, 0.3)
 
 var _tick := 0.0
+var _visual: SpriteOrShape = null
+
+func _ready() -> void:
+	var tex := SpriteOrShape.sheet_texture(SHEET)
+	if tex == null:
+		return
+	_visual = SpriteOrShape.new()
+	_visual.texture_name = SHEET
+	# La planche est cadrée sur le diamètre de la flaque.
+	var tile := tex.get_width() / float(SpriteOrShape.sheet_frames(SHEET))
+	_visual.scale = Vector2.ONE * (radius * 2.0 / maxf(1.0, tile))
+	add_child(_visual)
 
 func _process(delta: float) -> void:
 	if not GameState.running:
@@ -16,7 +33,11 @@ func _process(delta: float) -> void:
 	if lifetime <= 0.0:
 		queue_free()
 		return
-	queue_redraw()
+	var fade := clampf(lifetime / 2.0, 0.0, 1.0)
+	if _visual != null:
+		_visual.modulate = Color(1.0, 1.0, 1.0, fade)
+	else:
+		queue_redraw()
 	_tick -= delta
 	if _tick > 0.0:
 		return

@@ -116,6 +116,12 @@ func _move(delta: float) -> void:
 	_clamp_to_arena()
 	if not is_zero_approx(velocity.length()):
 		_visual.rotation = velocity.angle() + PI * 0.5
+	if dash_time > 0.0:
+		_visual.play("dash")
+	elif is_zero_approx(velocity.length()):
+		_visual.play("idle")
+	else:
+		_visual.play("walk")
 
 func _clamp_to_arena() -> void:
 	var rect := get_viewport_rect()

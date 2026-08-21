@@ -6,6 +6,11 @@ et les appels audio sont silencieux (`autoload/audio_manager.gd`). Déposer un
 fichier au bon nom suffit à le brancher — aucun code à modifier, juste relancer
 `scripts/build.sh`.
 
+**Tout ce qui est listé ici est branché** : chaque fichier a son point de
+chargement dans le code, et le rendu de secours qu'il remplace. Rien n'est
+décoratif ni « pour plus tard » — si un fichier de cette liste ne se voit pas
+une fois déposé, c'est un bug.
+
 ## Sprites — `assets/sprites/`
 
 **Format** : PNG, fond transparent, strip horizontal (une frame par case,
@@ -14,32 +19,44 @@ Le filtrage est en *nearest* pour tout le projet
 (`rendering/textures/canvas_textures/default_texture_filter=0`), le pixel art
 reste donc net.
 
-| Fichier | Tuile | Frames | Contenu |
+**L'ordre des cases compte** : la colonne « Découpage » donne les plages que le
+code va chercher, dans l'ordre où elles doivent apparaître sur la planche. Ce
+découpage est déclaré une seule fois, dans `SHEETS`
+(`scenes/fx/sprite_or_shape.gd`) — c'est là qu'il faut regarder en cas de doute,
+et là qu'il faudrait le changer si une planche livrée s'organisait autrement.
+
+| Fichier | Tuile | Cases | Découpage |
 | --- | --- | --- | --- |
-| `player_mech.png` | 48×48 | 13 | idle 4, marche 6, dash 3 |
-| `enemy_zombie.png` | 32×32 | 8 | marche 4, mort 4 |
-| `enemy_skeleton.png` | 32×32 | 8 | marche 4, mort 4 |
-| `enemy_risen.png` | 32×32 | 8 | marche 4, mort 4 |
-| `enemy_shade.png` | 32×32 | 8 | marche 4, mort 4 |
-| `enemy_flameling.png` | 32×32 | 8 | marche 4, mort 4 |
-| `boss_gravedigger.png` | 96×96 | 8 | idle 4, attaque 4 |
-| `boss_bone_colossus.png` | 96×96 | 8 | idle 4, attaque 4 |
-| `boss_plague.png` | 96×96 | 8 | idle 4, attaque 4 |
-| `megaboss.png` | 128×128 | 8 | idle 4, attaque 4 (les phases sont teintées en `modulate`) |
-| `titan.png` | 160×160 | 14 | idle 4, faux 6, charge 4 |
+| `player_mech.png` | 48×48 | 13 | `idle` 0-3, `walk` 4-9, `dash` 10-12 |
+| `enemy_zombie.png` | 32×32 | 8 | `walk` 0-3, `death` 4-7 |
+| `enemy_skeleton.png` | 32×32 | 8 | `walk` 0-3, `death` 4-7 |
+| `enemy_risen.png` | 32×32 | 8 | `walk` 0-3, `death` 4-7 |
+| `enemy_shade.png` | 32×32 | 8 | `walk` 0-3, `death` 4-7 |
+| `enemy_flameling.png` | 32×32 | 8 | `walk` 0-3, `death` 4-7 |
+| `boss_gravedigger.png` | 96×96 | 8 | `idle` 0-3, `attack` 4-7 |
+| `boss_bone_colossus.png` | 96×96 | 8 | `idle` 0-3, `attack` 4-7 |
+| `boss_plague.png` | 96×96 | 8 | `idle` 0-3, `attack` 4-7 |
+| `megaboss.png` | 128×128 | 8 | `idle` 0-3, `attack` 4-7 (phases teintées en `modulate`) |
+| `titan.png` | 160×160 | 14 | `idle` 0-3, `scythe` 4-9, `charge` 10-13 |
 | `proj_bullet.png` | 16×16 | 1 | projectile du joueur |
 | `proj_arrow.png` | 16×16 | 1 | flèche de squelette |
-| `proj_fireball.png` | 16×16 | 4 | boule de feu du flameling |
+| `proj_fireball.png` | 16×16 | 4 | boule de feu du flameling, en boucle |
 | `proj_poison.png` | 16×16 | 1 | projectile empoisonné |
 | `proj_orb.png` | 16×16 | 1 | orbe de boss |
-| `proj_ultimate.png` | 64×64 | 4 | boule de feu ultime du Titan |
-| `fx_shockwave.png` | 64×64 | 6 | onde de choc du joueur |
-| `fx_hit.png` | 64×64 | 5 | impact |
-| `fx_telegraph.png` | 64×64 | 1 | cercle d'annonce |
-| `tiles_floor.png` | 32×32 | 4 | variantes de dalle de sol |
-| `hazard_poison.png` | 48×48 | 4 | flaque de poison |
-| `ui_upgrades.png` | 32×32 | 8 | cadence, dégâts, coque, vitesse, salve, bouclier, onde, endurance |
+| `proj_ultimate.png` | 64×64 | 4 | boule de feu ultime du Titan, en boucle |
+| `fx_shockwave.png` | 64×64 | 6 | onde de choc, déroulée une fois sur 0,35 s |
+| `fx_hit.png` | 64×64 | 5 | impact, déroulé une fois à chaque coup encaissé |
+| `fx_telegraph.png` | 64×64 | 1 | cercle d'annonce, opacité pilotée par le code |
+| `tiles_floor.png` | 32×32 | 4 | variantes de dalle, tirées au hachage des coordonnées |
+| `hazard_poison.png` | 48×48 | 4 | flaque de poison, en boucle |
+| `ui_upgrades.png` | 32×32 | 8 | cadence, dégâts, coque, vitesse, salve, bouclier, onde, endurance — **cet ordre exactement**, c'est celui de `UpgradeManager.ALL` |
 | `icon.png` | 64×64 | 1 | icône du jeu (placeholder généré, à remplacer) |
+
+**Cadrage** — un sprite est affiché à la taille de sa case, sans mise à
+l'échelle : une case de 32 px occupe 32 px à l'écran, l'entité doit donc
+remplir sa case. Trois exceptions, mises à l'échelle de la zone qu'elles
+couvrent : `fx_shockwave`, `fx_telegraph` et `hazard_poison` sont cadrées sur le
+**diamètre** de l'effet, cercle inscrit dans la case.
 
 **Direction artistique suggérée** — donjon de morts-vivants, palette froide et
 désaturée (bleus-gris, verts putrides), le mech du joueur en cyan lumineux
@@ -59,6 +76,10 @@ Outil suggéré : ElevenLabs Sound Effects (description textuelle → bruitage).
 `shockwave`, `upgrade_pick`, `ui_click`, `wave_start`, `boss_spawn`,
 `boss_hurt`, `boss_death`, `shade_phase`, `flameling_cast`, `fireball_impact`,
 `bone_sweep`, `laser_charge`, `titan_charge`, `titan_ultimate`, `game_over`.
+
+Le nom du fichier est la clé passée à `AudioManager.sfx()` : `shoot.wav` et rien
+d'autre. Chaque son est joué avec ±8 % de variation de hauteur, inutile donc de
+livrer des variantes.
 
 ## Musique — `assets/music/`
 

@@ -19,6 +19,12 @@ func _sprite_name() -> String:
 func phase_count() -> int:
 	return phase_hp.size()
 
+## Geste d'attaque, puis retour à l'idle. Sans planche déposée, sans effet —
+## les boss surchargent le nom pour leurs gestes propres (le Titan a une faux
+## et une charge en plus de son idle).
+func _play_attack(anim: String = "attack") -> void:
+	_visual.play_once(anim, "idle")
+
 ## Stats de boss. Par défaut : celles des trois boss de rotation de la v1.
 func configure_boss(tier: int) -> void:
 	is_boss = true
@@ -77,6 +83,7 @@ func _shoot_at_player(spd: float, dmg: float, r: float, col: Color,
 
 func _shoot_dir(dir: Vector2, spd: float, dmg: float, r: float, col: Color,
 		sprite: String = "", poison: bool = false) -> void:
+	_play_attack()
 	var p := EnemyProjectile.new()
 	p.setup(global_position, dir, spd, dmg, r, col, sprite)
 	p.poison = poison
@@ -87,6 +94,7 @@ func _shoot_dir(dir: Vector2, spd: float, dmg: float, r: float, col: Color,
 ## `player`, sinon un boss mort en cours d'annonce plante à l'impact.
 func _telegraph_strike(at: Vector2, r: float, dmg: float, wait: float,
 		col: Color = Color(1.0, 0.4, 0.3), shake: float = 12.0) -> void:
+	_play_attack()
 	var tel := Telegraph.new()
 	tel.position = at
 	tel.radius = r
