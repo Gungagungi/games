@@ -14,7 +14,7 @@ Chaque jeu s'ouvre directement dans un navigateur. Si `file://` pose problème (
 
 > Mecha Survivant est un fichier HTML unique et autoportant. Les itérations qui l'ont précédé sont figées dans [`mecha-survivant/archives/`](mecha-survivant/archives/). La v1 reste en place : la v2 est un jeu à part, pas un remplacement.
 >
-> Mecha Survivant 2 fait exception à tout ce qui précède : ses sources Godot sont dans [`mecha-survivant-2/godot/`](mecha-survivant-2/godot/), le jeu jouable est produit par `mecha-survivant-2/scripts/build.sh` et n'est pas versionné. Il se lance en local avec `mecha-survivant-2/scripts/serve.sh` puis <http://localhost:8123>, car un export Godot charge son `.pck` et son `.wasm` par requête réseau.
+> Mecha Survivant 2 fait exception à tout ce qui précède : ses sources Godot sont dans [`mecha-survivant-2/godot/`](mecha-survivant-2/godot/), le jeu jouable est produit par `mecha-survivant-2/scripts/build.sh` et n'est pas versionné. Le plus simple pour y jouer est `mecha-survivant-2/scripts/install-godot.sh` puis `mecha-survivant-2/scripts/play.sh`, qui le lance directement dans Godot. Pour tester la version web, `scripts/build.sh` puis `scripts/serve.sh` et <http://localhost:8123> : un export Godot charge son `.pck` et son `.wasm` par requête réseau, il ne s'ouvre donc pas en `file://`.
 
 ## Développement
 

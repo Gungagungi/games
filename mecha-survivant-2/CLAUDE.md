@@ -30,11 +30,25 @@ jeu déroge sur deux points, en connaissance de cause :
 ## Outillage
 
 ```sh
-scripts/install-godot.sh   # une fois : Godot 4.7.2 + template Web dans ~/.local
+scripts/install-godot.sh   # une fois : Godot 4.7.2 + template Web
+scripts/play.sh            # joue directement dans Godot, sans build ni serveur
 scripts/build.sh           # import des assets puis export HTML5 dans export/
 scripts/serve.sh [port]    # sert export/ (8123 par défaut)
 scripts/check.sh           # non-régression sans écran (voir plus bas)
 ```
+
+**Sur une machine avec écran, `scripts/play.sh` suffit pour jouer** : il lance
+le projet dans Godot, sans export, sans serveur, et sans avoir besoin des
+export templates. Le build web ne sert qu'à la publication.
+
+Les scripts marchent sur Linux x86_64 et sur macOS (téléchargement universel,
+donc Apple Silicon compris). `scripts/godot-env.sh`, sourcé par les autres,
+résout le binaire : `$GODOT` s'il est défini, puis `~/.local/bin/godot`, le
+`godot` du PATH, et enfin `Godot.app`. Deux détails propres à macOS gérés par
+`install-godot.sh` : les templates y vivent dans
+`~/Library/Application Support/Godot/export_templates/`, et l'app téléchargée
+doit être sortie de la quarantaine Gatekeeper (`xattr -dr com.apple.quarantine`)
+sans quoi macOS la déclare « endommagée ».
 
 La version de Godot et celle des export templates **doivent coïncider
 exactement** (`4.7.2.stable`). `install-godot.sh` est idempotent et ne garde du
