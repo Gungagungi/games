@@ -174,30 +174,56 @@ class PixelLab:
     (le dash à 3 cases, l'impact à 5) sont demandées au pair supérieur puis
     échantillonnées."""
 
-    def __init__(self, token: str, timeout: int = 180):
+    RETRIES = 4
+
+    def __init__(self, token: str, timeout: int = 420):
         self.token = token
         self.timeout = timeout
         self.spent = 0.0        # en dollars, pour un compte à crédits
         self.generations = 0.0  # en générations, pour un abonnement ou un essai
 
     def _call(self, path: str, payload: dict | None = None, method: str = "POST") -> dict:
+        """Un appel, avec reprise sur incident réseau.
+
+        Une session complète tient l'API une heure durant : une lecture qui
+        expire ou un 502 passager ne doit pas emporter les vingt planches
+        suivantes. Les erreurs qui ne passeront jamais (jeton refusé, crédits
+        épuisés, requête invalide) échouent en revanche du premier coup.
+
+        Réessayer un POST de génération peut le facturer deux fois si la
+        réponse s'est perdue en route — l'API n'offre pas de clé
+        d'idempotence. C'est le prix d'une session qui va au bout ; le
+        `--budget` reste le garde-fou."""
         data = json.dumps(payload).encode() if payload is not None else None
-        req = urllib.request.Request(API + path, data=data, method=method, headers={
-            "Authorization": f"Bearer {self.token}",
-            "Content-Type": "application/json",
-        })
-        try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                body = json.loads(resp.read())
-        except urllib.error.HTTPError as exc:
-            detail = exc.read().decode(errors="replace")[:400]
-            if exc.code == 401:
-                raise Fail("jeton PixelLab refusé (401)") from None
-            if exc.code == 402:
-                raise Fail("crédits PixelLab épuisés (402)") from None
-            raise Fail(f"{path} → HTTP {exc.code} : {detail}") from None
-        except urllib.error.URLError as exc:
-            raise Fail(f"{path} injoignable : {exc.reason}") from None
+        last = ""
+        for attempt in range(1, self.RETRIES + 1):
+            req = urllib.request.Request(API + path, data=data, method=method, headers={
+                "Authorization": f"Bearer {self.token}",
+                "Content-Type": "application/json",
+            })
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                    body = json.loads(resp.read())
+                break
+            except urllib.error.HTTPError as exc:
+                detail = exc.read().decode(errors="replace")[:400]
+                if exc.code == 401:
+                    raise Fail("jeton PixelLab refusé (401)") from None
+                if exc.code == 402:
+                    raise Fail("crédits ou générations PixelLab épuisés (402)") from None
+                if exc.code == 422:
+                    raise Fail(f"{path} → requête invalide (422) : {detail}") from None
+                last = f"HTTP {exc.code} : {detail}"
+            except (urllib.error.URLError, TimeoutError, OSError) as exc:
+                # `socket.timeout` est un `TimeoutError`, pas une `URLError` :
+                # ne l'attraper que par `URLError` laissait la session mourir.
+                last = f"{type(exc).__name__} : {getattr(exc, 'reason', exc)}"
+            if attempt == self.RETRIES:
+                raise Fail(f"{path} après {self.RETRIES} tentatives — {last}")
+            pause = 5 * 2 ** (attempt - 1)
+            print(f"    {last} — nouvelle tentative dans {pause} s "
+                  f"({attempt}/{self.RETRIES - 1})", file=sys.stderr)
+            time.sleep(pause)
         usage = (body or {}).get("usage") or {}
         if usage.get("usd"):
             self.spent += float(usage["usd"])
