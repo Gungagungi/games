@@ -80,6 +80,8 @@ scripts/gen-sprites.py --list                  # ce qu'il y a à produire
 scripts/gen-sprites.py --fake                  # valide la chaîne sans crédit
 scripts/gen-sprites.py --only enemy_zombie     # une planche
 scripts/gen-sprites.py --budget 5              # tout, en s'arrêtant à 5 $
+scripts/gen-sprites.py --only titan --redo scythe   # refaire une seule animation
+scripts/preview-sheet.py titan                 # relire la planche, case par case
 ```
 
 Une planche produite à la main ou par un autre outil reste parfaitement

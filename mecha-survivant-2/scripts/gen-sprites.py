@@ -465,6 +465,9 @@ def main() -> int:
     ap.add_argument("--fake", action="store_true",
                     help="générateur factice : valide la chaîne sans appeler l'API")
     args = ap.parse_args()
+    # Une session complète dure des dizaines de minutes : sans cela la
+    # progression reste coincée dans le tampon dès que la sortie est redirigée.
+    sys.stdout.reconfigure(line_buffering=True)
 
     config = json.loads(PROMPTS.read_text(encoding="utf-8"))
     specs = build_specs(config)

@@ -36,6 +36,7 @@ scripts/build.sh           # import des assets puis export HTML5 dans export/
 scripts/serve.sh [port]    # sert export/ (8123 par défaut)
 scripts/check.sh           # non-régression sans écran (voir plus bas)
 scripts/gen-sprites.py     # génère les planches de sprites (voir « Assets »)
+scripts/preview-sheet.py   # agrandit une planche, case par case, pour la relire
 ```
 
 **Sur une machine avec écran, `scripts/play.sh` suffit pour jouer** : il lance
@@ -169,6 +170,11 @@ Quatre choses à savoir avant de le lancer :
   contrat avec le moteur.
 - **Le jeton** est lu dans `$PIXELLAB_TOKEN`, sinon `.pixellab-token` à la
   racine (ignoré par git). Ni l'un ni l'autre ne doit finir dans un commit.
+
+`scripts/preview-sheet.py <planche>` la rend relisible : agrandissement au plus
+proche voisin sur un damier qui marque les limites de case. C'est le seul moyen,
+sans écran, de voir qu'un sprite déborde sur la case voisine ou n'est pas centré
+pareil d'une frame à l'autre — un défaut invisible sur une planche de 256×32.
 
 Le codec PNG (`scripts/pngtool.py`) est écrit à la main sur `zlib` : Pillow
 n'est pas installé et le dépôt tient à rester sans dépendance à installer.
