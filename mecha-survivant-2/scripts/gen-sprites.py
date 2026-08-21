@@ -12,6 +12,13 @@ dimensions exactes attendues par le code.
   scripts/gen-sprites.py --only enemy_zombie # une planche
   scripts/gen-sprites.py --budget 5          # tout, en s'arrêtant à 5 $
 
+Une génération = un appel : une image fixe, ou une animation entière quel que
+soit son nombre de frames. Une planche animée coûte donc 1 + le nombre
+d'animations. `--redo walk,death` refait une animation sans repayer le reste.
+
+Les gestes se décrivent par leur **état final** : « collapsing into a heap »
+rend un zombie toujours debout, « ending flat on the ground » le couche.
+
 Les frames brutes sont mises en cache dans `.gen-cache/` : relancer ne
 regénère que ce qui manque. `--force` les jette, `--assemble-only` réassemble
 sans appeler quoi que ce soit.
@@ -170,7 +177,8 @@ class PixelLab:
     def __init__(self, token: str, timeout: int = 180):
         self.token = token
         self.timeout = timeout
-        self.spent = 0.0
+        self.spent = 0.0        # en dollars, pour un compte à crédits
+        self.generations = 0.0  # en générations, pour un abonnement ou un essai
 
     def _call(self, path: str, payload: dict | None = None, method: str = "POST") -> dict:
         data = json.dumps(payload).encode() if payload is not None else None
@@ -193,6 +201,8 @@ class PixelLab:
         usage = (body or {}).get("usage") or {}
         if usage.get("usd"):
             self.spent += float(usage["usd"])
+        if usage.get("generations"):
+            self.generations += float(usage["generations"])
         return body
 
     def balance(self) -> dict:
@@ -266,6 +276,7 @@ class Fake:
     planche découpée de travers."""
 
     spent = 0.0
+    generations = 0.0
 
     def __init__(self, *_a, **_kw):
         self._n = 0
@@ -342,14 +353,17 @@ def generate(spec: dict, config: dict, client: PixelLab | None, args) -> Image |
     work = CACHE / name
     seed = args.seed + (abs(hash(name)) % 10_000)
     frames: list[Image | None] = [None] * cases
+    redo = {r.strip() for r in (args.redo or "").split(",") if r.strip()}
 
-    def need(path: Path) -> bool:
-        return args.force or cached(path) is None
+    def stale(key: str) -> bool:
+        """Une frame en cache est une frame payée : elle n'est refaite que sur
+        demande explicite (`--force`, ou `--redo <animation>`)."""
+        return args.force or key in redo
 
     if mode == "frames":
         for i, subject in enumerate(entry["frames"]):
             path = work / f"case_{i:02d}.png"
-            img = None if args.force else cached(path)
+            img = None if stale(f"case_{i}") else cached(path)
             if img is None:
                 if client is None:
                     print(f"    case {i}: {prompt_for(config, entry, subject)}")
@@ -359,20 +373,22 @@ def generate(spec: dict, config: dict, client: PixelLab | None, args) -> Image |
             frames[i] = img
     else:
         base_path = work / "base.png"
-        base = None if args.force else cached(base_path)
+        base = None if stale("base") else cached(base_path)
         if base is None:
             if client is None:
                 print(f"    base : {prompt_for(config, entry)}")
             else:
                 base = store(base_path, client.create(
                     prompt_for(config, entry), tile, opts, seed))
+        if base is None and mode != "single":
+            base = cached(base_path)  # récupérée du cache pour servir de référence
         if mode == "single":
             frames[0] = base
         else:
             for part in spec["parts"]:
                 anim, count, start = part["anim"], part["count"], part["start"]
                 paths = [work / f"{anim}_{i:02d}.png" for i in range(count)]
-                got = [None if args.force else cached(p) for p in paths]
+                got = [None if stale(anim) else cached(p) for p in paths]
                 if any(g is None for g in got):
                     if client is None:
                         print(f"    {anim} ({count} cases {start}-{start + count - 1}) : "
@@ -437,8 +453,13 @@ def main() -> int:
     ap.add_argument("--assemble-only", action="store_true",
                     help="réassembler depuis le cache, sans appel")
     ap.add_argument("--force", action="store_true", help="ignorer le cache et tout regénérer")
+    ap.add_argument("--redo", help="ne refaire que ces étapes : base, ou des noms "
+                                   "d'animation (walk,death), séparés par des virgules")
     ap.add_argument("--budget", type=float, default=0.0,
                     help="arrêter dès que le coût cumulé dépasse ce montant (USD)")
+    ap.add_argument("--max-generations", type=float, default=0.0,
+                    help="arrêter après ce nombre de générations (abonnement ou essai, "
+                         "où le coût n'est pas facturé en dollars)")
     ap.add_argument("--seed", type=int, default=1789, help="graine, pour des rendus stables")
     ap.add_argument("--token", help="jeton d'API (par défaut : $PIXELLAB_TOKEN)")
     ap.add_argument("--fake", action="store_true",
@@ -491,9 +512,14 @@ def main() -> int:
         if client and args.budget and client.spent >= args.budget:
             print(f"Budget de {args.budget:.2f} $ atteint, arrêt.", file=sys.stderr)
             break
+        if client and args.max_generations and client.generations >= args.max_generations:
+            print(f"Plafond de {args.max_generations:g} générations atteint, arrêt.",
+                  file=sys.stderr)
+            break
 
     if client:
-        print(f"\nCoût de la session : {client.spent:.2f} $")
+        print(f"\nCoût de la session : {client.spent:.2f} $ / "
+              f"{client.generations:g} génération(s)")
     if produced:
         print(f"{len(produced)} planche(s) écrite(s). Vérifier avec :\n"
               f"  scripts/build.sh && scripts/check.sh")

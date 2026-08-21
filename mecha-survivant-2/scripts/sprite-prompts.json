@@ -27,21 +27,21 @@
       "subject": "shambling undead zombie, mottled green-grey rotting flesh, torn rags, slack arms",
       "actions": {
         "walk": "shambling forward",
-        "death": "collapsing into a heap and dissolving"
+        "death": "falling over backwards and ending flat on the ground, body crumbling into dust"
       }
     },
     "enemy_skeleton": {
       "subject": "gaunt skeleton warrior, bleached bone, tattered cloak, holding a short bow",
       "actions": {
         "walk": "skittering forward quickly",
-        "death": "clattering apart into loose bones"
+        "death": "falling apart mid-stride and ending as a flat pile of loose bones on the ground"
       }
     },
     "enemy_risen": {
       "subject": "hulking risen corpse, heavy brown leathery hide, oversized fists, hunched and thick-set",
       "actions": {
         "walk": "lumbering forward",
-        "death": "toppling over and crumbling to dust"
+        "death": "toppling forward and ending flat on the ground, crumbling into dust"
       }
     },
     "enemy_shade": {
@@ -52,7 +52,7 @@
       },
       "actions": {
         "walk": "drifting forward, wisps trailing",
-        "death": "fading and scattering into violet smoke"
+        "death": "sinking down and dispersing until nothing is left but thin violet smoke"
       }
     },
     "enemy_flameling": {
@@ -62,7 +62,7 @@
       },
       "actions": {
         "walk": "hopping forward, flames guttering",
-        "death": "burning out into ash and sparks"
+        "death": "burning down and collapsing into a flat pile of ash and dying embers"
       }
     },
     "boss_gravedigger": {
