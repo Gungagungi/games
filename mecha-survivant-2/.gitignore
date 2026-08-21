@@ -1,0 +1,12 @@
+# Build web produit par scripts/build.sh — reconstruit en CI, jamais versionné
+# (39 Mo de wasm à chaque rebuild).
+/export/
+/index.html
+/index.js
+/index.wasm
+/index.pck
+/index.png
+/index.icon.png
+/index.apple-touch-icon.png
+/index.audio.worklet.js
+/index.audio.position.worklet.js
