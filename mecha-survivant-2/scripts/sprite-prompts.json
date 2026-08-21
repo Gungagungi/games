@@ -1,0 +1,276 @@
+{
+  "_lisez_moi": "Prompts de génération des planches. Le découpage (nombre de cases, plages d'animation) n'est PAS ici : il vient de SHEETS dans godot/scenes/fx/sprite_or_shape.gd et du tableau de godot/assets/MANIFEST.md. Ce fichier ne décrit que le sujet et le geste. Retoucher un prompt puis relancer avec --force --only <nom> pour refaire une planche.",
+  "_orientation": "Le mech est tourné en code (player.gd : rotation = velocity.angle() + PI/2), il doit donc être dessiné vu de dessus, face vers le nord. Ni les ennemis ni les projectiles ne sont tournés : ils gardent une seule orientation à l'écran.",
+  "style": "dark fantasy undead dungeon, pixel art sprite, cold desaturated palette of grey-blue and rotten green, limited colors, hard edges, no anti-aliasing, no outer glow, transparent background",
+  "defaults": {
+    "view": "high top-down",
+    "direction": "south",
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "medium detail",
+    "text_guidance_scale": 8
+  },
+  "assets": {
+    "player_mech": {
+      "subject": "compact bipedal battle mech, glowing cyan energy core and cyan running lights, dark steel plating, shoulder-mounted cannons, the one bright thing in a dark dungeon",
+      "options": {
+        "direction": "north",
+        "detail": "highly detailed"
+      },
+      "actions": {
+        "idle": "standing still, idle hum, slight weapon sway",
+        "walk": "walking forward with heavy mechanical steps",
+        "dash": "boosting forward, thrusters flaring, leaning into the burst"
+      }
+    },
+    "enemy_zombie": {
+      "subject": "shambling undead zombie, mottled green-grey rotting flesh, torn rags, slack arms",
+      "actions": {
+        "walk": "shambling forward",
+        "death": "collapsing into a heap and dissolving"
+      }
+    },
+    "enemy_skeleton": {
+      "subject": "gaunt skeleton warrior, bleached bone, tattered cloak, holding a short bow",
+      "actions": {
+        "walk": "skittering forward quickly",
+        "death": "clattering apart into loose bones"
+      }
+    },
+    "enemy_risen": {
+      "subject": "hulking risen corpse, heavy brown leathery hide, oversized fists, hunched and thick-set",
+      "actions": {
+        "walk": "lumbering forward",
+        "death": "toppling over and crumbling to dust"
+      }
+    },
+    "enemy_shade": {
+      "subject": "spectral shade, translucent violet wraith with a hollow hood and trailing wisps, no legs, hovering",
+      "options": {
+        "outline": "lineless",
+        "shading": "flat shading"
+      },
+      "actions": {
+        "walk": "drifting forward, wisps trailing",
+        "death": "fading and scattering into violet smoke"
+      }
+    },
+    "enemy_flameling": {
+      "subject": "small burning imp made of orange fire and blackened bone, ember trails, cupped flame in its hands",
+      "options": {
+        "outline": "selective outline"
+      },
+      "actions": {
+        "walk": "hopping forward, flames guttering",
+        "death": "burning out into ash and sparks"
+      }
+    },
+    "boss_gravedigger": {
+      "subject": "towering undead gravedigger boss, tattered black burial coat, cracked iron shovel, deep red eye glow",
+      "options": {
+        "detail": "highly detailed"
+      },
+      "actions": {
+        "idle": "standing menacingly, coat stirring",
+        "attack": "swinging the heavy shovel in a wide arc"
+      }
+    },
+    "boss_bone_colossus": {
+      "subject": "colossal skeletal boss built from fused bones, rib cage torso, long clawed arms, sickly purple glow inside the ribs",
+      "options": {
+        "detail": "highly detailed"
+      },
+      "actions": {
+        "idle": "looming, bones creaking",
+        "attack": "sweeping both bone arms forward"
+      }
+    },
+    "boss_plague": {
+      "subject": "bloated plague boss, swollen green pustules, dripping toxic bile, ragged plague-doctor mask",
+      "options": {
+        "detail": "highly detailed"
+      },
+      "actions": {
+        "idle": "breathing heavily, bile dripping",
+        "attack": "heaving forward and spewing poison"
+      }
+    },
+    "megaboss": {
+      "subject": "crowned undead overlord boss, black and crimson armour, shattered halo of violet energy, immense presence",
+      "options": {
+        "detail": "highly detailed"
+      },
+      "actions": {
+        "idle": "hovering, energy halo turning",
+        "attack": "raising both arms and unleashing energy"
+      }
+    },
+    "titan": {
+      "subject": "final boss death titan, colossal armoured skeleton wreathed in violet fire, immense scythe, crimson eye sockets",
+      "options": {
+        "detail": "highly detailed"
+      },
+      "actions": {
+        "idle": "standing colossal, violet fire rolling off the armour",
+        "scythe": "raising the huge scythe and cleaving it down",
+        "charge": "gathering violet energy, charging up a devastating attack"
+      }
+    },
+    "proj_bullet": {
+      "mode": "single",
+      "subject": "small bright cyan energy bolt, radially symmetric glowing plasma pellet",
+      "options": {
+        "view": "none",
+        "direction": "none",
+        "outline": "lineless",
+        "shading": "flat shading",
+        "detail": "low detail"
+      }
+    },
+    "proj_arrow": {
+      "mode": "single",
+      "subject": "short bone arrow seen from above, pale bone shaft, dark fletching, pointing up",
+      "options": {
+        "view": "high top-down",
+        "direction": "north",
+        "detail": "low detail"
+      }
+    },
+    "proj_fireball": {
+      "subject": "compact ball of orange fire with ember trail",
+      "options": {
+        "view": "none",
+        "direction": "none",
+        "outline": "lineless",
+        "shading": "flat shading",
+        "detail": "low detail"
+      },
+      "actions": {
+        "idle": "flame flickering and churning in place"
+      }
+    },
+    "proj_poison": {
+      "mode": "single",
+      "subject": "globule of toxic green bile, radially symmetric, dripping",
+      "options": {
+        "view": "none",
+        "direction": "none",
+        "outline": "lineless",
+        "shading": "flat shading",
+        "detail": "low detail"
+      }
+    },
+    "proj_orb": {
+      "mode": "single",
+      "subject": "crackling violet energy orb, radially symmetric, dark core",
+      "options": {
+        "view": "none",
+        "direction": "none",
+        "outline": "lineless",
+        "shading": "flat shading",
+        "detail": "low detail"
+      }
+    },
+    "proj_ultimate": {
+      "subject": "enormous roiling ball of violet and crimson doom energy, lethal, radially symmetric",
+      "options": {
+        "view": "none",
+        "direction": "none",
+        "outline": "lineless",
+        "detail": "highly detailed"
+      },
+      "actions": {
+        "idle": "energy churning and crackling in place"
+      }
+    },
+    "fx_shockwave": {
+      "mode": "sequence",
+      "subject": "expanding ring of cyan shockwave energy, thin bright ring on transparent background, centred",
+      "options": {
+        "view": "high top-down",
+        "direction": "none",
+        "outline": "lineless",
+        "shading": "flat shading"
+      },
+      "action": "a bright ring expanding outward from the centre and fading"
+    },
+    "fx_hit": {
+      "mode": "sequence",
+      "subject": "white and yellow impact spark burst, centred, radially symmetric",
+      "options": {
+        "view": "none",
+        "direction": "none",
+        "outline": "lineless",
+        "shading": "flat shading"
+      },
+      "action": "a spark burst flashing outward from the centre and fading out"
+    },
+    "fx_telegraph": {
+      "mode": "single",
+      "subject": "thin red warning circle drawn flat on the ground, hollow centre, danger zone marker",
+      "options": {
+        "view": "high top-down",
+        "direction": "none",
+        "outline": "lineless",
+        "shading": "flat shading"
+      }
+    },
+    "hazard_poison": {
+      "mode": "sequence",
+      "subject": "puddle of bubbling toxic green poison on stone floor, seen from directly above, circular",
+      "options": {
+        "view": "high top-down",
+        "direction": "none",
+        "outline": "lineless"
+      },
+      "action": "the puddle bubbling and rippling in a seamless loop"
+    },
+    "tiles_floor": {
+      "mode": "frames",
+      "options": {
+        "view": "high top-down",
+        "direction": "none",
+        "detail": "medium detail",
+        "no_background": false
+      },
+      "frames": [
+        "seamless dungeon floor tile seen from directly above, cracked grey flagstone, edge to edge, no border",
+        "seamless dungeon floor tile seen from directly above, grey flagstone with a thin crack and dark moss, edge to edge, no border",
+        "seamless dungeon floor tile seen from directly above, grey flagstone stained with dried blood, edge to edge, no border",
+        "seamless dungeon floor tile seen from directly above, grey flagstone with a small bone shard and grit, edge to edge, no border"
+      ],
+      "style": "dark fantasy undead dungeon, pixel art, cold desaturated palette of grey-blue and rotten green, limited colors, hard edges, no anti-aliasing, fully opaque, fills the whole square"
+    },
+    "ui_upgrades": {
+      "mode": "frames",
+      "options": {
+        "view": "none",
+        "direction": "none",
+        "outline": "single color black outline",
+        "shading": "flat shading",
+        "detail": "low detail"
+      },
+      "frames": [
+        "game UI icon, cyan lightning bolt, rate of fire, flat emblem centred on transparent background",
+        "game UI icon, orange explosive burst, raw damage, flat emblem centred on transparent background",
+        "game UI icon, reinforced steel hull plate, armour, flat emblem centred on transparent background",
+        "game UI icon, cyan rocket thruster, movement speed, flat emblem centred on transparent background",
+        "game UI icon, three parallel bullets in a spread, extra projectile, flat emblem centred on transparent background",
+        "game UI icon, glowing blue hexagonal energy shield, flat emblem centred on transparent background",
+        "game UI icon, concentric cyan shockwave rings, area blast, flat emblem centred on transparent background",
+        "game UI icon, swirling white wind gust, stamina, flat emblem centred on transparent background"
+      ]
+    },
+    "icon": {
+      "mode": "single",
+      "subject": "game icon, the cyan battle mech facing the viewer against a dark dungeon backdrop, bold and readable at small size",
+      "options": {
+        "view": "side",
+        "direction": "south",
+        "detail": "highly detailed",
+        "no_background": false
+      },
+      "style": "dark fantasy undead dungeon, pixel art, cold palette, hard edges, no anti-aliasing, fully opaque, fills the whole square"
+    }
+  }
+}

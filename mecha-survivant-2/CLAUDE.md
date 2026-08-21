@@ -35,6 +35,7 @@ scripts/play.sh            # joue directement dans Godot, sans build ni serveur
 scripts/build.sh           # import des assets puis export HTML5 dans export/
 scripts/serve.sh [port]    # sert export/ (8123 par défaut)
 scripts/check.sh           # non-régression sans écran (voir plus bas)
+scripts/gen-sprites.py     # génère les planches de sprites (voir « Assets »)
 ```
 
 **Sur une machine avec écran, `scripts/play.sh` suffit pour jouer** : il lance
@@ -145,6 +146,32 @@ Autoloads (`autoload/`) : `EventBus` (tous les signaux transverses),
 Aucun n'est encore présent : voir `godot/assets/MANIFEST.md` pour la liste
 exacte des fichiers attendus, leurs dimensions et leur découpage. Déposer un
 fichier au bon nom suffit à le brancher, sans toucher au code.
+
+`scripts/gen-sprites.py` produit ces planches depuis l'API PixelLab. Il ne
+décide de rien : il **lit** `SHEETS` et le tableau du manifeste, et refuse de
+travailler si les deux divergent. Chaque planche est faite d'une image de base
+(`create-image-pixflux`) puis d'animations dérivées de cette base
+(`animate-with-text-v3`), assemblées en strip horizontal aux dimensions exactes.
+Les prompts vivent dans `scripts/sprite-prompts.json`, hors du code, pour être
+retouchés sans y toucher.
+
+Quatre choses à savoir avant de le lancer :
+
+- **Les frames brutes sont mises en cache** dans `.gen-cache/` (non versionné).
+  Relancer ne regénère que ce qui manque — une frame générée est une frame
+  payée. `--force` la jette, `--assemble-only` réassemble sans appeler l'API.
+- **`--fake` valide toute la chaîne sans dépenser un crédit** : aplats colorés
+  aux bonnes dimensions, une teinte par case et un repère de coin, de quoi voir
+  au premier coup d'œil une planche découpée de travers.
+- **L'API impose un nombre de frames pair** (4 à 16) : le dash à 3 cases et
+  l'impact à 5 sont demandés au pair supérieur puis échantillonnés. C'est le
+  script qui s'adapte au générateur, jamais `SHEETS` — le découpage est le
+  contrat avec le moteur.
+- **Le jeton** est lu dans `$PIXELLAB_TOKEN`, sinon `.pixellab-token` à la
+  racine (ignoré par git). Ni l'un ni l'autre ne doit finir dans un commit.
+
+Le codec PNG (`scripts/pngtool.py`) est écrit à la main sur `zlib` : Pillow
+n'est pas installé et le dépôt tient à rester sans dépendance à installer.
 
 Le découpage des planches vit dans `SHEETS` (`scenes/fx/sprite_or_shape.gd`) :
 combien de cases, et quelles plages forment `idle`, `walk`, `death`, `attack`…

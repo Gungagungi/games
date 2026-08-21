@@ -58,14 +58,32 @@ remplir sa case. Trois exceptions, mises à l'échelle de la zone qu'elles
 couvrent : `fx_shockwave`, `fx_telegraph` et `hazard_poison` sont cadrées sur le
 **diamètre** de l'effet, cercle inscrit dans la case.
 
-**Direction artistique suggérée** — donjon de morts-vivants, palette froide et
-désaturée (bleus-gris, verts putrides), le mech du joueur en cyan lumineux
-tranchant sur le fond, les boss en rouge/violet. Prompt type pour un générateur
-de sprites :
+**Orientation** — le mech est le seul sprite tourné par le code
+(`player.gd` : `rotation = velocity.angle() + PI/2`), il doit donc être dessiné
+**vu de dessus, face vers le haut**. Ni les ennemis, ni les boss, ni les
+projectiles ne sont tournés : ils gardent à l'écran l'orientation dans laquelle
+ils sont dessinés, quelle que soit leur direction de déplacement. Conséquence à
+accepter ou à corriger un jour dans le code : la flèche de squelette pointera
+toujours du même côté.
 
-> pixel art sprite sheet, 32x32 tiles, walk cycle 4 frames, transparent
-> background, limited palette, dark fantasy undead <créature>, top-down view,
-> no anti-aliasing, no outline glow
+**Direction artistique** — donjon de morts-vivants, palette froide et
+désaturée (bleus-gris, verts putrides), le mech du joueur en cyan lumineux
+tranchant sur le fond, les boss en rouge/violet.
+
+**Génération** — `scripts/gen-sprites.py` produit ces 24 planches depuis l'API
+PixelLab, aux dimensions exactes du tableau ci-dessus. Les prompts, un par
+planche, vivent dans `scripts/sprite-prompts.json` : c'est là qu'on retouche
+une créature qui ne ressemble à rien, pas dans le code.
+
+```sh
+scripts/gen-sprites.py --list                  # ce qu'il y a à produire
+scripts/gen-sprites.py --fake                  # valide la chaîne sans crédit
+scripts/gen-sprites.py --only enemy_zombie     # une planche
+scripts/gen-sprites.py --budget 5              # tout, en s'arrêtant à 5 $
+```
+
+Une planche produite à la main ou par un autre outil reste parfaitement
+valable : le jeu ne connaît que le fichier, jamais son origine.
 
 ## Effets sonores — `assets/sfx/`
 

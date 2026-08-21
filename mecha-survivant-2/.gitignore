@@ -10,3 +10,10 @@
 /index.apple-touch-icon.png
 /index.audio.worklet.js
 /index.audio.position.worklet.js
+
+# Génération d'assets (scripts/gen-sprites.py) : frames brutes mises en cache,
+# et jeton d'API. Le cache est reconstructible en repayant, le jeton jamais
+# à versionner.
+/.gen-cache/
+/.pixellab-token
+scripts/__pycache__/
