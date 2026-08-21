@@ -52,6 +52,13 @@ CACHE = ROOT / ".gen-cache"
 
 API = "https://api.pixellab.ai/v2"
 
+## L'API refuse toute toile de moins de 32×32 (« Canvas must be size 32x32 area
+## or larger »), alors que son propre spec OpenAPI annonce un minimum de 16. Les
+## cases de 16 px du manifeste — tous les projectiles — sont donc générées en
+## 32 px puis réduites de moitié à l'assemblage : un rapport entier, donc un
+## pixel art qui reste net.
+GEN_MIN = 32
+
 
 class Fail(Exception):
     pass
@@ -375,6 +382,7 @@ def store(path: Path, img: Image) -> Image:
 def generate(spec: dict, config: dict, client: PixelLab | None, args) -> Image | None:
     name, tile, cases = spec["name"], spec["tile"], spec["cases"]
     entry, mode = spec["entry"], spec["mode"]
+    gen_tile = max(tile, GEN_MIN)
     opts = options_for(config, entry)
     work = CACHE / name
     seed = args.seed + (abs(hash(name)) % 10_000)
@@ -395,7 +403,7 @@ def generate(spec: dict, config: dict, client: PixelLab | None, args) -> Image |
                     print(f"    case {i}: {prompt_for(config, entry, subject)}")
                     continue
                 img = store(path, client.create(
-                    prompt_for(config, entry, subject), tile, opts, seed + i))
+                    prompt_for(config, entry, subject), gen_tile, opts, seed + i))
             frames[i] = img
     else:
         base_path = work / "base.png"
@@ -405,7 +413,7 @@ def generate(spec: dict, config: dict, client: PixelLab | None, args) -> Image |
                 print(f"    base : {prompt_for(config, entry)}")
             else:
                 base = store(base_path, client.create(
-                    prompt_for(config, entry), tile, opts, seed))
+                    prompt_for(config, entry), gen_tile, opts, seed))
         if base is None and mode != "single":
             base = cached(base_path)  # récupérée du cache pour servir de référence
         if mode == "single":
@@ -522,6 +530,7 @@ def main() -> int:
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     produced = []
+    failed: list[str] = []
     for spec in specs:
         name = spec["name"]
         print(f"» {name} ({spec['tile']}px × {spec['cases']})")
@@ -531,7 +540,14 @@ def main() -> int:
                 print("  cache incomplet, ignoré")
                 continue
         else:
-            sheet = generate(spec, config, client, args)
+            try:
+                sheet = generate(spec, config, client, args)
+            except Fail as exc:
+                # Un asset qui casse (prompt refusé, dimension interdite) ne doit
+                # pas emporter les vingt suivants : on note et on continue.
+                print(f"  échec : {exc}", file=sys.stderr)
+                failed.append(name)
+                continue
         if sheet is None:
             continue
         out = OUT_DIR / f"{name}.png"
@@ -552,6 +568,9 @@ def main() -> int:
     if produced:
         print(f"{len(produced)} planche(s) écrite(s). Vérifier avec :\n"
               f"  scripts/build.sh && scripts/check.sh")
+    if failed:
+        print(f"{len(failed)} planche(s) en échec : {', '.join(failed)}", file=sys.stderr)
+        return 1
     return 0
 
 
