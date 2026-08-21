@@ -70,6 +70,11 @@ rendent cela tenable :
   GDScript**, pas des `.tres` : plus sûrs à éditer à l'aveugle.
 - `.godot/` est ignoré ; les `.import` sont versionnés. Après tout ajout
   d'asset, relancer `scripts/build.sh` (qui fait l'`--import`).
+- **Un clone frais n'a pas de `.godot/`**, donc pas de
+  `global_script_class_cache.cfg` : Godot ne connaît alors aucun `class_name` et
+  le jeu ne démarre pas (« Could not find type "Arena" »). `ensure_import()`
+  dans `godot-env.sh` amorce cet import au premier lancement de `play.sh` et de
+  `check.sh` ; tout nouveau script d'entrée doit l'appeler aussi.
 
 ## Vérification
 

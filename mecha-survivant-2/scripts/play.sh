@@ -4,4 +4,5 @@
 # build, pas de serveur, pas de template d'export à télécharger.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/godot-env.sh"
+ensure_import
 exec "$GODOT" --path "$ROOT/godot" "$@"

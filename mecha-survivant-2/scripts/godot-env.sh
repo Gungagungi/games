@@ -20,3 +20,14 @@ if [ -z "${GODOT:-}" ] || [ ! -x "$GODOT" ]; then
   echo "  GODOT=/chemin/vers/godot $0" >&2
   exit 1
 fi
+
+# Godot ne connaît les `class_name` que via .godot/global_script_class_cache.cfg,
+# qu'il génère à l'import. Ce dossier est volontairement hors du dépôt : au
+# premier lancement d'un clone, il manque, et tous les types déclarés par
+# `class_name` sont introuvables. On l'amorce donc si besoin.
+ensure_import() {
+  if [ ! -f "$ROOT/godot/.godot/global_script_class_cache.cfg" ]; then
+    echo "Premier lancement : import des ressources…" >&2
+    "$GODOT" --headless --path "$ROOT/godot" --import >/dev/null 2>&1 || true
+  fi
+}
