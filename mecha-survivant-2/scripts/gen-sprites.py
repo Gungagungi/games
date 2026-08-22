@@ -405,7 +405,7 @@ class RetroDiffusion:
                  input_image=base64.b64encode(base.encode()).decode())
         return self._images(self._call(p))
 
-    def animate(self, first: Image, action: str, count: int, seed: int,
+    def animate(self, first: Image | None, action: str, count: int, seed: int,
                 opts: dict | None = None) -> list[Image]:
         """Animation rendue en planche, puis redécoupée.
 
@@ -423,7 +423,8 @@ class RetroDiffusion:
         opts = opts or {}
         allowed = [4, 6, 8, 10, 12, 16]
         asked = next((a for a in allowed if a >= count), 16)
-        size = int(opts.get("rd_anim_size", 128 if first.width > 64 else 64))
+        size = int(opts.get("rd_anim_size",
+                            128 if (first and first.width > 64) else 64))
         style = opts.get("rd_anim_style") or (
             "rd_animation__big_animation" if size > 64 else "rd_animation__any_animation")
         payload = {
@@ -432,7 +433,7 @@ class RetroDiffusion:
             "frames_duration": asked, "return_spritesheet": True,
             "remove_bg": bool(opts.get("no_background", True)), "seed": seed,
         }
-        if opts.get("rd_anim_needs_input", True):
+        if opts.get("rd_anim_needs_input", True) and first is not None:
             payload["input_image"] = base64.b64encode(
                 first.resized(size, size).encode()).decode()
         sheet = self._images(self._call(payload))[0]
@@ -485,6 +486,19 @@ class Fake:
     def animate(self, first: Image, _action: str, count: int, _seed: int,
                 _opts: dict | None = None) -> list[Image]:
         return [self._tint(first.width) for _ in range(count)]
+
+
+def keep_frames(frames: list[Image], keep: list | None) -> list[Image]:
+    """Ne retient que les frames utiles d'une séquence rendue.
+
+    Un générateur d'animation rend volontiers une apparition — les premières
+    cases quasi vides, l'effet qui se forme — là où le jeu veut une boucle. Les
+    frames sont payées et gardées en cache : plutôt que de repayer, l'asset
+    déclare l'ordre des cases à retenir, par exemple `[2, 3, 3, 2]` pour un
+    aller-retour sur les deux seules cases exploitables."""
+    if not keep:
+        return frames
+    return [frames[min(len(frames) - 1, int(i))] for i in keep]
 
 
 def fit(frames: list[Image], count: int) -> list[Image]:
@@ -570,15 +584,19 @@ def generate(spec: dict, config: dict, client: PixelLab | None, args) -> Image |
                     prompt_for(config, entry, subject), gen_tile, opts, seed + i))
             frames[i] = img
     else:
+        # Un style d'animation qui invente l'effet de zéro (`rd_animation__vfx`)
+        # n'a que faire d'une frame de départ : la générer serait une image
+        # payée pour rien.
+        needs_base = mode in ("single", "variations") or opts.get("rd_anim_needs_input", True)
         base_path = work / "base.png"
         base = None if stale("base") else cached(base_path)
-        if base is None:
+        if base is None and needs_base:
             if client is None:
                 print(f"    base : {prompt_for(config, entry)}")
             else:
                 base = store(base_path, client.create(
                     prompt_for(config, entry), gen_tile, opts, seed))
-        if base is None and mode != "single":
+        if base is None and mode != "single" and needs_base:
             base = cached(base_path)  # récupérée du cache pour servir de référence
         if mode == "single":
             frames[0] = base
@@ -592,7 +610,7 @@ def generate(spec: dict, config: dict, client: PixelLab | None, args) -> Image |
                         print(f"    {anim} ({count} cases {start}-{start + count - 1}) : "
                               f"{part['action']}")
                         continue
-                    if base is None:
+                    if base is None and needs_base:
                         raise Fail(f"{name}: pas de frame de base pour animer")
                     # Un geste peut demander un autre style que le repos :
                     # `rd_anim_style_attack` surcharge `rd_anim_style` pour la
@@ -603,7 +621,8 @@ def generate(spec: dict, config: dict, client: PixelLab | None, args) -> Image |
                         anim_opts["rd_anim_style"] = override
                     got = client.animate(base, part["action"], count, seed, anim_opts)
                     got = [store(p, g) for p, g in zip(paths, got)]
-                for i, img in enumerate(got):
+                got = keep_frames(got, (entry.get("keep") or {}).get(anim))
+                for i, img in enumerate(got[:count]):
                     frames[start + i] = img
 
     if client is None:
@@ -632,8 +651,12 @@ def assemble_from_cache(spec: dict) -> Image | None:
         frames[0] = cached(work / "base.png")
     else:
         for part in spec["parts"]:
-            for i in range(part["count"]):
-                frames[part["start"] + i] = cached(work / f"{part['anim']}_{i:02d}.png")
+            got = [cached(work / f"{part['anim']}_{i:02d}.png") for i in range(part["count"])]
+            if any(g is None for g in got):
+                return None
+            got = keep_frames(got, (spec["entry"].get("keep") or {}).get(part["anim"]))
+            for i, img in enumerate(got[:part["count"]]):
+                frames[part["start"] + i] = img
     if any(f is None for f in frames):
         return None
     return strip(frames, spec["tile"])

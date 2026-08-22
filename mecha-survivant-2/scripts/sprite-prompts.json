@@ -161,7 +161,7 @@
     },
     "proj_arrow": {
       "mode": "single",
-      "subject": "short bone arrow seen from above, pale bone shaft, dark fletching, pointing up",
+      "subject": "a single thick bone-white arrow with dark green fletching, bold and clearly visible, centred on a plain dark background, pointing up, seen from above",
       "options": {
         "view": "high top-down",
         "direction": "north",
@@ -224,6 +224,14 @@
       },
       "actions": {
         "idle": "energy churning and crackling in place"
+      },
+      "keep": {
+        "idle": [
+          2,
+          3,
+          3,
+          2
+        ]
       }
     },
     "fx_shockwave": {
@@ -272,10 +280,10 @@
         "outline": "lineless",
         "rd_style": "rd_fast__low_res",
         "rd_anim_style": "rd_animation__vfx",
-        "rd_anim_size": 48,
+        "rd_anim_size": 64,
         "rd_anim_needs_input": false
       },
-      "action": "the puddle bubbling and rippling in a seamless loop"
+      "action": "green toxic puddle bubbling"
     },
     "tiles_floor": {
       "mode": "variations",
