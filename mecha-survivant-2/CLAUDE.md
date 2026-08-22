@@ -148,7 +148,9 @@ Aucun n'est encore présent : voir `godot/assets/MANIFEST.md` pour la liste
 exacte des fichiers attendus, leurs dimensions et leur découpage. Déposer un
 fichier au bon nom suffit à le brancher, sans toucher au code.
 
-`scripts/gen-sprites.py` produit ces planches depuis l'API PixelLab. Il ne
+`scripts/gen-sprites.py` produit ces planches depuis un générateur externe.
+`--provider retrodiffusion` (par défaut) ou `--provider pixellab` : les deux
+sont pilotés par le même code, seuls le jeton et les prompts changent. Il ne
 décide de rien : il **lit** `SHEETS` et le tableau du manifeste, et refuse de
 travailler si les deux divergent. Chaque planche est faite d'une image de base
 (`create-image-pixflux`) puis d'animations dérivées de cette base
@@ -168,8 +170,19 @@ Quatre choses à savoir avant de le lancer :
   l'impact à 5 sont demandés au pair supérieur puis échantillonnés. C'est le
   script qui s'adapte au générateur, jamais `SHEETS` — le découpage est le
   contrat avec le moteur.
-- **Le jeton** est lu dans `$PIXELLAB_TOKEN`, sinon `.pixellab-token` à la
-  racine (ignoré par git). Ni l'un ni l'autre ne doit finir dans un commit.
+- **Le jeton** est lu dans `$RETRODIFFUSION_TOKEN` / `$PIXELLAB_TOKEN` selon le
+  fournisseur, sinon `.retrodiffusion-token` / `.pixellab-token` à la racine
+  (ignorés par git). Aucun ne doit finir dans un commit.
+
+Ce que Retro Diffusion apporte, et pourquoi c'est lui par défaut : les cases de
+16 px passent nativement, `num_images` rend plusieurs images en **un seul
+appel**, et les styles `rd_tile__*` sont **raccordables par construction** —
+c'est ce qui a sauvé le sol. Le style employé est déclaré par asset sous
+`rd_style` ; `GET /v1/styles/selector` en donne la liste avec les bornes de
+dimensions de chacun, et ces styles refusent `tile_x`/`tile_y` puisqu'ils sont
+déjà raccordables. Le mode `variations` d'un asset produit une image de base
+puis ses variantes : elles en héritent texture et palette, là où des tirages
+indépendants donnent un patchwork.
 
 `scripts/preview-sheet.py <planche>` la rend relisible : agrandissement au plus
 proche voisin sur un damier qui marque les limites de case. C'est le seul moyen,

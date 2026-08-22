@@ -8,7 +8,8 @@
     "outline": "single color black outline",
     "shading": "basic shading",
     "detail": "medium detail",
-    "text_guidance_scale": 8
+    "text_guidance_scale": 8,
+    "rd_style": "rd_pro__topdown"
   },
   "assets": {
     "player_mech": {
@@ -226,20 +227,17 @@
       "action": "the puddle bubbling and rippling in a seamless loop"
     },
     "tiles_floor": {
-      "mode": "frames",
+      "mode": "variations",
       "options": {
         "view": "high top-down",
         "direction": "none",
         "detail": "medium detail",
-        "no_background": false
+        "no_background": false,
+        "rd_style": "rd_tile__single_tile",
+        "rd_vary_style": "rd_tile__tile_variation"
       },
-      "frames": [
-        "seamless dungeon floor tile seen from directly above, cracked grey flagstone, edge to edge, no border",
-        "seamless dungeon floor tile seen from directly above, grey flagstone with a thin crack and dark moss, edge to edge, no border",
-        "seamless dungeon floor tile seen from directly above, grey flagstone stained with dried blood, edge to edge, no border",
-        "seamless dungeon floor tile seen from directly above, grey flagstone with a small bone shard and grit, edge to edge, no border"
-      ],
-      "style": "dark fantasy undead dungeon, pixel art, cold desaturated palette of grey-blue and rotten green, limited colors, hard edges, no anti-aliasing, fully opaque, fills the whole square"
+      "subject": "worn grey-blue dungeon flagstone floor, plain and uniform, subtle grout lines, no debris, no blood, no plants, dark and desaturated",
+      "variations": "subtle variation: a few hairline cracks and faint darker stains, still plain and uniform, no debris, no plants"
     },
     "ui_upgrades": {
       "mode": "frames",
@@ -272,5 +270,6 @@
       },
       "style": "dark fantasy undead dungeon, pixel art, cold palette, hard edges, no anti-aliasing, fully opaque, fills the whole square"
     }
-  }
+  },
+  "_fournisseurs": "`rd_style` nomme le style Retro Diffusion à employer ; GET https://api.retrodiffusion.ai/v1/styles/selector en donne la liste avec les bornes de dimensions de chacun. Les styles rd_tile__* sont raccordables par construction et refusent tile_x/tile_y."
 }

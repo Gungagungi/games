@@ -174,6 +174,17 @@ class Image:
             dst = (dy * self.width + at_x) * 4
             self.pixels[dst:dst + other.width * 4] = other.pixels[src:src + other.width * 4]
 
+    def crop(self, x: int, y: int, width: int, height: int) -> "Image":
+        out = Image(width, height)
+        for row in range(height):
+            sy = y + row
+            if not 0 <= sy < self.height:
+                continue
+            src = (sy * self.width + x) * 4
+            dst = row * width * 4
+            out.pixels[dst:dst + width * 4] = self.pixels[src:src + width * 4]
+        return out
+
     def opaque_ratio(self) -> float:
         """Proportion de pixels non transparents — sert à repérer une frame
         vide rendue par le générateur avant de l'assembler."""

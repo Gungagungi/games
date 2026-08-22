@@ -51,6 +51,7 @@ OUT_DIR = ROOT / "godot/assets/sprites"
 CACHE = ROOT / ".gen-cache"
 
 API = "https://api.pixellab.ai/v2"
+RD_API = "https://api.retrodiffusion.ai/v1"
 
 ## L'API refuse toute toile de moins de 32×32 (« Canvas must be size 32x32 area
 ## or larger »), alors que son propre spec OpenAPI annonce un minimum de 16. Les
@@ -140,6 +141,8 @@ def build_specs(config: dict) -> list[dict]:
         elif mode == "sequence":
             parts = [{"anim": "sequence", "start": 0, "count": cases,
                       "action": entry["action"]}]
+        elif mode == "variations":
+            parts = []
         elif mode == "frames":
             if len(entry["frames"]) != cases:
                 raise Fail(f"{name}: {len(entry['frames'])} prompts pour {cases} cases")
@@ -148,6 +151,8 @@ def build_specs(config: dict) -> list[dict]:
             parts = []
         else:
             raise Fail(f"{name}: mode inconnu « {mode} »")
+        if mode == "variations" and cases < 2:
+            raise Fail(f"{name}: le mode variations demande au moins deux cases")
 
         specs.append({"name": name, "tile": row["tile"], "cases": cases,
                       "mode": mode, "parts": parts, "entry": entry})
@@ -300,6 +305,130 @@ class PixelLab:
         return fit(self._images(body), count)
 
 
+class RetroDiffusion:
+    """Client Retro Diffusion.
+
+    Mieux taillé que PixelLab pour ce jeu : les tuiles de 16 px passent
+    nativement (12 à 512), `num_images` rend plusieurs images en un appel — donc
+    une planche de variantes pour le prix d'une — et les styles `rd_tile__*`
+    produisent des textures **raccordables par construction**, ce qui était le
+    défaut du premier sol.
+
+    Le style compte autant que le prompt : il est déclaré par asset dans
+    `sprite-prompts.json` sous `rd_style`. `GET /v1/styles/selector` en donne la
+    liste avec, pour chacun, ses bornes de dimensions."""
+
+    RETRIES = 4
+
+    def __init__(self, token: str, timeout: int = 420):
+        self.token = token
+        self.timeout = timeout
+        self.spent = 0.0
+        self.generations = 0.0
+
+    def _call(self, payload: dict | None = None, path: str = "/inferences",
+              method: str = "POST") -> dict:
+        data = json.dumps(payload).encode() if payload is not None else None
+        last = ""
+        for attempt in range(1, self.RETRIES + 1):
+            req = urllib.request.Request(RD_API + path, data=data, method=method, headers={
+                "X-RD-Token": self.token, "Content-Type": "application/json"})
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                    body = json.loads(resp.read())
+                break
+            except urllib.error.HTTPError as exc:
+                detail = exc.read().decode(errors="replace")[:400]
+                if exc.code in (401, 403):
+                    raise Fail("jeton Retro Diffusion refusé") from None
+                if exc.code == 402:
+                    raise Fail("solde Retro Diffusion épuisé") from None
+                if exc.code == 400:
+                    # Un champ refusé par le style choisi : réessayer n'y changera
+                    # rien. C'est ainsi que `tile_x` sur un style `rd_tile__*` se
+                    # signale — ces styles sont déjà raccordables.
+                    raise Fail(f"requête refusée (400) : {detail}") from None
+                last = f"HTTP {exc.code} : {detail}"
+            except (urllib.error.URLError, TimeoutError, OSError) as exc:
+                last = f"{type(exc).__name__} : {getattr(exc, 'reason', exc)}"
+            if attempt == self.RETRIES:
+                raise Fail(f"Retro Diffusion après {self.RETRIES} tentatives — {last}")
+            pause = 5 * 2 ** (attempt - 1)
+            print(f"    {last} — nouvelle tentative dans {pause} s", file=sys.stderr)
+            time.sleep(pause)
+        self.spent += float(body.get("balance_cost") or 0.0)
+        return body
+
+    def balance(self) -> dict:
+        b = self._call(path="/inferences/credits", method="GET")
+        return {"credits": f"{b.get('balance')} $ ({b.get('credits')} crédits)"}
+
+    @staticmethod
+    def _images(body: dict) -> list[Image]:
+        images = body.get("base64_images") or []
+        if not images:
+            raise Fail(f"aucune image rendue : {json.dumps(body)[:300]}")
+        return [Image.decode(base64.b64decode(b)) for b in images]
+
+    def _payload(self, description: str, tile: int, opts: dict, seed: int) -> dict:
+        style = opts.get("rd_style")
+        if not style:
+            raise Fail("aucun `rd_style` déclaré pour cet asset "
+                       "(voir GET /v1/styles/selector)")
+        return {"prompt": description, "prompt_style": style,
+                "width": tile, "height": tile, "seed": seed,
+                "remove_bg": bool(opts.get("no_background", True))}
+
+    def cost(self, description: str, tile: int, opts: dict, seed: int, n: int) -> float:
+        """Chiffrage à blanc, gratuit : `check_cost` ne génère ni ne facture."""
+        p = dict(self._payload(description, tile, opts, seed), num_images=n, check_cost=True)
+        return float(self._call(p).get("balance_cost") or 0.0)
+
+    def create(self, description: str, tile: int, opts: dict, seed: int) -> Image:
+        return self._images(self._call(
+            dict(self._payload(description, tile, opts, seed), num_images=1)))[0]
+
+    def create_many(self, description: str, tile: int, opts: dict, seed: int,
+                    n: int) -> list[Image]:
+        """`n` images en un seul appel — nettement moins cher que `n` appels."""
+        return self._images(self._call(
+            dict(self._payload(description, tile, opts, seed), num_images=n)))
+
+    def vary(self, base: Image, description: str, tile: int, opts: dict, seed: int,
+             n: int) -> list[Image]:
+        """Variantes d'une image existante, qui en gardent la texture et la
+        palette. C'est ce qui donne un jeu de dalles cohérent là où `n` tirages
+        indépendants donnent un patchwork."""
+        p = dict(self._payload(description, tile, opts, seed), num_images=n,
+                 prompt_style=opts.get("rd_vary_style", "rd_tile__tile_variation"),
+                 input_image=base64.b64encode(base.encode()).decode())
+        return self._images(self._call(p))
+
+    def animate(self, first: Image, action: str, count: int, seed: int) -> list[Image]:
+        """Animation rendue en planche, puis redécoupée.
+
+        Les styles d'animation imposent leur taille d'entrée (64 ou 128 px) :
+        la frame de base y est ramenée, et les frames rendues repartent à la
+        taille de la case à l'assemblage. `frames_duration` n'accepte que
+        4, 6, 8, 10, 12 ou 16."""
+        allowed = [4, 6, 8, 10, 12, 16]
+        asked = next((a for a in allowed if a >= count), 16)
+        size = 128 if first.width > 64 else 64
+        body = self._call({
+            "prompt": action,
+            "prompt_style": "rd_animation__big_animation" if size == 128
+                            else "rd_animation__any_animation",
+            "width": size, "height": size, "num_images": 1,
+            "frames_duration": asked, "return_spritesheet": True,
+            "remove_bg": True, "seed": seed,
+            "input_image": base64.b64encode(first.resized(size, size).encode()).decode(),
+        })
+        sheet = self._images(body)[0]
+        frames = [sheet.crop(i * size, 0, size, size)
+                  for i in range(max(1, sheet.width // size))]
+        return fit(frames, count)
+
+
 class Fake:
     """Générateur factice : des aplats colorés aux bonnes dimensions.
 
@@ -394,7 +523,29 @@ def generate(spec: dict, config: dict, client: PixelLab | None, args) -> Image |
         demande explicite (`--force`, ou `--redo <animation>`)."""
         return args.force or key in redo
 
-    if mode == "frames":
+    if mode == "variations":
+        # Une dalle de base, puis ses variantes : elles en héritent la texture et
+        # la palette. Quatre tirages indépendants donneraient un patchwork.
+        base_path = work / "base.png"
+        base = None if stale("base") else cached(base_path)
+        if base is None:
+            if client is None:
+                print(f"    base : {prompt_for(config, entry)}")
+                print(f"    ×{cases - 1} variantes : {entry['variations']}")
+                return None
+            base = store(base_path, client.create(
+                prompt_for(config, entry), gen_tile, opts, seed))
+        frames[0] = base
+        paths = [work / f"var_{i:02d}.png" for i in range(cases - 1)]
+        got = [None if stale("variations") else cached(q) for q in paths]
+        if any(g is None for g in got):
+            if not hasattr(client, "vary"):
+                raise Fail(f"{name}: le mode variations demande --provider retrodiffusion")
+            got = [store(q, v) for q, v in zip(paths, client.vary(
+                base, entry["variations"], gen_tile, opts, seed, cases - 1))]
+        for i, img in enumerate(got):
+            frames[i + 1] = img
+    elif mode == "frames":
         for i, subject in enumerate(entry["frames"]):
             path = work / f"case_{i:02d}.png"
             img = None if stale(f"case_{i}") else cached(path)
@@ -450,7 +601,11 @@ def assemble_from_cache(spec: dict) -> Image | None:
     """Réassemble une planche depuis le cache, sans rien générer."""
     work = CACHE / spec["name"]
     frames: list[Image | None] = [None] * spec["cases"]
-    if spec["mode"] == "frames":
+    if spec["mode"] == "variations":
+        frames[0] = cached(work / "base.png")
+        for i in range(spec["cases"] - 1):
+            frames[i + 1] = cached(work / f"var_{i:02d}.png")
+    elif spec["mode"] == "frames":
         for i in range(spec["cases"]):
             frames[i] = cached(work / f"case_{i:02d}.png")
     elif spec["mode"] == "single":
@@ -466,16 +621,23 @@ def assemble_from_cache(spec: dict) -> Image | None:
 
 # --------------------------------------------------------------------------
 
-def find_token(explicit: str | None) -> str:
+PROVIDERS = {
+    "retrodiffusion": (RetroDiffusion, "RETRODIFFUSION_TOKEN", ".retrodiffusion-token"),
+    "pixellab": (PixelLab, "PIXELLAB_TOKEN", ".pixellab-token"),
+}
+
+
+def find_token(explicit: str | None, provider: str) -> str:
+    _cls, env, filename = PROVIDERS[provider]
     if explicit:
         return explicit.strip()
-    if os.environ.get("PIXELLAB_TOKEN"):
-        return os.environ["PIXELLAB_TOKEN"].strip()
-    for path in (ROOT / ".pixellab-token", Path.home() / ".config/pixellab/token"):
+    if os.environ.get(env):
+        return os.environ[env].strip()
+    for path in (ROOT / filename, Path.home() / f".config/{provider}/token"):
         if path.exists():
             return path.read_text(encoding="utf-8").strip()
-    raise Fail("aucun jeton : définir $PIXELLAB_TOKEN, ou écrire le jeton dans "
-               ".pixellab-token (ignoré par git)")
+    raise Fail(f"aucun jeton {provider} : définir ${env}, ou écrire le jeton "
+               f"dans {filename} (ignoré par git)")
 
 
 def main() -> int:
@@ -496,6 +658,8 @@ def main() -> int:
                          "où le coût n'est pas facturé en dollars)")
     ap.add_argument("--seed", type=int, default=1789, help="graine, pour des rendus stables")
     ap.add_argument("--token", help="jeton d'API (par défaut : $PIXELLAB_TOKEN)")
+    ap.add_argument("--provider", choices=sorted(PROVIDERS), default="retrodiffusion",
+                    help="générateur à piloter (retrodiffusion par défaut)")
     ap.add_argument("--fake", action="store_true",
                     help="générateur factice : valide la chaîne sans appeler l'API")
     args = ap.parse_args()
@@ -523,10 +687,10 @@ def main() -> int:
     if args.fake:
         client = Fake()
     elif not (args.dry_run or args.assemble_only):
-        client = PixelLab(find_token(args.token))
+        client = PROVIDERS[args.provider][0](find_token(args.token, args.provider))
     if client is not None:
         balance = client.balance()
-        print(f"Solde PixelLab : {json.dumps(balance.get('credits') or balance)}")
+        print(f"Solde {args.provider} : {balance.get('credits') or balance}")
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     produced = []

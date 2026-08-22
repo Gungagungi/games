@@ -17,3 +17,4 @@
 /.gen-cache/
 /.pixellab-token
 scripts/__pycache__/
+/.retrodiffusion-token
