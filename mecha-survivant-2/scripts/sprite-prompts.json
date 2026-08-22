@@ -16,7 +16,8 @@
       "subject": "compact bipedal battle mech, glowing cyan energy core and cyan running lights, dark steel plating, shoulder-mounted cannons, the one bright thing in a dark dungeon",
       "options": {
         "direction": "north",
-        "detail": "highly detailed"
+        "detail": "highly detailed",
+        "rd_style": "rd_fast__low_res"
       },
       "actions": {
         "idle": "standing still, idle hum, slight weapon sway",
@@ -29,6 +30,9 @@
       "actions": {
         "walk": "shambling forward",
         "death": "falling over backwards and ending flat on the ground, body crumbling into dust"
+      },
+      "options": {
+        "rd_style": "rd_fast__low_res"
       }
     },
     "enemy_skeleton": {
@@ -36,6 +40,9 @@
       "actions": {
         "walk": "skittering forward quickly",
         "death": "falling apart mid-stride and ending as a flat pile of loose bones on the ground"
+      },
+      "options": {
+        "rd_style": "rd_fast__low_res"
       }
     },
     "enemy_risen": {
@@ -43,13 +50,17 @@
       "actions": {
         "walk": "lumbering forward",
         "death": "toppling forward and ending flat on the ground, crumbling into dust"
+      },
+      "options": {
+        "rd_style": "rd_fast__low_res"
       }
     },
     "enemy_shade": {
       "subject": "spectral shade, translucent violet wraith with a hollow hood and trailing wisps, no legs, hovering",
       "options": {
         "outline": "lineless",
-        "shading": "flat shading"
+        "shading": "flat shading",
+        "rd_style": "rd_fast__low_res"
       },
       "actions": {
         "walk": "drifting forward, wisps trailing",
@@ -59,7 +70,8 @@
     "enemy_flameling": {
       "subject": "small burning imp made of orange fire and blackened bone, ember trails, cupped flame in its hands",
       "options": {
-        "outline": "selective outline"
+        "outline": "selective outline",
+        "rd_style": "rd_fast__low_res"
       },
       "actions": {
         "walk": "hopping forward, flames guttering",
@@ -69,7 +81,11 @@
     "boss_gravedigger": {
       "subject": "towering undead gravedigger boss, tattered black burial coat, cracked iron shovel, deep red eye glow",
       "options": {
-        "detail": "highly detailed"
+        "detail": "highly detailed",
+        "rd_style": "rd_fast__low_res",
+        "rd_anim_style": "rd_advanced_animation__idle",
+        "rd_anim_size": 128,
+        "rd_anim_style_attack": "rd_advanced_animation__attack"
       },
       "actions": {
         "idle": "standing menacingly, coat stirring",
@@ -79,7 +95,11 @@
     "boss_bone_colossus": {
       "subject": "colossal skeletal boss built from fused bones, rib cage torso, long clawed arms, sickly purple glow inside the ribs",
       "options": {
-        "detail": "highly detailed"
+        "detail": "highly detailed",
+        "rd_style": "rd_fast__low_res",
+        "rd_anim_style": "rd_advanced_animation__idle",
+        "rd_anim_size": 128,
+        "rd_anim_style_attack": "rd_advanced_animation__attack"
       },
       "actions": {
         "idle": "looming, bones creaking",
@@ -89,7 +109,11 @@
     "boss_plague": {
       "subject": "bloated plague boss, swollen green pustules, dripping toxic bile, ragged plague-doctor mask",
       "options": {
-        "detail": "highly detailed"
+        "detail": "highly detailed",
+        "rd_style": "rd_fast__low_res",
+        "rd_anim_style": "rd_advanced_animation__idle",
+        "rd_anim_size": 128,
+        "rd_anim_style_attack": "rd_advanced_animation__attack"
       },
       "actions": {
         "idle": "breathing heavily, bile dripping",
@@ -99,7 +123,11 @@
     "megaboss": {
       "subject": "crowned undead overlord boss, black and crimson armour, shattered halo of violet energy, immense presence",
       "options": {
-        "detail": "highly detailed"
+        "detail": "highly detailed",
+        "rd_style": "rd_fast__low_res",
+        "rd_anim_style": "rd_advanced_animation__idle",
+        "rd_anim_size": 128,
+        "rd_anim_style_attack": "rd_advanced_animation__attack"
       },
       "actions": {
         "idle": "hovering, energy halo turning",
@@ -109,7 +137,10 @@
     "titan": {
       "subject": "final boss death titan, colossal armoured skeleton wreathed in violet fire, immense scythe, crimson eye sockets",
       "options": {
-        "detail": "highly detailed"
+        "detail": "highly detailed",
+        "rd_style": "rd_mini__classic",
+        "rd_anim_style": "rd_advanced_animation__attack",
+        "rd_anim_size": 160
       },
       "actions": {
         "idle": "standing colossal, violet fire rolling off the armour",
@@ -134,7 +165,8 @@
       "options": {
         "view": "high top-down",
         "direction": "north",
-        "detail": "low detail"
+        "detail": "low detail",
+        "rd_style": "rd_fast__low_res"
       }
     },
     "proj_fireball": {
@@ -144,7 +176,11 @@
         "direction": "none",
         "outline": "lineless",
         "shading": "flat shading",
-        "detail": "low detail"
+        "detail": "low detail",
+        "rd_style": "rd_fast__low_res",
+        "rd_anim_style": "rd_animation__vfx",
+        "rd_anim_size": 24,
+        "rd_anim_needs_input": false
       },
       "actions": {
         "idle": "flame flickering and churning in place"
@@ -158,7 +194,8 @@
         "direction": "none",
         "outline": "lineless",
         "shading": "flat shading",
-        "detail": "low detail"
+        "detail": "low detail",
+        "rd_style": "rd_fast__low_res"
       }
     },
     "proj_orb": {
@@ -169,7 +206,8 @@
         "direction": "none",
         "outline": "lineless",
         "shading": "flat shading",
-        "detail": "low detail"
+        "detail": "low detail",
+        "rd_style": "rd_fast__low_res"
       }
     },
     "proj_ultimate": {
@@ -178,7 +216,11 @@
         "view": "none",
         "direction": "none",
         "outline": "lineless",
-        "detail": "highly detailed"
+        "detail": "highly detailed",
+        "rd_style": "rd_fast__low_res",
+        "rd_anim_style": "rd_animation__vfx",
+        "rd_anim_size": 64,
+        "rd_anim_needs_input": false
       },
       "actions": {
         "idle": "energy churning and crackling in place"
@@ -191,7 +233,11 @@
         "view": "high top-down",
         "direction": "none",
         "outline": "lineless",
-        "shading": "flat shading"
+        "shading": "flat shading",
+        "rd_style": "rd_fast__low_res",
+        "rd_anim_style": "rd_animation__vfx",
+        "rd_anim_size": 64,
+        "rd_anim_needs_input": false
       },
       "action": "a bright ring expanding outward from the centre and fading"
     },
@@ -213,7 +259,8 @@
         "view": "high top-down",
         "direction": "none",
         "outline": "lineless",
-        "shading": "flat shading"
+        "shading": "flat shading",
+        "rd_style": "rd_fast__low_res"
       }
     },
     "hazard_poison": {
@@ -222,7 +269,11 @@
       "options": {
         "view": "high top-down",
         "direction": "none",
-        "outline": "lineless"
+        "outline": "lineless",
+        "rd_style": "rd_fast__low_res",
+        "rd_anim_style": "rd_animation__vfx",
+        "rd_anim_size": 48,
+        "rd_anim_needs_input": false
       },
       "action": "the puddle bubbling and rippling in a seamless loop"
     },
@@ -246,7 +297,8 @@
         "direction": "none",
         "outline": "single color black outline",
         "shading": "flat shading",
-        "detail": "low detail"
+        "detail": "low detail",
+        "rd_style": "rd_mini__skill_icon"
       },
       "frames": [
         "game UI icon, cyan lightning bolt, rate of fire, flat emblem centred on transparent background",
@@ -266,10 +318,12 @@
         "view": "side",
         "direction": "south",
         "detail": "highly detailed",
-        "no_background": false
+        "no_background": false,
+        "rd_style": "rd_fast__low_res"
       },
       "style": "dark fantasy undead dungeon, pixel art, cold palette, hard edges, no anti-aliasing, fully opaque, fills the whole square"
     }
   },
-  "_fournisseurs": "`rd_style` nomme le style Retro Diffusion à employer ; GET https://api.retrodiffusion.ai/v1/styles/selector en donne la liste avec les bornes de dimensions de chacun. Les styles rd_tile__* sont raccordables par construction et refusent tile_x/tile_y."
+  "_fournisseurs": "`rd_style` nomme le style Retro Diffusion à employer ; GET https://api.retrodiffusion.ai/v1/styles/selector en donne la liste avec les bornes de dimensions de chacun. Les styles rd_tile__* sont raccordables par construction et refusent tile_x/tile_y.",
+  "_tarifs": "Chiffré à blanc via check_cost (gratuit) : image fixe 0,017 $ en rd_fast__low_res, 0,03 $ en rd_mini__*, 0,18 $ en rd_pro__* ; animation 0,07 $ en rd_animation__vfx, 0,14 $ en rd_advanced_animation__*, 0,25 $ en styles génériques. Les plages de tailles diffèrent autant que les prix."
 }

@@ -288,7 +288,8 @@ class PixelLab:
                 payload[key] = opts[key]
         return self._images(self._call("/create-image-pixflux", payload))[0]
 
-    def animate(self, first: Image, action: str, count: int, seed: int) -> list[Image]:
+    def animate(self, first: Image, action: str, count: int, seed: int,
+                _opts: dict | None = None) -> list[Image]:
         asked = count if count % 2 == 0 else count + 1
         asked = max(4, min(16, asked))
         payload = {
@@ -404,26 +405,37 @@ class RetroDiffusion:
                  input_image=base64.b64encode(base.encode()).decode())
         return self._images(self._call(p))
 
-    def animate(self, first: Image, action: str, count: int, seed: int) -> list[Image]:
+    def animate(self, first: Image, action: str, count: int, seed: int,
+                opts: dict | None = None) -> list[Image]:
         """Animation rendue en planche, puis redécoupée.
 
-        Les styles d'animation imposent leur taille d'entrée (64 ou 128 px) :
-        la frame de base y est ramenée, et les frames rendues repartent à la
-        taille de la case à l'assemblage. `frames_duration` n'accepte que
-        4, 6, 8, 10, 12 ou 16."""
+        Le style d'animation compte autant que le prix : `rd_animation__vfx`
+        coûte 0,07 $ là où `rd_animation__any_animation` en coûte 0,25, et
+        `rd_advanced_animation__attack` accepte jusqu'à 256 px quand les styles
+        génériques sont figés à 64 ou 128. Le choix est donc déclaré par asset
+        sous `rd_anim_style`, avec sa plage de tailles sous `rd_anim_size`.
+
+        Certains styles partent d'une frame existante, d'autres non
+        (`rd_animation__vfx` invente l'effet de zéro) : `rd_anim_needs_input`
+        le dit, et passer une image à un style qui n'en veut pas est un 400.
+
+        `frames_duration` n'accepte que 4, 6, 8, 10, 12 ou 16."""
+        opts = opts or {}
         allowed = [4, 6, 8, 10, 12, 16]
         asked = next((a for a in allowed if a >= count), 16)
-        size = 128 if first.width > 64 else 64
-        body = self._call({
-            "prompt": action,
-            "prompt_style": "rd_animation__big_animation" if size == 128
-                            else "rd_animation__any_animation",
+        size = int(opts.get("rd_anim_size", 128 if first.width > 64 else 64))
+        style = opts.get("rd_anim_style") or (
+            "rd_animation__big_animation" if size > 64 else "rd_animation__any_animation")
+        payload = {
+            "prompt": action, "prompt_style": style,
             "width": size, "height": size, "num_images": 1,
             "frames_duration": asked, "return_spritesheet": True,
-            "remove_bg": True, "seed": seed,
-            "input_image": base64.b64encode(first.resized(size, size).encode()).decode(),
-        })
-        sheet = self._images(body)[0]
+            "remove_bg": bool(opts.get("no_background", True)), "seed": seed,
+        }
+        if opts.get("rd_anim_needs_input", True):
+            payload["input_image"] = base64.b64encode(
+                first.resized(size, size).encode()).decode()
+        sheet = self._images(self._call(payload))[0]
         frames = [sheet.crop(i * size, 0, size, size)
                   for i in range(max(1, sheet.width // size))]
         return fit(frames, count)
@@ -470,7 +482,8 @@ class Fake:
     def create(self, _description: str, tile: int, _opts: dict, _seed: int) -> Image:
         return self._tint(tile)
 
-    def animate(self, first: Image, _action: str, count: int, _seed: int) -> list[Image]:
+    def animate(self, first: Image, _action: str, count: int, _seed: int,
+                _opts: dict | None = None) -> list[Image]:
         return [self._tint(first.width) for _ in range(count)]
 
 
@@ -581,7 +594,14 @@ def generate(spec: dict, config: dict, client: PixelLab | None, args) -> Image |
                         continue
                     if base is None:
                         raise Fail(f"{name}: pas de frame de base pour animer")
-                    got = client.animate(base, part["action"], count, seed)
+                    # Un geste peut demander un autre style que le repos :
+                    # `rd_anim_style_attack` surcharge `rd_anim_style` pour la
+                    # seule animation « attack ».
+                    anim_opts = dict(opts)
+                    override = opts.get(f"rd_anim_style_{anim}")
+                    if override:
+                        anim_opts["rd_anim_style"] = override
+                    got = client.animate(base, part["action"], count, seed, anim_opts)
                     got = [store(p, g) for p, g in zip(paths, got)]
                 for i, img in enumerate(got):
                     frames[start + i] = img
