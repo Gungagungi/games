@@ -85,6 +85,17 @@ func _ready() -> void:
 
 ## Bascule sur une animation nommée. Sans planche déposée, ou si le nom est
 ## inconnu, l'appel est ignoré : l'appelant n'a pas à savoir ce qui existe.
+## Oriente le visuel vers la gauche ou vers la droite.
+##
+## Les sprites sont dessinés face à la caméra, comme dans la v1 : une entité ne
+## pivote pas, elle se retourne. Faire tourner un sprite dessiné de face le
+## couche sur le flanc dès qu'il se déplace à l'horizontale.
+func face(direction_x: float) -> void:
+	if _sprite == null or is_zero_approx(direction_x):
+		return
+	_sprite.flip_h = direction_x < 0.0
+
+
 func play(anim: String, loops: bool = true) -> void:
 	if _sprite == null:
 		return

@@ -115,7 +115,7 @@ func _move(delta: float) -> void:
 	move_and_slide()
 	_clamp_to_arena()
 	if not is_zero_approx(velocity.length()):
-		_visual.rotation = velocity.angle() + PI * 0.5
+		_visual.face(velocity.x)
 	if dash_time > 0.0:
 		_visual.play("dash")
 	elif is_zero_approx(velocity.length()):
