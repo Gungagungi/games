@@ -39,3 +39,26 @@ node tools/capture.js mecha-survivant/index.html tools/shots/ultime.png \
 ## Note
 
 `shots/` et `node_modules/` ne sont pas versionnés.
+
+## Jeux Godot (WebAssembly)
+
+`mecha-survivant-2` est un export Godot, ce qui change deux choses :
+
+- Il faut le **servir en http** (`mecha-survivant-2/scripts/serve.sh`) et passer
+  l'URL à `capture.js` — un export Godot ne tourne pas en `file://`. Prévoir
+  `--wait 15000` : le wasm met plusieurs secondes à démarrer.
+- Il faut **`--no-step`**. Le pilotage image par image de `driver.js` remplace
+  `requestAnimationFrame` ; la boucle de Godot vit dans le wasm et passe par ce
+  même rAF, le jeu resterait donc figé sur son écran de chargement.
+
+```sh
+node tools/capture.js http://localhost:8123/index.html tools/shots/ms2.png --wait 15000
+
+MS2_TITAN=1 node tools/capture.js http://localhost:8123/index.html tools/shots/titan.png \
+  --scenario tools/scenarios/ms2-gameplay.js --no-step
+```
+
+`scenarios/ms2-gameplay.js` lance une partie et joue quelques secondes.
+`MS2_WAVE=N` choisit la vague de départ, `MS2_TITAN=1` saute au combat final.
+Comme l'UI est peinte dans le canvas, il clique par **coordonnées** relevées sur
+une capture : les réajuster si l'écran-titre du jeu change.

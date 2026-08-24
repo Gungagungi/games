@@ -1,0 +1,337 @@
+{
+  "_lisez_moi": "Prompts de génération des planches. Le découpage (nombre de cases, plages d'animation) n'est PAS ici : il vient de SHEETS dans godot/scenes/fx/sprite_or_shape.gd et du tableau de godot/assets/MANIFEST.md. Ce fichier ne décrit que le sujet et le geste. Retoucher un prompt puis relancer avec --force --only <nom> pour refaire une planche.",
+  "_orientation": "Le mech est tourné en code (player.gd : rotation = velocity.angle() + PI/2), il doit donc être dessiné vu de dessus, face vers le nord. Ni les ennemis ni les projectiles ne sont tournés : ils gardent une seule orientation à l'écran.",
+  "style": "dark fantasy undead dungeon, pixel art sprite, cold desaturated palette of grey-blue and rotten green, limited colors, hard edges, no anti-aliasing, no outer glow, transparent background",
+  "defaults": {
+    "view": "high top-down",
+    "direction": "south",
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "medium detail",
+    "text_guidance_scale": 8,
+    "rd_style": "rd_pro__topdown"
+  },
+  "assets": {
+    "player_mech": {
+      "subject": "compact bipedal battle mech, glowing cyan energy core and cyan running lights, dark steel plating, shoulder-mounted cannons, the one bright thing in a dark dungeon",
+      "options": {
+        "direction": "north",
+        "detail": "highly detailed",
+        "rd_style": "rd_fast__low_res"
+      },
+      "actions": {
+        "idle": "standing still, idle hum, slight weapon sway",
+        "walk": "walking forward with heavy mechanical steps",
+        "dash": "boosting forward, thrusters flaring, leaning into the burst"
+      }
+    },
+    "enemy_zombie": {
+      "subject": "shambling undead zombie, mottled green-grey rotting flesh, torn rags, slack arms",
+      "actions": {
+        "walk": "shambling forward",
+        "death": "falling over backwards and ending flat on the ground, body crumbling into dust"
+      },
+      "options": {
+        "rd_style": "rd_fast__low_res"
+      }
+    },
+    "enemy_skeleton": {
+      "subject": "gaunt skeleton warrior, bleached bone, tattered cloak, holding a short bow",
+      "actions": {
+        "walk": "skittering forward quickly",
+        "death": "falling apart mid-stride and ending as a flat pile of loose bones on the ground"
+      },
+      "options": {
+        "rd_style": "rd_fast__low_res"
+      }
+    },
+    "enemy_risen": {
+      "subject": "hulking risen corpse, heavy brown leathery hide, oversized fists, hunched and thick-set",
+      "actions": {
+        "walk": "lumbering forward",
+        "death": "toppling forward and ending flat on the ground, crumbling into dust"
+      },
+      "options": {
+        "rd_style": "rd_fast__low_res"
+      }
+    },
+    "enemy_shade": {
+      "subject": "spectral shade, translucent violet wraith with a hollow hood and trailing wisps, no legs, hovering",
+      "options": {
+        "outline": "lineless",
+        "shading": "flat shading",
+        "rd_style": "rd_fast__low_res"
+      },
+      "actions": {
+        "walk": "drifting forward, wisps trailing",
+        "death": "sinking down and dispersing until nothing is left but thin violet smoke"
+      }
+    },
+    "enemy_flameling": {
+      "subject": "small burning imp made of orange fire and blackened bone, ember trails, cupped flame in its hands",
+      "options": {
+        "outline": "selective outline",
+        "rd_style": "rd_fast__low_res"
+      },
+      "actions": {
+        "walk": "hopping forward, flames guttering",
+        "death": "burning down and collapsing into a flat pile of ash and dying embers"
+      }
+    },
+    "boss_gravedigger": {
+      "subject": "towering undead gravedigger boss, tattered black burial coat, cracked iron shovel, deep red eye glow",
+      "options": {
+        "detail": "highly detailed",
+        "rd_style": "rd_fast__low_res",
+        "rd_anim_style": "rd_advanced_animation__idle",
+        "rd_anim_size": 128,
+        "rd_anim_style_attack": "rd_advanced_animation__attack"
+      },
+      "actions": {
+        "idle": "standing menacingly, coat stirring",
+        "attack": "swinging the heavy shovel in a wide arc"
+      }
+    },
+    "boss_bone_colossus": {
+      "subject": "colossal skeletal boss built from fused bones, rib cage torso, long clawed arms, sickly purple glow inside the ribs",
+      "options": {
+        "detail": "highly detailed",
+        "rd_style": "rd_fast__low_res",
+        "rd_anim_style": "rd_advanced_animation__idle",
+        "rd_anim_size": 128,
+        "rd_anim_style_attack": "rd_advanced_animation__attack"
+      },
+      "actions": {
+        "idle": "looming, bones creaking",
+        "attack": "sweeping both bone arms forward"
+      }
+    },
+    "boss_plague": {
+      "subject": "bloated plague boss, swollen green pustules, dripping toxic bile, ragged plague-doctor mask",
+      "options": {
+        "detail": "highly detailed",
+        "rd_style": "rd_fast__low_res",
+        "rd_anim_style": "rd_advanced_animation__idle",
+        "rd_anim_size": 128,
+        "rd_anim_style_attack": "rd_advanced_animation__attack"
+      },
+      "actions": {
+        "idle": "breathing heavily, bile dripping",
+        "attack": "heaving forward and spewing poison"
+      }
+    },
+    "megaboss": {
+      "subject": "crowned undead overlord boss, black and crimson armour, shattered halo of violet energy, immense presence",
+      "options": {
+        "detail": "highly detailed",
+        "rd_style": "rd_fast__low_res",
+        "rd_anim_style": "rd_advanced_animation__idle",
+        "rd_anim_size": 128,
+        "rd_anim_style_attack": "rd_advanced_animation__attack"
+      },
+      "actions": {
+        "idle": "hovering, energy halo turning",
+        "attack": "raising both arms and unleashing energy"
+      }
+    },
+    "titan": {
+      "subject": "final boss death titan, colossal armoured skeleton wreathed in violet fire, immense scythe, crimson eye sockets",
+      "options": {
+        "detail": "highly detailed",
+        "rd_style": "rd_mini__classic",
+        "rd_anim_style": "rd_advanced_animation__attack",
+        "rd_anim_size": 160
+      },
+      "actions": {
+        "idle": "standing colossal, violet fire rolling off the armour",
+        "scythe": "raising the huge scythe and cleaving it down",
+        "charge": "gathering violet energy, charging up a devastating attack"
+      }
+    },
+    "proj_bullet": {
+      "mode": "single",
+      "subject": "small bright cyan energy bolt, radially symmetric glowing plasma pellet",
+      "options": {
+        "view": "none",
+        "direction": "none",
+        "outline": "lineless",
+        "shading": "flat shading",
+        "detail": "low detail"
+      }
+    },
+    "proj_arrow": {
+      "mode": "single",
+      "subject": "a single thick bone-white arrow with dark green fletching, bold and clearly visible, centred on a plain dark background, pointing up, seen from above",
+      "options": {
+        "view": "high top-down",
+        "direction": "north",
+        "detail": "low detail",
+        "rd_style": "rd_fast__low_res"
+      }
+    },
+    "proj_fireball": {
+      "subject": "compact ball of orange fire with ember trail",
+      "options": {
+        "view": "none",
+        "direction": "none",
+        "outline": "lineless",
+        "shading": "flat shading",
+        "detail": "low detail",
+        "rd_style": "rd_fast__low_res",
+        "rd_anim_style": "rd_animation__vfx",
+        "rd_anim_size": 24,
+        "rd_anim_needs_input": false
+      },
+      "actions": {
+        "idle": "flame flickering and churning in place"
+      }
+    },
+    "proj_poison": {
+      "mode": "single",
+      "subject": "globule of toxic green bile, radially symmetric, dripping",
+      "options": {
+        "view": "none",
+        "direction": "none",
+        "outline": "lineless",
+        "shading": "flat shading",
+        "detail": "low detail",
+        "rd_style": "rd_fast__low_res"
+      }
+    },
+    "proj_orb": {
+      "mode": "single",
+      "subject": "crackling violet energy orb, radially symmetric, dark core",
+      "options": {
+        "view": "none",
+        "direction": "none",
+        "outline": "lineless",
+        "shading": "flat shading",
+        "detail": "low detail",
+        "rd_style": "rd_fast__low_res"
+      }
+    },
+    "proj_ultimate": {
+      "subject": "enormous roiling ball of violet and crimson doom energy, lethal, radially symmetric",
+      "options": {
+        "view": "none",
+        "direction": "none",
+        "outline": "lineless",
+        "detail": "highly detailed",
+        "rd_style": "rd_fast__low_res",
+        "rd_anim_style": "rd_animation__vfx",
+        "rd_anim_size": 64,
+        "rd_anim_needs_input": false
+      },
+      "actions": {
+        "idle": "energy churning and crackling in place"
+      },
+      "keep": {
+        "idle": [
+          2,
+          3,
+          3,
+          2
+        ]
+      }
+    },
+    "fx_shockwave": {
+      "mode": "sequence",
+      "subject": "expanding ring of cyan shockwave energy, thin bright ring on transparent background, centred",
+      "options": {
+        "view": "high top-down",
+        "direction": "none",
+        "outline": "lineless",
+        "shading": "flat shading",
+        "rd_style": "rd_fast__low_res",
+        "rd_anim_style": "rd_animation__vfx",
+        "rd_anim_size": 64,
+        "rd_anim_needs_input": false
+      },
+      "action": "a bright ring expanding outward from the centre and fading"
+    },
+    "fx_hit": {
+      "mode": "sequence",
+      "subject": "white and yellow impact spark burst, centred, radially symmetric",
+      "options": {
+        "view": "none",
+        "direction": "none",
+        "outline": "lineless",
+        "shading": "flat shading"
+      },
+      "action": "a spark burst flashing outward from the centre and fading out"
+    },
+    "fx_telegraph": {
+      "mode": "single",
+      "subject": "thin red warning circle drawn flat on the ground, hollow centre, danger zone marker",
+      "options": {
+        "view": "high top-down",
+        "direction": "none",
+        "outline": "lineless",
+        "shading": "flat shading",
+        "rd_style": "rd_fast__low_res"
+      }
+    },
+    "hazard_poison": {
+      "mode": "sequence",
+      "subject": "puddle of bubbling toxic green poison on stone floor, seen from directly above, circular",
+      "options": {
+        "view": "high top-down",
+        "direction": "none",
+        "outline": "lineless",
+        "rd_style": "rd_fast__low_res",
+        "rd_anim_style": "rd_animation__vfx",
+        "rd_anim_size": 64,
+        "rd_anim_needs_input": false
+      },
+      "action": "green toxic puddle bubbling"
+    },
+    "tiles_floor": {
+      "mode": "variations",
+      "options": {
+        "view": "high top-down",
+        "direction": "none",
+        "detail": "medium detail",
+        "no_background": false,
+        "rd_style": "rd_tile__single_tile",
+        "rd_vary_style": "rd_tile__tile_variation"
+      },
+      "subject": "worn grey-blue dungeon flagstone floor, plain and uniform, subtle grout lines, no debris, no blood, no plants, dark and desaturated",
+      "variations": "subtle variation: a few hairline cracks and faint darker stains, still plain and uniform, no debris, no plants"
+    },
+    "ui_upgrades": {
+      "mode": "frames",
+      "options": {
+        "view": "none",
+        "direction": "none",
+        "outline": "single color black outline",
+        "shading": "flat shading",
+        "detail": "low detail",
+        "rd_style": "rd_mini__skill_icon"
+      },
+      "frames": [
+        "game UI icon, cyan lightning bolt, rate of fire, flat emblem centred on transparent background",
+        "game UI icon, orange explosive burst, raw damage, flat emblem centred on transparent background",
+        "game UI icon, reinforced steel hull plate, armour, flat emblem centred on transparent background",
+        "game UI icon, cyan rocket thruster, movement speed, flat emblem centred on transparent background",
+        "game UI icon, three parallel bullets in a spread, extra projectile, flat emblem centred on transparent background",
+        "game UI icon, glowing blue hexagonal energy shield, flat emblem centred on transparent background",
+        "game UI icon, concentric cyan shockwave rings, area blast, flat emblem centred on transparent background",
+        "game UI icon, swirling white wind gust, stamina, flat emblem centred on transparent background"
+      ]
+    },
+    "icon": {
+      "mode": "single",
+      "subject": "game icon, the cyan battle mech facing the viewer against a dark dungeon backdrop, bold and readable at small size",
+      "options": {
+        "view": "side",
+        "direction": "south",
+        "detail": "highly detailed",
+        "no_background": false,
+        "rd_style": "rd_fast__low_res"
+      },
+      "style": "dark fantasy undead dungeon, pixel art, cold palette, hard edges, no anti-aliasing, fully opaque, fills the whole square"
+    }
+  },
+  "_fournisseurs": "`rd_style` nomme le style Retro Diffusion à employer ; GET https://api.retrodiffusion.ai/v1/styles/selector en donne la liste avec les bornes de dimensions de chacun. Les styles rd_tile__* sont raccordables par construction et refusent tile_x/tile_y.",
+  "_tarifs": "Chiffré à blanc via check_cost (gratuit) : image fixe 0,017 $ en rd_fast__low_res, 0,03 $ en rd_mini__*, 0,18 $ en rd_pro__* ; animation 0,07 $ en rd_animation__vfx, 0,14 $ en rd_advanced_animation__*, 0,25 $ en styles génériques. Les plages de tailles diffèrent autant que les prix."
+}

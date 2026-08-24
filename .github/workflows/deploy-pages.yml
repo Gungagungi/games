@@ -1,7 +1,8 @@
 name: Déploiement GitHub Pages
 
-# Les jeux sont du HTML/CSS/JS statique : il n'y a rien à construire,
-# on publie le dépôt tel quel.
+# Les jeux sont du HTML/CSS/JS statique et se publient tels quels — à une
+# exception près : mecha-survivant-2 est un projet Godot, dont l'export web est
+# construit ici plutôt que versionné (39 Mo de wasm à chaque rebuild).
 
 on:
   push:
@@ -18,6 +19,10 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
+env:
+  # Doit rester aligné sur la version fixée dans mecha-survivant-2/scripts/install-godot.sh.
+  GODOT_VERSION: "4.7.2"
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -30,6 +35,27 @@ jobs:
 
       - name: Configurer Pages
         uses: actions/configure-pages@v5
+
+      - name: Restaurer Godot depuis le cache
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/bin/godot
+            ~/.local/share/godot/export_templates
+          key: godot-${{ env.GODOT_VERSION }}-web
+
+      - name: Installer Godot et le template Web
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: mecha-survivant-2/scripts/install-godot.sh
+
+      - name: Exporter Mecha Survivant 2
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          mecha-survivant-2/scripts/build.sh
+          # Le jeu doit être servi depuis /mecha-survivant-2/, comme les autres.
+          mv mecha-survivant-2/export/* mecha-survivant-2/
+          rmdir mecha-survivant-2/export
 
       - name: Empaqueter le site
         uses: actions/upload-pages-artifact@v3
