@@ -289,7 +289,7 @@ class PixelLab:
         return self._images(self._call("/create-image-pixflux", payload))[0]
 
     def animate(self, first: Image, action: str, count: int, seed: int,
-                _opts: dict | None = None) -> list[Image]:
+                _opts: dict | None = None, _raw_path: Path | None = None) -> list[Image]:
         asked = count if count % 2 == 0 else count + 1
         asked = max(4, min(16, asked))
         payload = {
@@ -406,7 +406,7 @@ class RetroDiffusion:
         return self._images(self._call(p))
 
     def animate(self, first: Image | None, action: str, count: int, seed: int,
-                opts: dict | None = None) -> list[Image]:
+                opts: dict | None = None, raw_path: Path | None = None) -> list[Image]:
         """Animation rendue en planche, puis redécoupée.
 
         Le style d'animation compte autant que le prix : `rd_animation__vfx`
@@ -419,7 +419,15 @@ class RetroDiffusion:
         (`rd_animation__vfx` invente l'effet de zéro) : `rd_anim_needs_input`
         le dit, et passer une image à un style qui n'en veut pas est un 400.
 
-        `frames_duration` n'accepte que 4, 6, 8, 10, 12 ou 16."""
+        `frames_duration` n'accepte que 4, 6, 8, 10, 12 ou 16.
+
+        **La planche rendue est une grille, pas une bande.** Un rendu de 4
+        frames revient en 2×2, un de 6 en 3×2 : ne lire que la première ligne
+        jetait silencieusement la moitié des frames payées, et `fit()` comblait
+        le trou en dupliquant celles qui restaient — une animation à deux
+        images là où on en avait acheté quatre. On découpe donc ligne par
+        ligne, et on garde la planche brute en cache : un découpage à revoir ne
+        doit jamais se repayer."""
         opts = opts or {}
         allowed = [4, 6, 8, 10, 12, 16]
         asked = next((a for a in allowed if a >= count), 16)
@@ -437,9 +445,9 @@ class RetroDiffusion:
             payload["input_image"] = base64.b64encode(
                 first.resized(size, size).encode()).decode()
         sheet = self._images(self._call(payload))[0]
-        frames = [sheet.crop(i * size, 0, size, size)
-                  for i in range(max(1, sheet.width // size))]
-        return fit(frames, count)
+        if raw_path is not None:
+            store(raw_path, sheet)
+        return fit(slice_grid(sheet, size), count)
 
 
 class Fake:
@@ -484,7 +492,7 @@ class Fake:
         return self._tint(tile)
 
     def animate(self, first: Image, _action: str, count: int, _seed: int,
-                _opts: dict | None = None) -> list[Image]:
+                _opts: dict | None = None, _raw_path: Path | None = None) -> list[Image]:
         return [self._tint(first.width) for _ in range(count)]
 
 
@@ -499,6 +507,18 @@ def keep_frames(frames: list[Image], keep: list | None) -> list[Image]:
     if not keep:
         return frames
     return [frames[min(len(frames) - 1, int(i))] for i in keep]
+
+
+def slice_grid(sheet: Image, size: int) -> list[Image]:
+    """Découpe une planche rendue, ligne par ligne puis case par case.
+
+    Retro Diffusion rend ses animations en grille : 2×2 pour quatre frames,
+    3×2 pour six. Lire la seule première ligne revenait à jeter la moitié de ce
+    qui a été payé."""
+    cols = max(1, sheet.width // size)
+    rows = max(1, sheet.height // size)
+    return [sheet.crop(c * size, r * size, size, size)
+            for r in range(rows) for c in range(cols)]
 
 
 def fit(frames: list[Image], count: int) -> list[Image]:
@@ -619,7 +639,8 @@ def generate(spec: dict, config: dict, client: PixelLab | None, args) -> Image |
                     override = opts.get(f"rd_anim_style_{anim}")
                     if override:
                         anim_opts["rd_anim_style"] = override
-                    got = client.animate(base, part["action"], count, seed, anim_opts)
+                    got = client.animate(base, part["action"], count, seed, anim_opts,
+                                         work / f"{anim}_sheet.png")
                     got = [store(p, g) for p, g in zip(paths, got)]
                 got = keep_frames(got, (entry.get("keep") or {}).get(anim))
                 for i, img in enumerate(got[:count]):
