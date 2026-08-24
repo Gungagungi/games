@@ -144,25 +144,34 @@ Autoloads (`autoload/`) : `EventBus` (tous les signaux transverses),
 
 ## Assets
 
-Aucun n'est encore présent : voir `godot/assets/MANIFEST.md` pour la liste
-exacte des fichiers attendus, leurs dimensions et leur découpage. Déposer un
-fichier au bon nom suffit à le brancher, sans toucher au code.
+**Les 24 planches de sprites sont là**, boss compris ; plus un seul placeholder
+géométrique à l'écran. L'audio, lui, reste entièrement à faire : ni `assets/sfx/`
+ni `assets/music/` n'existent, et `AudioManager` est silencieux de bout en bout.
+`godot/assets/MANIFEST.md` donne la liste exacte des fichiers attendus, leurs
+dimensions et leur découpage. Déposer un fichier au bon nom suffit à le brancher,
+sans toucher au code.
 
 `scripts/gen-sprites.py` produit ces planches depuis un générateur externe.
 `--provider retrodiffusion` (par défaut) ou `--provider pixellab` : les deux
 sont pilotés par le même code, seuls le jeton et les prompts changent. Il ne
 décide de rien : il **lit** `SHEETS` et le tableau du manifeste, et refuse de
 travailler si les deux divergent. Chaque planche est faite d'une image de base
-(`create-image-pixflux`) puis d'animations dérivées de cette base
-(`animate-with-text-v3`), assemblées en strip horizontal aux dimensions exactes.
-Les prompts vivent dans `scripts/sprite-prompts.json`, hors du code, pour être
-retouchés sans y toucher.
+puis d'animations dérivées de cette base, assemblées en strip horizontal aux
+dimensions exactes. Les prompts vivent dans `scripts/sprite-prompts.json`, hors
+du code, pour être retouchés sans y toucher.
 
-Quatre choses à savoir avant de le lancer :
+Cinq choses à savoir avant de le lancer :
 
-- **Les frames brutes sont mises en cache** dans `.gen-cache/` (non versionné).
-  Relancer ne regénère que ce qui manque — une frame générée est une frame
-  payée. `--force` la jette, `--assemble-only` réassemble sans appeler l'API.
+- **Les frames brutes sont mises en cache** dans `.gen-cache/` (non versionné),
+  et depuis peu la **planche rendue** avec elles (`<anim>_sheet.png`). Relancer
+  ne regénère que ce qui manque — une frame générée est une frame payée — et un
+  découpage à revoir se rejoue hors ligne au lieu de se repayer. `--force` jette
+  le cache, `--assemble-only` réassemble sans appeler l'API.
+- **La planche rendue est une grille, pas une bande.** Retro Diffusion rend
+  quatre frames de 128 px en 256×256 (2×2), six en 3×2. `slice_grid()` les lit
+  ligne par ligne ; la lire comme une bande jetait la moitié des frames payées,
+  et `fit()` comblait le trou en dupliquant les autres — huit cases pour quatre
+  images distinctes, sans le moindre avertissement.
 - **`--fake` valide toute la chaîne sans dépenser un crédit** : aplats colorés
   aux bonnes dimensions, une teinte par case et un repère de coin, de quoi voir
   au premier coup d'œil une planche découpée de travers.
@@ -188,6 +197,26 @@ indépendants donnent un patchwork.
 proche voisin sur un damier qui marque les limites de case. C'est le seul moyen,
 sans écran, de voir qu'un sprite déborde sur la case voisine ou n'est pas centré
 pareil d'une frame à l'autre — un défaut invisible sur une planche de 256×32.
+
+**Ni les bonnes dimensions ni un `check.sh` vert ne prouvent qu'une planche est
+juste.** Les cinq planches de boss sont sorties une première fois à la taille
+attendue, importées sans une erreur, et pourtant chaque case y était dupliquée.
+Après toute génération, compter les cases réellement distinctes vaut le détour :
+
+```sh
+python3 - <<'PY'
+import sys, pathlib; sys.path.insert(0, "scripts")
+from pngtool import Image
+for f in sorted(pathlib.Path("godot/assets/sprites").glob("*.png")):
+    im = Image.decode(f.read_bytes()); t = im.height; n = im.width // t
+    uniq = {bytes(im.crop(i * t, 0, t, t).pixels) for i in range(n)}
+    print(f"{f.stem:22} {n} cases, {len(uniq)} distinctes")
+PY
+```
+
+Une case répétée n'est pas toujours un bug : les animations partant d'une frame
+de base la réutilisent en tête de séquence. Deux cases distinctes pour quatre
+demandées, en revanche, est le signe d'un découpage faux.
 
 Le codec PNG (`scripts/pngtool.py`) est écrit à la main sur `zlib` : Pillow
 n'est pas installé et le dépôt tient à rester sans dépendance à installer.
