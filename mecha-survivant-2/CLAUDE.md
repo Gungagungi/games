@@ -133,7 +133,7 @@ Autoloads (`autoload/`) : `EventBus` (tous les signaux transverses),
   pas descendre sous 1 %** tant que l'ultime n'a pas eu lieu : un coup assez
   fort la traverserait d'un trait et le Titan mourrait sans jamais lancer son
   attaque. L'ultime lui donne 10 s d'immunité totale, coupe toutes ses autres
-  attaques, et le **recale à 420 px du joueur** (`_anchor_for_ultimate`) — collé
+  attaques, et le **recale à `ULTIMATE_RANGE` du joueur** (`_anchor_for_ultimate`) — collé
   à lui, la boule le touchait dans la frame du tir sans être visible. Elle
   s'esquive en se déplaçant, pas en dashant, et tue net sauf bouclier actif.
 - `scenes/fx/sprite_or_shape.gd` — visuel tolérant à l'absence d'asset : sprite

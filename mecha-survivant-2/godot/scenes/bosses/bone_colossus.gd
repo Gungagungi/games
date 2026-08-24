@@ -6,7 +6,7 @@ extends BossBase
 const RAISE_INTERVAL := 4.0
 const LASER_INTERVAL := 5.0
 const SWEEP_INTERVAL := 9.0
-const SWEEP_RADIUS := 560.0
+const SWEEP_RADIUS := 390.0
 
 var _raise_cd := 2.5
 var _laser_cd := LASER_INTERVAL
