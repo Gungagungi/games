@@ -90,7 +90,13 @@ valable : le jeu ne connaît que le fichier, jamais son origine.
 ## Effets sonores — `assets/sfx/`
 
 **Format** : `.wav` mono 44,1 kHz 16 bits, moins de 2 s. `.ogg` accepté aussi.
-Outil suggéré : ElevenLabs Sound Effects (description textuelle → bruitage).
+Produits par `scripts/gen-audio.py` (ElevenLabs Sound Effects) ; les prompts
+vivent dans `scripts/audio-prompts.json`.
+
+**Les 21 bruitages sont là.** La liste ci-dessous est recoupée par
+`gen-audio.py` avec les appels réels du code : ajouter une clé ici sans
+l'appeler nulle part, ou l'inverse, fait échouer la génération avant de dépenser
+quoi que ce soit.
 
 `shoot`, `hit_enemy`, `enemy_death`, `enemy_groan`, `player_hurt`, `dash`,
 `shockwave`, `upgrade_pick`, `ui_click`, `wave_start`, `boss_spawn`,
@@ -103,15 +109,22 @@ livrer des variantes.
 
 ## Musique — `assets/music/`
 
-**Format** : `.ogg` Vorbis, boucle de 60 à 90 s, ~112 kbps (le budget total du
-`.pck` visé est de 8 Mo). Outil suggéré : Suno ou Soundraw.
+**Format** : `.mp3` 44,1 kHz 128 kbps, boucle de 60 à 90 s (le budget total du
+`.pck` visé est de 8 Mo ; les quatre pistes en pèsent environ 5). Godot 4 lit le
+mp3 nativement (`AudioStreamMP3`) — inutile de passer par du Vorbis, et
+`AudioManager` accepte de toute façon `.ogg`, `.wav` ou `.mp3`.
 
 | Fichier | Moment |
 | --- | --- |
-| `menu.ogg` | écran-titre |
-| `dungeon.ogg` | vagues ordinaires |
-| `boss.ogg` | vagues de boss (5, 10, 15) |
-| `titan.ogg` | combat final (vague 20) |
+| `menu.mp3` | écran-titre |
+| `dungeon.mp3` | vagues ordinaires |
+| `boss.mp3` | vagues de boss (5, 10, 15) |
+| `titan.mp3` | combat final (vague 20) |
 
-Après avoir déposé un `.ogg`, ouvrir son `.ogg.import` (créé par
-`scripts/build.sh`) et y mettre `loop=true`, sinon la piste ne boucle pas.
+**Les quatre musiques sont là.** Elles sortent de `scripts/gen-audio.py --kind
+music` (Eleven Music, endpoint réservé aux comptes payants là où les bruitages
+passent en gratuit) et pèsent 4,96 Mo à elles quatre, pour un `.pck` de 5,56 Mo.
+
+Une piste ne boucle pas toute seule : il faut `loop=true` dans son `.import`
+(créé par `scripts/build.sh`). `scripts/gen-audio.py --loops` le pose sur les
+quatre, à relancer après le premier build qui voit les fichiers.

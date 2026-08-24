@@ -36,6 +36,7 @@ scripts/build.sh           # import des assets puis export HTML5 dans export/
 scripts/serve.sh [port]    # sert export/ (8123 par défaut)
 scripts/check.sh           # non-régression sans écran (voir plus bas)
 scripts/gen-sprites.py     # génère les planches de sprites (voir « Assets »)
+scripts/gen-audio.py       # génère bruitages et musiques (voir « Audio »)
 scripts/preview-sheet.py   # agrandit une planche, case par case, pour la relire
 ```
 
@@ -145,9 +146,8 @@ Autoloads (`autoload/`) : `EventBus` (tous les signaux transverses),
 ## Assets
 
 **Les 24 planches de sprites sont là**, boss compris ; plus un seul placeholder
-géométrique à l'écran. L'audio, lui, reste entièrement à faire : ni `assets/sfx/`
-ni `assets/music/` n'existent, et `AudioManager` est silencieux de bout en bout.
-`godot/assets/MANIFEST.md` donne la liste exacte des fichiers attendus, leurs
+géométrique à l'écran. **Les 21 bruitages et les 4 musiques aussi** : le jeu est
+complet en image et en son (voir « Audio »). `godot/assets/MANIFEST.md` donne la liste exacte des fichiers attendus, leurs
 dimensions et leur découpage. Déposer un fichier au bon nom suffit à le brancher,
 sans toucher au code.
 
@@ -228,6 +228,46 @@ Les appelants ne nomment jamais un numéro de case, seulement une animation
 ponctuel). Ajouter une planche, c'est ajouter une entrée dans `SHEETS` — la
 régler chez l'appelant, c'est se garantir un découpage faux le jour où le
 fichier arrive.
+
+## Audio
+
+`scripts/gen-audio.py` produit bruitages et musiques depuis ElevenLabs, sur le
+modèle de `gen-sprites.py` : il ne décide de rien, il **lit** la liste du
+manifeste et la recoupe avec les appels réels du code
+(`AudioManager.sfx(...)`, `play_music(...)`). Une clé déclarée mais jamais
+jouée, ou l'inverse, arrête la génération avant la première dépense. Les
+prompts vivent dans `scripts/audio-prompts.json`.
+
+Quatre choses à savoir :
+
+- **Le PCM rendu par l'API est stéréo entrelacé**, alors que le format demandé
+  s'appelle `pcm_44100` et que rien dans les octets ne l'indique. Lu comme du
+  mono, chaque bruitage s'écrit, s'importe et se joue sans la moindre erreur —
+  il dure simplement deux fois trop longtemps et sonne une octave trop bas.
+  C'est arrivé sur les 21 premiers. `wavtool.downmix()` est le point de passage,
+  et le doublement exact de la durée demandée est le symptôme à guetter.
+- **La Music API exige un plan payant** (`paid_plan_required`), la Sound Effects
+  API non. Un compte gratuit produit les 21 bruitages et zéro musique ; le plan
+  Starter à 5 $ débloque les quatre pistes, qui en consomment 0,81.
+- **Les réponses brutes sont en cache** dans `.gen-cache/audio/` (non versionné),
+  et tout le post-traitement — rognage du silence, plafond de durée, fondus,
+  normalisation — est hors ligne : `--assemble-only` le rejoue autant qu'on veut
+  sans repayer. C'est ce qui a permis de rattraper la bévue stéréo pour rien.
+- **`--fake` valide la chaîne sans dépenser** : il rend du stéréo entrelacé lui
+  aussi, avec silence de tête et de queue, pour éprouver exactement le même
+  chemin de décodage que l'API.
+
+Le codec WAV (`scripts/wavtool.py`) est écrit à la main sur `array`/`struct`,
+comme `pngtool.py` pour le PNG : ni Pillow ni `ffmpeg` à installer.
+
+Deux détails côté moteur. Une musique ne boucle que si son `.import` porte
+`loop=true` : `scripts/gen-audio.py --loops` le pose, mais **après** le build qui
+crée ces `.import`, et il faut donc rebuilder derrière pour que le réimport
+prenne le changement — l'ordre est `build.sh` → `--loops` → `build.sh`. Et **le
+mode smoke charge les sons sans les jouer** — sous le pilote
+audio muet du headless, les lectures ne se terminent jamais et s'empilent
+jusqu'à un « resources still in use at exit » qui masquerait une vraie erreur
+dans `check.sh`.
 
 La police par défaut de Godot **ne rend pas les emoji** : ne pas en mettre dans
 l'UI (le HUD affiche des libellés courts pour cette raison).
