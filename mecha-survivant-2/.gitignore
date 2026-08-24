@@ -18,3 +18,4 @@
 /.pixellab-token
 scripts/__pycache__/
 /.retrodiffusion-token
+/.elevenlabs-token
