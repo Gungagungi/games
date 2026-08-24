@@ -36,9 +36,20 @@ func _load(dir: String, key: String) -> AudioStream:
 	_cache[key] = stream
 	return stream
 
+## Le mode smoke charge les sons mais ne les joue pas.
+##
+## Il tourne sous le pilote audio muet : les lectures qu'on y lance ne se
+## terminent jamais et s'empilent, jusqu'à un « resources still in use at
+## exit » qui masquerait une vraie erreur dans `check.sh`. Le flux est quand
+## même chargé, pour que le cache et la résolution d'extension restent
+## éprouvés ; c'est en revanche l'import de `scripts/build.sh` qui refuse un
+## fichier illisible, pas la partie smoke.
+func _silent() -> bool:
+	return GameState.smoke_test
+
 func sfx(sound: String, pitch_variation: float = 0.08) -> void:
 	var stream := _load(SFX_DIR, sound)
-	if stream == null:
+	if stream == null or _silent():
 		return
 	var p := _voices[_next_voice]
 	_next_voice = (_next_voice + 1) % VOICE_COUNT
@@ -51,7 +62,7 @@ func play_music(track: String) -> void:
 		return
 	var stream := _load(MUSIC_DIR, track)
 	_current_track = track
-	if stream == null:
+	if stream == null or _silent():
 		_music.stop()
 		return
 	_music.stream = stream
