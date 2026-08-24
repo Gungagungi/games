@@ -13,7 +13,7 @@ const PHASE_HP: Array[float] = [1000.0, 1300.0, 1600.0, 1900.0, 2300.0]
 
 const ULTIMATE_INVULN := 10.0
 const ULTIMATE_CHARGE := 3.0
-const ULTIMATE_RANGE := 420.0
+const ULTIMATE_RANGE := 294.0
 const ULTIMATE_RADIUS := 46.0
 const ULTIMATE_SPEED := 690.0      # v1 : 11.5 px/frame
 const ULTIMATE_TRIGGER := 0.01     # 1 % de la barre de phase 5
