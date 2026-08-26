@@ -87,6 +87,12 @@ scripts/preview-sheet.py titan                 # relire la planche, case par cas
 Une planche produite à la main ou par un autre outil reste parfaitement
 valable : le jeu ne connaît que le fichier, jamais son origine.
 
+## Polices — `assets/fonts/`
+
+| Fichier | Rôle |
+| --- | --- |
+| `MedievalSharp.ttf` | police par défaut de tout l'UI (licence SIL OFL, `MedievalSharp-OFL.txt`) |
+
 ## Effets sonores — `assets/sfx/`
 
 **Format** : `.wav` mono 44,1 kHz 16 bits, moins de 2 s. `.ogg` accepté aussi.

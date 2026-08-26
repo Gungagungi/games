@@ -269,5 +269,13 @@ audio muet du headless, les lectures ne se terminent jamais et s'empilent
 jusqu'à un « resources still in use at exit » qui masquerait une vraie erreur
 dans `check.sh`.
 
+## Police
+
+Toute l'UI est rendue en **MedievalSharp** (SIL OFL, `assets/fonts/`), posée en
+police par défaut du projet (`gui/theme/custom_font` dans `project.godot`) : un
+seul réglage habille écran-titre, HUD, choix de pouvoir et écran de fin. Changer
+de fonte décale la mise en page de `start_screen.gd`, donc les coordonnées de
+clic de `tools/scenarios/ms2-gameplay.js` — les revérifier sur une capture.
+
 La police par défaut de Godot **ne rend pas les emoji** : ne pas en mettre dans
 l'UI (le HUD affiche des libellés courts pour cette raison).

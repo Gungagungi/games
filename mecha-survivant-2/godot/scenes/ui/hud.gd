@@ -13,6 +13,7 @@ var _powers := Label.new()
 var _boss_box := VBoxContainer.new()
 var _boss_label := Label.new()
 var _boss_bar := ProgressBar.new()
+var _skills := SkillBar.new()
 
 func _ready() -> void:
 	layer = 10
@@ -41,6 +42,9 @@ func _ready() -> void:
 	_boss_box.add_child(_styled(_boss_bar, Color(0.9, 0.35, 0.25), 600.0))
 	_boss_box.visible = false
 	add_child(_boss_box)
+
+	_skills.player = player
+	add_child(_skills)
 
 	EventBus.player_stats_changed.connect(_refresh)
 	EventBus.wave_started.connect(_on_wave_started)

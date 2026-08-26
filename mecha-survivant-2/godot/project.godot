@@ -25,6 +25,10 @@ window/size/viewport_height=504
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
+[gui]
+
+theme/custom_font="res://assets/fonts/MedievalSharp.ttf"
+
 [importer_defaults]
 
 texture={
