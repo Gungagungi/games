@@ -20,8 +20,8 @@ func phase_count() -> int:
 	return phase_hp.size()
 
 ## Geste d'attaque, puis retour à l'idle. Sans planche déposée, sans effet —
-## les boss surchargent le nom pour leurs gestes propres (le Titan a une faux
-## et une charge en plus de son idle).
+## les boss surchargent le nom pour leurs gestes propres (charge, faux...) en
+## plus de leur idle.
 func _play_attack(anim: String = "attack") -> void:
 	_visual.play_once(anim, "idle")
 

@@ -14,3 +14,9 @@ signal player_died()
 signal upgrade_taken(id: String)
 signal screen_shake_requested(amount: float)
 signal float_text_requested(position: Vector2, text: String, color: Color)
+
+## Le Titan de la Mort n'est qu'un leurre à 1 % de vie : sa mort ne compte pas
+## comme `boss_defeated`, elle déclenche la réplique qui révèle le vrai combat.
+signal titan_decoy_defeated()
+signal dialogue_requested(speaker: String, text: String)
+signal dialogue_finished()

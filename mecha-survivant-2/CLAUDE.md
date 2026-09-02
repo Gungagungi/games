@@ -84,7 +84,7 @@ rendent cela tenable :
 ## Vérification
 
 `scripts/check.sh` joue quatre parties en accéléré, sans rendu, via le mode
-smoke de `scenes/main.gd` (`--headless -- --smoke [--wave=N|--titan]`) : le mech
+smoke de `scenes/main.gd` (`--headless -- --smoke [--wave=N]`) : le mech
 y est immortel et tire tout seul, sinon rien n'irait plus loin que la première
 vague. Toute erreur GDScript apparaît dans la sortie. C'est le test de
 non-régression du jeu — le lancer après chaque changement.
@@ -94,7 +94,7 @@ Pour le visuel, `tools/` (racine du dépôt) pilote un Chromium headless :
 ```sh
 scripts/serve.sh &
 node tools/capture.js http://localhost:8123/index.html tools/shots/ms2.png --wait 15000
-MS2_TITAN=1 node tools/capture.js http://localhost:8123/index.html tools/shots/titan.png \
+MS2_WAVE=20 node tools/capture.js http://localhost:8123/index.html tools/shots/final.png \
   --scenario tools/scenarios/ms2-gameplay.js --no-step
 ```
 
@@ -114,28 +114,58 @@ Autoloads (`autoload/`) : `EventBus` (tous les signaux transverses),
 `GameState` (vague, tier, mode smoke), `AudioManager`, `UpgradeManager`.
 
 - `systems/wave_manager.gd` — `5 + n*2` ennemis, `tier = floor((n-1)/2)`, boss
-  si `n % 5 == 0`, méga-boss en 15, Titan en 20.
-- `systems/enemy_stats.gd` — stats des cinq ennemis et leur scaling par tier.
-  **Les vitesses sont en pixels/seconde** : la v1 comptait en pixels/frame, tout
-  a été multiplié par 60, timers compris.
+  si `n % 5 == 0` (mapping explicite `BOSS_BY_WAVE` pour 5/10/15). La vague 20
+  est spéciale : voir « Le faux Titan et le vrai combat final » ci-dessous.
+- `systems/enemy_stats.gd` — stats des six ennemis ordinaires et leur scaling
+  par tier. **Les vitesses sont en pixels/seconde** : la v1 comptait en
+  pixels/frame, tout a été multiplié par 60, timers compris.
 - `scenes/enemies/enemy_base.gd` — chaque variante surcharge `_behaviour()`, là
   où la v1 faisait un `switch (e.type)`. `is_damage_immune()` est le **point de
-  passage unique** de toute immunité (déphasage des ombres, bouclier du
-  méga-boss, invulnérabilité ultime du Titan) : toute nouvelle source de dégâts
-  doit l'interroger.
+  passage unique** de toute immunité (déphasage des ombres, bouclier d'un boss
+  en phase) : toute nouvelle source de dégâts doit l'interroger.
+- `scenes/enemies/fire_skeleton.gd` — squelette de feu (vagues 1-19, jamais
+  pendant un combat de boss puisque le pool ordinaire ne tourne pas alors).
+  Ses flèches et son contact embrasent le joueur (`Player.ignite()`, dégâts
+  continus hors bouclier/invulnérabilité de coup) ; le laisser trop longtemps
+  sans riposte (`ENRAGE_DELAY` sans dégât reçu) lui vaut une boule de feu à
+  la moitié de la vie max.
 - `scenes/bosses/boss_base.gd` — machine à états de phases : quand la barre
   tombe à zéro et qu'il reste une phase, elle **repart à plein** et les
   multiplicateurs montent. `_telegraph_strike()` y est central : un télégraphe
   survit au boss qui l'a lancé, sa closure ne doit donc capturer que des
   valeurs, jamais `self` ni `player` — un boss tué pendant l'annonce faisait
   planter l'impact.
-- `scenes/bosses/titan.gd` — cinq phases. En phase finale, la barre **ne peut
-  pas descendre sous 1 %** tant que l'ultime n'a pas eu lieu : un coup assez
-  fort la traverserait d'un trait et le Titan mourrait sans jamais lancer son
-  attaque. L'ultime lui donne 10 s d'immunité totale, coupe toutes ses autres
-  attaques, et le **recale à `ULTIMATE_RANGE` du joueur** (`_anchor_for_ultimate`) — collé
-  à lui, la boule le touchait dans la frame du tir sans être visible. Elle
-  s'esquive en se déplaçant, pas en dashant, et tue net sauf bouclier actif.
+
+### Le faux Titan et le vrai combat final (vague 20)
+
+Le Titan de la Mort annoncé depuis la v1 n'a en réalité qu'1 point de vie
+(`scenes/bosses/titan_decoy.gd`) : sa barre s'affiche pleine à l'apparition
+puis se vide au premier coup. Sa mort ne passe **pas** par `die()` /
+`EventBus.boss_defeated` (qui ferait conclure la vague en victoire) mais par
+`EventBus.titan_decoy_defeated`, que `WaveManager` relaie en
+`EventBus.dialogue_requested` — une réplique affichée par
+`scenes/ui/dialogue_box.gd`, qui coupe `GameState.running` (donc joueur,
+ennemis et vagues, tous gardés par ce flag) jusqu'au clic. C'est seulement à
+`EventBus.dialogue_finished` que `WaveManager` fait entrer le vrai boss final,
+`scenes/bosses/galaxy_boss.gd` (trois phases). En mode smoke, la réplique est
+sautée instantanément, sinon `check.sh` resterait bloqué en attente d'un clic.
+
+Piège rencontré : faire naître le Boss Galaxie **synchrone** avec la mort du
+leurre plante le moteur (« Can't change this state while flushing queries »),
+parce que toute la chaîne remonte depuis la collision d'une balle — ajouter
+une `Area2D` en pleine mise à jour physique n'est pas permis. `WaveManager`
+ajoute donc le boss via `arena.call_deferred("add_child", boss)`, dans
+`_spawn_boss_script()`, utilisé pour **tous** les spawns de boss (pas
+seulement ce cas) pour rester cohérent.
+
+Les trois autres nouveaux boss (vagues 5/10/15) n'ont pas cette contrainte :
+`scenes/bosses/giant_knight.gd` (Chevalier Géant, corps-à-corps),
+`scenes/bosses/sewer_monster.gd` (Monstre des Égouts, poison + invocations) et
+`scenes/bosses/zombie_titan.gd` (Zombie Titan, deux phases, invocations +
+ponction de vie) remplacent les anciens gravedigger / bone_colossus / plague /
+mega_boss, retirés avec leurs sprites laissés dans `assets/sprites/` (non
+référencés, mais toujours utilisables) — voir « Assets ».
+
 - `scenes/fx/sprite_or_shape.gd` — visuel tolérant à l'absence d'asset : sprite
   s'il existe, placeholder géométrique sinon. C'est ce qui permet de livrer le
   jeu jouable avant les assets. Le même principe vaut hors des entités : le sol
@@ -145,11 +175,17 @@ Autoloads (`autoload/`) : `EventBus` (tous les signaux transverses),
 
 ## Assets
 
-**Les 24 planches de sprites sont là**, boss compris ; plus un seul placeholder
-géométrique à l'écran. **Les 21 bruitages et les 4 musiques aussi** : le jeu est
-complet en image et en son (voir « Audio »). `godot/assets/MANIFEST.md` donne la liste exacte des fichiers attendus, leurs
-dimensions et leur découpage. Déposer un fichier au bon nom suffit à le brancher,
-sans toucher au code.
+**Les 24 planches de sprites d'origine sont là**, dont cinq boss aujourd'hui
+retirés du jeu (gravedigger, bone_colossus, plague, mega_boss, titan — ce
+dernier réutilisé tel quel par `titan_decoy.gd`, voir plus haut). **Les 21
+bruitages et les 4 musiques aussi** (voir « Audio »). En revanche, les quatre
+nouveaux boss (Chevalier Géant, Monstre des Égouts, Zombie Titan, Boss
+Galaxie) et le squelette de feu n'ont pas de planche dédiée : ils tournent en
+placeholder géométrique via `sprite_or_shape.gd`, sans entrée dans `SHEETS` ni
+dans le manifeste — ce n'est pas une omission, juste pas encore fait.
+`godot/assets/MANIFEST.md` donne la liste exacte des fichiers attendus pour ce
+qui existe, leurs dimensions et leur découpage. Déposer un fichier au bon nom
+suffit à le brancher, sans toucher au code.
 
 `scripts/gen-sprites.py` produit ces planches depuis un générateur externe.
 `--provider retrodiffusion` (par défaut) ou `--provider pixellab` : les deux

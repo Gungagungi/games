@@ -1,6 +1,6 @@
 class_name GameOverScreen
 extends CanvasLayer
-## Fin de partie — défaite ou victoire après le Titan.
+## Fin de partie — défaite ou victoire après le Boss Galaxie.
 
 signal restart_requested()
 
@@ -35,7 +35,7 @@ func _ready() -> void:
 
 func show_result(victory: bool, wave: int) -> void:
 	if victory:
-		_title.text = "TITAN TERRASSÉ"
+		_title.text = "BOSS GALAXIE VAINCU"
 		_title.add_theme_color_override("font_color", Color(0.55, 1.0, 0.65))
 		_detail.text = "Les 20 vagues sont tombées."
 	else:

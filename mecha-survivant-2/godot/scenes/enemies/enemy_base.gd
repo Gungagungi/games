@@ -5,8 +5,8 @@ extends Area2D
 ## Remplace le `switch (e.type)` de la v1 : chaque variante surcharge
 ## `_behaviour()` pour son déplacement et ses attaques. `is_damage_immune()`
 ## est le point de passage unique de toute immunité (déphasage des ombres,
-## bouclier du méga-boss, invulnérabilité ultime du Titan) — **toute** source
-## de dégâts doit l'interroger.
+## bouclier temporaire d'un boss en phase) — **toute** source de dégâts doit
+## l'interroger.
 
 const CONTACT_INTERVAL := 0.5
 

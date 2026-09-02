@@ -1,10 +1,8 @@
 class_name StartScreen
 extends CanvasLayer
-## Écran d'accueil : titre, sélecteur de vague de départ (1-20) et le raccourci
-## de test « Titan à 5 % » conservé de la v1.
+## Écran d'accueil : titre et sélecteur de vague de départ (1-20).
 
 signal start_requested(wave: int)
-signal titan_test_requested()
 
 var _wave_select := OptionButton.new()
 
@@ -50,11 +48,3 @@ func _ready() -> void:
 		AudioManager.sfx("ui_click")
 		start_requested.emit(_wave_select.get_item_id(_wave_select.selected)))
 	panel.add_child(play)
-
-	var test := Button.new()
-	test.text = "TEST : TITAN À 5 %"
-	test.custom_minimum_size = Vector2(0, 36)
-	test.pressed.connect(func() -> void:
-		AudioManager.sfx("ui_click")
-		titan_test_requested.emit())
-	panel.add_child(test)

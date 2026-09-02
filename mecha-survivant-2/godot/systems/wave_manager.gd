@@ -1,10 +1,21 @@
 class_name WaveManager
 extends Node
 ## Orchestration des vagues, à l'identique de la v1 :
-## `5 + n*2` ennemis, `tier = floor((n-1)/2)`, boss toutes les 5 vagues,
-## méga-boss en 15, Titan en 20.
+## `5 + n*2` ennemis, `tier = floor((n-1)/2)`, boss toutes les 5 vagues.
+##
+## Le boss de vague 20 se joue en deux temps : le Titan de la Mort annoncé
+## depuis la v1 n'a en réalité qu'1 point de vie — un leurre qui meurt au
+## premier coup. Sa mort ne déclenche pas `boss_defeated` (voir
+## `titan_decoy.gd`) mais une réplique pausée ; c'est seulement une fois le
+## dialogue refermé que le vrai combat final, le Boss Galaxie, prend le relais.
 
-const BOSS_ROTATION: Array[String] = ["gravedigger", "bone_colossus", "plague"]
+const BOSS_BY_WAVE := {
+	5: "res://scenes/bosses/giant_knight.gd",
+	10: "res://scenes/bosses/sewer_monster.gd",
+	15: "res://scenes/bosses/zombie_titan.gd",
+}
+const TITAN_DECOY_SCRIPT := "res://scenes/bosses/titan_decoy.gd"
+const GALAXY_BOSS_SCRIPT := "res://scenes/bosses/galaxy_boss.gd"
 const SPAWN_MARGIN := 60.0
 
 var arena: Node2D
@@ -19,10 +30,13 @@ const SCRIPTS := {
 	"risen": "res://scenes/enemies/risen.gd",
 	"shade": "res://scenes/enemies/shade.gd",
 	"flameling": "res://scenes/enemies/flameling.gd",
+	"fire_skeleton": "res://scenes/enemies/fire_skeleton.gd",
 }
 
 func _ready() -> void:
 	EventBus.boss_defeated.connect(_on_boss_defeated)
+	EventBus.titan_decoy_defeated.connect(_on_titan_decoy_defeated)
+	EventBus.dialogue_finished.connect(_on_dialogue_finished)
 
 func start_wave(n: int) -> void:
 	GameState.wave = n
@@ -79,17 +93,19 @@ func _edge_position() -> Vector2:
 		_: return Vector2(rect.x + SPAWN_MARGIN, randf() * rect.y)
 
 func _spawn_boss(n: int) -> void:
-	var boss: EnemyBase
-	if n == GameState.FINAL_WAVE:
-		boss = load("res://scenes/bosses/titan.gd").new()
-	elif n == GameState.MEGA_BOSS_WAVE:
-		boss = load("res://scenes/bosses/mega_boss.gd").new()
-	else:
-		var key: String = BOSS_ROTATION[(n / GameState.BOSS_EVERY - 1) % BOSS_ROTATION.size()]
-		boss = load("res://scenes/bosses/%s.gd" % key).new()
+	var path: String = TITAN_DECOY_SCRIPT if n == GameState.FINAL_WAVE \
+		else BOSS_BY_WAVE.get(n, "res://scenes/bosses/giant_knight.gd")
+	_spawn_boss_script(path)
+
+func _spawn_boss_script(path: String) -> void:
+	var boss: EnemyBase = load(path).new()
 	boss.configure_boss(GameState.tier())
 	boss.position = arena.get_viewport_rect().size * Vector2(0.5, 0.25)
-	arena.add_child(boss)
+	# `call_deferred` : le Boss Galaxie peut naître ici en réaction directe à la
+	# mort du leurre, elle-même remontée depuis la collision d'une balle. Ajouter
+	# une Area2D en pleine mise à jour physique fait planter le moteur
+	# (« flushing queries ») ; différer l'ajout au prochain tour de boucle l'évite.
+	arena.call_deferred("add_child", boss)
 	_boss_alive = true
 	AudioManager.sfx("boss_spawn")
 
@@ -98,3 +114,14 @@ func _on_boss_defeated() -> void:
 	if wave_active and _living_enemies() <= 1:
 		wave_active = false
 		EventBus.wave_cleared.emit(GameState.wave)
+
+## Le leurre meurt en un coup sans jamais passer par `boss_defeated` — la
+## vague reste active, en pause le temps de la réplique.
+func _on_titan_decoy_defeated() -> void:
+	_boss_alive = false
+	EventBus.dialogue_requested.emit("Titan de la Mort",
+		"Ha... tu crois m'avoir vaincu ? Je ne suis même pas le plus puissant d'entre eux.")
+
+func _on_dialogue_finished() -> void:
+	if wave_active and GameState.wave == GameState.FINAL_WAVE and not _boss_alive:
+		_spawn_boss_script(GALAXY_BOSS_SCRIPT)

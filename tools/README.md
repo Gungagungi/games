@@ -54,11 +54,11 @@ node tools/capture.js mecha-survivant/index.html tools/shots/ultime.png \
 ```sh
 node tools/capture.js http://localhost:8123/index.html tools/shots/ms2.png --wait 15000
 
-MS2_TITAN=1 node tools/capture.js http://localhost:8123/index.html tools/shots/titan.png \
+MS2_WAVE=20 node tools/capture.js http://localhost:8123/index.html tools/shots/final.png \
   --scenario tools/scenarios/ms2-gameplay.js --no-step
 ```
 
 `scenarios/ms2-gameplay.js` lance une partie et joue quelques secondes.
-`MS2_WAVE=N` choisit la vague de départ, `MS2_TITAN=1` saute au combat final.
+`MS2_WAVE=N` choisit la vague de départ.
 Comme l'UI est peinte dans le canvas, il clique par **coordonnées** relevées sur
 une capture : les réajuster si l'écran-titre du jeu change.

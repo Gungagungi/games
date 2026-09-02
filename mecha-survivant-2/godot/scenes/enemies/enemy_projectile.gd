@@ -1,8 +1,8 @@
 class_name EnemyProjectile
 extends Node2D
 ## Projectile ennemi générique : flèche, boule de feu, crachat empoisonné.
-## Un `flag` optionnel marque le projectile ultime du Titan, qui suit un
-## chemin de dégâts distinct (`take_ultimate_damage`).
+## Un `flag` optionnel marque un projectile instantané et imparable, qui suit
+## un chemin de dégâts distinct (`take_ultimate_damage`).
 
 var direction := Vector2.RIGHT
 var speed := 300.0
@@ -11,6 +11,9 @@ var radius := 5.0
 var color := Color.WHITE
 var ultimate := false
 var poison := false
+## Embrasement appliqué au joueur à l'impact (squelette de feu), 0 = aucun.
+var ignite_dps := 0.0
+var ignite_duration := 0.0
 var life := 5.0
 ## Bruitage joué quand le projectile touche le joueur, vide si aucun.
 var impact_sfx := ""
@@ -50,6 +53,8 @@ func _process(delta: float) -> void:
 			p.take_ultimate_damage()
 		else:
 			p.take_damage(damage)
+		if ignite_dps > 0.0:
+			p.ignite(ignite_dps, ignite_duration)
 		if impact_sfx != "":
 			AudioManager.sfx(impact_sfx)
 		queue_free()

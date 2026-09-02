@@ -44,6 +44,14 @@ const DEFS: Dictionary = {
 		"color": Color(0.95, 0.48, 0.18),
 		"min_wave": 2,
 	},
+	"fire_skeleton": {
+		"radius": 13.0, "radius_per_tier": 0.0,
+		"hp": 20.0, "hp_per_tier": 11.0,
+		"speed": 66.0, "speed_per_tier": 5.0,
+		"damage": 5.0, "damage_per_tier": 1.5,
+		"color": Color(0.95, 0.45, 0.15),
+		"min_wave": 1,
+	},
 }
 
 ## Types disponibles à cette vague. Comme dans la v1, le flameling est exclu

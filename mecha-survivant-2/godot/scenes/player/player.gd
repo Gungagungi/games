@@ -29,6 +29,8 @@ var multi_shot := 1
 var aoe_unlocked := false
 
 var invuln := 0.0
+var burn_time := 0.0
+var burn_dps := 0.0
 var dash_time := 0.0
 var dash_cd := 0.0
 var aoe_cd := 0.0
@@ -69,6 +71,8 @@ func reset_stats() -> void:
 	multi_shot = 1
 	aoe_unlocked = false
 	invuln = 0.0
+	burn_time = 0.0
+	burn_dps = 0.0
 	dash_time = 0.0
 	dash_cd = 0.0
 	aoe_cd = 0.0
@@ -85,6 +89,11 @@ func _physics_process(delta: float) -> void:
 
 func _tick_timers(delta: float) -> void:
 	invuln = maxf(0.0, invuln - delta)
+	if burn_time > 0.0:
+		burn_time = maxf(0.0, burn_time - delta)
+		hp -= burn_dps * delta
+		if hp <= 0.0:
+			die()
 	dash_cd = maxf(0.0, dash_cd - delta)
 	aoe_cd = maxf(0.0, aoe_cd - delta)
 	fire_cd = maxf(0.0, fire_cd - delta)
@@ -192,8 +201,17 @@ func take_damage(amount: float) -> void:
 	if hp <= 0.0:
 		die()
 
-## Attaque ultime du Titan : tue net, sauf bouclier actif — qui est alors
-## entièrement consommé. L'invulnérabilité du dash ne protège pas.
+## Embrasement (squelette de feu) : dégâts continus tant que `burn_time` court,
+## sans passer par le bouclier ni l'invulnérabilité de coup — seule
+## l'invulnérabilité empêche l'embrasement de prendre au moment de l'impact.
+func ignite(dps: float, duration: float) -> void:
+	if not alive or invuln > 0.0:
+		return
+	burn_dps = dps
+	burn_time = maxf(burn_time, duration)
+
+## Attaque instantanée et imparable : tue net, sauf bouclier actif — qui est
+## alors entièrement consommé. L'invulnérabilité du dash ne protège pas.
 func take_ultimate_damage() -> void:
 	if not alive:
 		return

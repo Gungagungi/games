@@ -15,6 +15,7 @@ var hud: Hud
 var start_screen: StartScreen
 var upgrade_screen: UpgradeScreen
 var game_over_screen: GameOverScreen
+var dialogue_box: DialogueBox
 
 var _smoke_left := SMOKE_DURATION
 
@@ -31,9 +32,10 @@ func _ready() -> void:
 	add_child(upgrade_screen)
 	game_over_screen = GameOverScreen.new()
 	add_child(game_over_screen)
+	dialogue_box = DialogueBox.new()
+	add_child(dialogue_box)
 
 	start_screen.start_requested.connect(_begin_game)
-	start_screen.titan_test_requested.connect(_begin_titan_test)
 	upgrade_screen.upgrade_chosen.connect(_on_upgrade_chosen)
 	game_over_screen.restart_requested.connect(_back_to_title)
 	EventBus.wave_cleared.connect(_on_wave_cleared)
@@ -50,12 +52,8 @@ func _ready() -> void:
 		for a in args:
 			if a.begins_with("--wave="):
 				wave = int(a.trim_prefix("--wave="))
-		if "--titan" in args:
-			print("[smoke] départ : Titan en phase finale")
-			_begin_titan_test()
-		else:
-			print("[smoke] départ vague %d" % wave)
-			_begin_game(wave)
+		print("[smoke] départ vague %d" % wave)
+		_begin_game(wave)
 
 func _process(delta: float) -> void:
 	if not GameState.smoke_test:
@@ -120,13 +118,6 @@ func _apply_starting_scaling(start_wave: int) -> void:
 		var choices := UpgradeManager.draw_choices(arena.player, 1)
 		if not choices.is_empty():
 			UpgradeManager.apply(choices[0]["id"], arena.player)
-
-func _begin_titan_test() -> void:
-	_begin_game(GameState.FINAL_WAVE)
-	for e in get_tree().get_nodes_in_group("enemies"):
-		var titan := e as Titan
-		if titan != null:
-			titan.jump_to_final_stand()
 
 func _on_wave_cleared(n: int) -> void:
 	if n >= GameState.FINAL_WAVE:
