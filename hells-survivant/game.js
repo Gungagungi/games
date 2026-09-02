@@ -10,21 +10,21 @@ const H = canvas.height;
 const SAVE_KEY = 'hells-survivant-save';
 
 const SWORDS = [
-  { name: 'Poings nus', cost: 0, dmg: 3, range: 34 },
-  { name: 'Épée rouillée', cost: 25, dmg: 6, range: 40 },
-  { name: 'Épée en acier', cost: 75, dmg: 11, range: 44 },
-  { name: 'Épée enchantée', cost: 180, dmg: 18, range: 48 },
-  { name: 'Lame des enfers', cost: 400, dmg: 30, range: 52 },
-  { name: 'Excalibur déchue', cost: 900, dmg: 50, range: 58 },
+  { name: 'Poings nus', cost: 0, dmg: 3, range: 70 },
+  { name: 'Épée rouillée', cost: 25, dmg: 6, range: 82 },
+  { name: 'Épée en acier', cost: 75, dmg: 11, range: 92 },
+  { name: 'Épée enchantée', cost: 180, dmg: 18, range: 102 },
+  { name: 'Lame des enfers', cost: 400, dmg: 30, range: 112 },
+  { name: 'Excalibur déchue', cost: 900, dmg: 50, range: 126 },
 ];
 
 const ARMORS = [
-  { name: 'Peau nue', cost: 0, hp: 20, def: 0 },
-  { name: 'Haillons', cost: 25, hp: 35, def: 0.05 },
-  { name: 'Cuir clouté', cost: 75, hp: 55, def: 0.12 },
-  { name: 'Cotte de mailles', cost: 180, hp: 85, def: 0.20 },
-  { name: 'Armure infernale', cost: 400, hp: 130, def: 0.30 },
-  { name: 'Armure du Damné', cost: 900, hp: 200, def: 0.40 },
+  { name: 'Peau nue', cost: 0, hp: 50, def: 0 },
+  { name: 'Haillons', cost: 25, hp: 65, def: 0.05 },
+  { name: 'Cuir clouté', cost: 75, hp: 85, def: 0.12 },
+  { name: 'Cotte de mailles', cost: 180, hp: 115, def: 0.20 },
+  { name: 'Armure infernale', cost: 400, hp: 160, def: 0.30 },
+  { name: 'Armure du Damné', cost: 900, hp: 230, def: 0.40 },
 ];
 
 function loadSave() {
@@ -101,6 +101,7 @@ let waveIntermission = 0;
 let enemiesToSpawn = 0;
 let spawnTimer = 0;
 let runGoldEarned = 0;
+let shopReturnState = 'menu';
 
 const keysPressed = {};
 let mouseX = W / 2, mouseY = H / 2;
@@ -109,10 +110,15 @@ document.addEventListener('keydown', (e) => {
   keysPressed[e.key.toLowerCase()] = true;
   if (state === 'menu') handleMenuKey(e.key.toLowerCase());
   else if (state === 'playing' && (e.key === ' ')) doAttack();
-  if (e.key.toLowerCase() === 'i' && (state === 'playing' || state === 'shop')) {
-    state = state === 'shop' ? 'playing' : 'shop';
+  if (e.key.toLowerCase() === 'i' && (state === 'playing' || state === 'shop' || state === 'menu')) {
+    if (state === 'shop') {
+      state = shopReturnState;
+    } else {
+      shopReturnState = state;
+      state = 'shop';
+    }
   }
-  if (e.key === 'Escape' && state === 'shop') state = 'playing';
+  if (e.key === 'Escape' && state === 'shop') state = shopReturnState;
   if (e.key === 'Enter' && state === 'gameover') resetToMenu();
 });
 document.addEventListener('keyup', (e) => { keysPressed[e.key.toLowerCase()] = false; });
@@ -162,7 +168,7 @@ function handleMenuKey(key) {
   }
 }
 
-const menuButtons = { diffs: [], elems: [], start: null };
+const menuButtons = { diffs: [], elems: [], start: null, shop: null };
 
 function handleMenuClick() {
   for (const b of menuButtons.diffs) {
@@ -180,6 +186,12 @@ function handleMenuClick() {
   const b = menuButtons.start;
   if (b && mouseX >= b.x && mouseX <= b.x + b.w && mouseY >= b.y && mouseY <= b.y + b.h) {
     startRun();
+    return;
+  }
+  const s = menuButtons.shop;
+  if (s && mouseX >= s.x && mouseX <= s.x + s.w && mouseY >= s.y && mouseY <= s.y + s.h) {
+    shopReturnState = 'menu';
+    state = 'shop';
   }
 }
 
@@ -443,7 +455,7 @@ const shopButtons = { sword: null, armor: null, close: null };
 function handleShopClick() {
   if (shopButtons.sword && withinButton(shopButtons.sword)) tryBuySword();
   if (shopButtons.armor && withinButton(shopButtons.armor)) tryBuyArmor();
-  if (shopButtons.close && withinButton(shopButtons.close)) state = 'playing';
+  if (shopButtons.close && withinButton(shopButtons.close)) state = shopReturnState;
 }
 
 function withinButton(b) {
@@ -533,7 +545,7 @@ function drawPlayer() {
     const angle = baseAngle + swing;
     const range = SWORDS[save.swordTier].range;
     ctx.strokeStyle = '#e8e8e8';
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 7;
     ctx.beginPath();
     ctx.moveTo(0, 0);
     ctx.lineTo(Math.cos(angle) * range, Math.sin(angle) * range);
@@ -542,7 +554,7 @@ function drawPlayer() {
     const angle = Math.atan2(player.facingY, player.facingX);
     const range = SWORDS[save.swordTier].range * 0.6;
     ctx.strokeStyle = '#c8c8c8';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.moveTo(Math.cos(angle) * 10, Math.sin(angle) * 10);
     ctx.lineTo(Math.cos(angle) * range, Math.sin(angle) * range);
@@ -701,9 +713,9 @@ function drawMenu() {
     if (col >= cols) { col = 0; row++; }
   }
 
-  // bouton start
-  const btnW = 240, btnH = 50;
-  const btnX = W / 2 - btnW / 2, btnY = 420;
+  // boutons start + boutique
+  const btnW = 220, btnH = 50, btnGap = 20, btnY = 420;
+  const btnX = W / 2 - btnW - btnGap / 2;
   ctx.fillStyle = '#7a0d18';
   ctx.fillRect(btnX, btnY, btnW, btnH);
   ctx.strokeStyle = '#ffd23c';
@@ -711,8 +723,19 @@ function drawMenu() {
   ctx.strokeRect(btnX, btnY, btnW, btnH);
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 18px "Courier New", monospace';
-  ctx.fillText('Entrer dans l\'arène', W / 2, btnY + btnH / 2 + 6);
+  ctx.fillText('Entrer dans l\'arène', btnX + btnW / 2, btnY + btnH / 2 + 6);
   menuButtons.start = { x: btnX, y: btnY, w: btnW, h: btnH };
+
+  const shopX = W / 2 + btnGap / 2;
+  ctx.fillStyle = '#4a1a5a';
+  ctx.fillRect(shopX, btnY, btnW, btnH);
+  ctx.strokeStyle = '#c8a020';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(shopX, btnY, btnW, btnH);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 18px "Courier New", monospace';
+  ctx.fillText('Boutique', shopX + btnW / 2, btnY + btnH / 2 + 6);
+  menuButtons.shop = { x: shopX, y: btnY, w: btnW, h: btnH };
 
   // équipement actuel
   ctx.font = '13px "Courier New", monospace';
@@ -819,8 +842,9 @@ function update() {
 }
 
 function draw() {
-  if (state === 'menu') {
+  if (state === 'menu' || (state === 'shop' && shopReturnState === 'menu')) {
     drawMenu();
+    if (state === 'shop') drawShop();
     return;
   }
 
