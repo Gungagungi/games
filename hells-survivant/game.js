@@ -64,20 +64,34 @@ const DIFFICULTIES = {
 const DIFFICULTY_ORDER = ['facile', 'intermediaire', 'difficile'];
 
 const ELEMENTS = {
-  cendres: { label: 'Cendres', color: '#9a9a9a', glow: '#c8c8c8', hpMult: 0.7, dmgMult: 0.8, speedMult: 1.5, trait: 'Rapides et fragiles' },
-  sang: { label: 'Sang', color: '#7a0d18', glow: '#c81e2e', hpMult: 1, dmgMult: 1.1, speedMult: 1, lifesteal: 0.35, trait: 'Se soignent en frappant' },
-  violence: { label: 'Violence', color: '#c2410c', glow: '#ff7a3c', hpMult: 0.9, dmgMult: 1.6, speedMult: 1.1, trait: 'Dégâts très élevés' },
-  terre: { label: 'Terre', color: '#5a3a1e', glow: '#8a6238', hpMult: 1.9, dmgMult: 1, speedMult: 0.6, trait: 'Très résistants, lents' },
-  feu: { label: 'Feu', color: '#ff8c1a', glow: '#ffd23c', hpMult: 1, dmgMult: 1, speedMult: 1, burn: true, trait: 'Laissent brûler leur cible' },
-  destruction: { label: 'Destruction', color: '#3c0a5a', glow: '#a020f0', hpMult: 1.4, dmgMult: 1.4, speedMult: 0.9, aoe: true, trait: 'Choc destructeur en zone' },
+  cendres: { label: 'Cendres', color: '#9a9a9a', glow: '#c8c8c8', hpMult: 0.7, dmgMult: 0.8, speedMult: 1.5, trait: 'Rapides, fragiles', gaunt: true },
+  sang: { label: 'Sang', color: '#7a0d18', glow: '#c81e2e', hpMult: 1, dmgMult: 1.1, speedMult: 1, lifesteal: 0.35, trait: 'Vol de vie', bloodyEyes: true },
+  violence: { label: 'Violence', color: '#c2410c', glow: '#ff7a3c', hpMult: 0.9, dmgMult: 1.6, speedMult: 1.1, trait: 'Dégâts élevés' },
+  terre: { label: 'Terre', color: '#5a3a1e', glow: '#8a6238', hpMult: 1.9, dmgMult: 1, speedMult: 0.6, trait: 'Résistants, lents', cracked: true },
+  feu: { label: 'Feu', color: '#ff8c1a', glow: '#ffd23c', hpMult: 1, dmgMult: 1, speedMult: 1, burn: true, trait: 'Brûlure', fireAura: true },
+  destruction: { label: 'Destruction', color: '#2a0a0a', glow: '#ff2020', hpMult: 1.4, dmgMult: 1.4, speedMult: 0.9, aoe: true, trait: 'Choc en zone', scarred: true },
+  ombre: { label: 'Ombre', color: '#3c1a5a', glow: '#a855f7', hpMult: 1, dmgMult: 0.9, speedMult: 0.9, ranged: true, trait: 'Tirs à distance' },
 };
-const ELEMENT_ORDER = ['cendres', 'sang', 'violence', 'terre', 'feu', 'destruction'];
+const ELEMENT_ORDER = ['cendres', 'sang', 'violence', 'terre', 'feu', 'destruction', 'ombre'];
+
+const BOSS_NAMES = {
+  cendres: 'Chevalier de cendres',
+  sang: 'Golem de sang',
+  violence: 'Soldat blessé',
+  terre: 'Voix Putréfiée',
+  feu: 'Créature infernale',
+  destruction: 'Destruction',
+  ombre: "Sbire de l'ombre",
+};
+const FINAL_BOSS_ELEMENT = 'ombre';
+const FINAL_BOSS_WAVE = 30;
+const FINAL_BOSS_NAME = 'Nécromancien Putréfié';
 
 // ---------------------------------------------------------------------------
 // État global
 // ---------------------------------------------------------------------------
 
-let state = 'menu'; // 'menu' | 'playing' | 'shop' | 'gameover'
+let state = 'menu'; // 'menu' | 'playing' | 'shop' | 'gameover' | 'victory'
 let selection = { difficulty: 'intermediaire', element: 'sang' };
 
 const player = {
@@ -95,6 +109,7 @@ const player = {
 };
 
 let enemies = [];
+let projectiles = []; // projectiles tirés par les monstres de l'ombre
 let particles = []; // texte flottant (or, dégâts)
 let waveNumber = 1;
 let waveIntermission = 0;
@@ -119,7 +134,7 @@ document.addEventListener('keydown', (e) => {
     }
   }
   if (e.key === 'Escape' && state === 'shop') state = shopReturnState;
-  if (e.key === 'Enter' && state === 'gameover') resetToMenu();
+  if (e.key === 'Enter' && (state === 'gameover' || state === 'victory')) resetToMenu();
 });
 document.addEventListener('keyup', (e) => { keysPressed[e.key.toLowerCase()] = false; });
 canvas.addEventListener('mousemove', (e) => {
@@ -137,7 +152,7 @@ canvas.addEventListener('mousedown', () => {
     handleShopClick();
   } else if (state === 'menu') {
     handleMenuClick();
-  } else if (state === 'gameover') {
+  } else if (state === 'gameover' || state === 'victory') {
     resetToMenu();
   }
 });
@@ -203,6 +218,7 @@ function startRun() {
   player.y = H / 2;
   player.burnTimer = 0;
   enemies = [];
+  projectiles = [];
   particles = [];
   waveNumber = 1;
   waveIntermission = 60;
@@ -227,7 +243,11 @@ function isBossWave() {
   return waveNumber % 5 === 0;
 }
 
-function spawnEnemy(isBoss) {
+function isFinalBossWave() {
+  return selection.element === FINAL_BOSS_ELEMENT && waveNumber === FINAL_BOSS_WAVE;
+}
+
+function spawnEnemy(isBoss, isFinal) {
   const diff = DIFFICULTIES[selection.difficulty];
   const elem = ELEMENTS[selection.element];
   const side = Math.floor(Math.random() * 4);
@@ -242,29 +262,34 @@ function spawnEnemy(isBoss) {
   const baseDmg = 4 * elem.dmgMult * diff.dmgMult;
   const baseSpeed = 1.3 * elem.speedMult;
 
-  const mult = isBoss ? 8 : 1;
-  const dmgMult = isBoss ? 2 : 1;
+  const mult = isFinal ? 16 : isBoss ? 8 : 1;
+  const dmgMult = isFinal ? 2.5 : isBoss ? 2 : 1;
 
   enemies.push({
     x, y,
-    radius: isBoss ? 34 : 15,
+    radius: isFinal ? 42 : isBoss ? 34 : 15,
     hp: baseHp * mult,
     maxHp: baseHp * mult,
     dmg: baseDmg * dmgMult,
     speed: isBoss ? baseSpeed * 0.7 : baseSpeed,
     element: selection.element,
     isBoss,
+    isFinal,
     attackCooldown: 0,
+    shootCooldown: 60,
     hitFlash: 0,
     chargeTimer: isBoss ? 180 + Math.random() * 60 : 0,
     charging: false,
-    goldValue: Math.round((isBoss ? 40 : 4) * diff.goldMult * (1 + waveNumber * 0.05)),
+    goldValue: Math.round((isFinal ? 300 : isBoss ? 40 : 4) * diff.goldMult * (1 + waveNumber * 0.05)),
   });
 }
 
 function startWave() {
-  if (isBossWave()) {
-    spawnEnemy(true);
+  if (isFinalBossWave()) {
+    spawnEnemy(true, true);
+    enemiesToSpawn = 0;
+  } else if (isBossWave()) {
+    spawnEnemy(true, false);
     enemiesToSpawn = 0;
   } else {
     enemiesToSpawn = currentEnemyCount();
@@ -281,7 +306,7 @@ function updateWaves() {
   if (enemiesToSpawn > 0) {
     spawnTimer--;
     if (spawnTimer <= 0) {
-      spawnEnemy(false);
+      spawnEnemy(false, false);
       enemiesToSpawn--;
       spawnTimer = 35;
     }
@@ -332,6 +357,9 @@ function killEnemy(e) {
   runGoldEarned += e.goldValue;
   writeSave();
   addParticle(e.x, e.y, `+${e.goldValue} or`, '#ffd23c', false);
+  if (e.isFinal) {
+    state = 'victory';
+  }
 }
 
 function updateEnemies() {
@@ -363,6 +391,32 @@ function updateEnemies() {
     const dx = player.x - e.x;
     const dy = player.y - e.y;
     const dist = Math.hypot(dx, dy) || 1;
+
+    if (elem.ranged) {
+      const preferred = 230;
+      if (dist > preferred + 30) {
+        e.x += (dx / dist) * e.speed;
+        e.y += (dy / dist) * e.speed;
+      } else if (dist < preferred - 30) {
+        e.x -= (dx / dist) * e.speed;
+        e.y -= (dy / dist) * e.speed;
+      }
+      if (e.shootCooldown > 0) {
+        e.shootCooldown--;
+      } else if (dist < 420) {
+        const speed = 4.5;
+        projectiles.push({
+          x: e.x, y: e.y,
+          vx: (dx / dist) * speed,
+          vy: (dy / dist) * speed,
+          dmg: e.dmg,
+          radius: e.isBoss ? 10 : 6,
+        });
+        e.shootCooldown = e.isBoss ? 55 : 90;
+      }
+      continue;
+    }
+
     if (dist > e.radius + player.radius) {
       e.x += (dx / dist) * e.speed;
       e.y += (dy / dist) * e.speed;
@@ -376,10 +430,27 @@ function updateEnemies() {
         player.burnTimer = 120;
       }
       if (elem.aoe) {
-        addParticle(e.x, e.y - 20, 'ONDE DE CHOC', '#a020f0', false);
+        addParticle(e.x, e.y - 20, 'ONDE DE CHOC', '#ff2020', false);
       }
     }
     if (e.attackCooldown > 0) e.attackCooldown--;
+  }
+}
+
+function updateProjectiles() {
+  for (let i = projectiles.length - 1; i >= 0; i--) {
+    const p = projectiles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    if (p.x < -20 || p.x > W + 20 || p.y < -20 || p.y > H + 20) {
+      projectiles.splice(i, 1);
+      continue;
+    }
+    const dist = Math.hypot(p.x - player.x, p.y - player.y);
+    if (dist < p.radius + player.radius) {
+      hitPlayer(p.dmg);
+      projectiles.splice(i, 1);
+    }
   }
 }
 
@@ -564,6 +635,130 @@ function drawPlayer() {
   ctx.restore();
 }
 
+function drawElementDetails(e, elem) {
+  const r = e.radius;
+  if (elem.gaunt) {
+    ctx.strokeStyle = '#3a3a3a';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.3, -r * 0.05); ctx.lineTo(-r * 0.15, r * 0.2);
+    ctx.moveTo(r * 0.3, -r * 0.05); ctx.lineTo(r * 0.15, r * 0.2);
+    ctx.stroke();
+  }
+  if (elem.bloodyEyes) {
+    ctx.fillStyle = '#ff2020';
+    ctx.beginPath();
+    ctx.arc(-r * 0.35, -r * 0.25, r * 0.1, 0, Math.PI * 2);
+    ctx.arc(r * 0.35, -r * 0.25, r * 0.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(-r * 0.38, -r * 0.1, 2, r * 0.35);
+    ctx.fillRect(r * 0.32, -r * 0.1, 2, r * 0.35);
+  }
+  if (elem.cracked) {
+    ctx.strokeStyle = '#241408';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.4, -r * 0.4); ctx.lineTo(0, 0); ctx.lineTo(r * 0.3, r * 0.5);
+    ctx.stroke();
+  }
+  if (elem.fireAura) {
+    const t = frameCount * 0.2;
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + t;
+      const rr = r + 7 + Math.sin(t + i) * 3;
+      ctx.fillStyle = i % 2 === 0 ? '#ffd23c' : '#ff8c1a';
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * rr, Math.sin(a) * rr, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  if (elem.scarred) {
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.5, -r * 0.5); ctx.lineTo(r * 0.5, r * 0.5);
+    ctx.moveTo(r * 0.5, -r * 0.5); ctx.lineTo(-r * 0.5, r * 0.5);
+    ctx.stroke();
+    ctx.strokeStyle = '#ff2020';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+  if (elem.ranged) {
+    const t = frameCount * 0.15;
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI * 2 + t;
+      const rr = r + 6;
+      ctx.globalAlpha = 0.6;
+      ctx.fillStyle = elem.glow;
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * rr, Math.sin(a) * rr, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+
+function drawBossAccessory(e) {
+  const r = e.radius;
+  if (e.isFinal) {
+    ctx.strokeStyle = '#7CFF7C';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(r * 0.6, -r * 0.2);
+    ctx.lineTo(r * 1.3, -r * 1.3);
+    ctx.stroke();
+    ctx.fillStyle = '#7CFF7C';
+    ctx.beginPath();
+    ctx.arc(r * 1.3, -r * 1.3, 5, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+  switch (e.element) {
+    case 'cendres':
+      ctx.strokeStyle = '#e8e8e8';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(r * 0.7, -r * 0.2); ctx.lineTo(r * 1.4, -r * 0.9);
+      ctx.stroke();
+      break;
+    case 'sang':
+      ctx.strokeStyle = '#ff4444';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.4, -r * 0.5); ctx.lineTo(0, 0); ctx.lineTo(r * 0.3, r * 0.6);
+      ctx.moveTo(r * 0.4, -r * 0.3); ctx.lineTo(r * 0.1, r * 0.2);
+      ctx.stroke();
+      break;
+    case 'violence':
+      ctx.strokeStyle = '#e8d8c8';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.6, -r * 0.1); ctx.lineTo(r * 0.6, r * 0.2);
+      ctx.stroke();
+      break;
+    case 'terre':
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      ctx.ellipse(0, r * 0.15, r * 0.3, r * 0.22, 0, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    case 'feu':
+      ctx.strokeStyle = '#3a1a0a';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.4, -r * 0.8); ctx.lineTo(-r * 0.6, -r * 1.4);
+      ctx.moveTo(r * 0.4, -r * 0.8); ctx.lineTo(r * 0.6, -r * 1.4);
+      ctx.stroke();
+      break;
+    case 'ombre':
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.beginPath();
+      ctx.arc(0, -r * 0.3, r * 0.9, Math.PI, 0);
+      ctx.fill();
+      break;
+  }
+}
+
 function drawEnemy(e) {
   const elem = ELEMENTS[e.element];
   ctx.save();
@@ -591,6 +786,9 @@ function drawEnemy(e) {
   ctx.arc(e.radius * 0.35, -e.radius * 0.25, e.radius * 0.18, 0, Math.PI * 2);
   ctx.fill();
 
+  drawElementDetails(e, elem);
+  if (e.isBoss) drawBossAccessory(e);
+
   // barre de vie
   const barW = e.radius * 2.2;
   ctx.fillStyle = '#000';
@@ -604,7 +802,20 @@ function drawEnemy(e) {
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 12px "Courier New", monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(`Boss ${elem.label}`, e.x, e.y - e.radius - 20);
+    const name = e.isFinal ? FINAL_BOSS_NAME : BOSS_NAMES[e.element];
+    ctx.fillText(name, e.x, e.y - e.radius - 20);
+  }
+}
+
+function drawProjectiles() {
+  for (const p of projectiles) {
+    ctx.fillStyle = '#a855f7';
+    ctx.shadowColor = '#a855f7';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
   }
 }
 
@@ -633,7 +844,8 @@ function drawHUD() {
   ctx.fillText(`${Math.round(player.hp)} / ${player.maxHp} PV`, 28, 36);
 
   ctx.fillText(`Or : ${save.gold}`, 20, 62);
-  ctx.fillText(`Vague ${waveNumber}${isBossWave() ? ' — BOSS' : ''}`, 20, 82);
+  const bossTag = isFinalBossWave() ? ` — ${FINAL_BOSS_NAME}` : isBossWave() ? ` — ${BOSS_NAMES[selection.element]}` : '';
+  ctx.fillText(`Vague ${waveNumber}${bossTag}`, 20, 82);
   ctx.fillText(`${DIFFICULTIES[selection.difficulty].label} — ${ELEMENTS[selection.element].label}`, 20, 102);
 
   ctx.textAlign = 'right';
@@ -688,29 +900,31 @@ function drawMenu() {
   ctx.fillStyle = '#fff';
   ctx.fillText('Élément des monstres', W / 2, 235);
   menuButtons.elems = [];
-  const elemW = 190, elemH = 52, elemGap = 14;
-  const cols = 3;
-  const startX = W / 2 - (cols * elemW + (cols - 1) * elemGap) / 2;
-  let col = 0, row = 0;
-  for (const id of ELEMENT_ORDER) {
-    const el = ELEMENTS[id];
-    const selected = selection.element === id;
-    const ex = startX + col * (elemW + elemGap);
-    const ey = 250 + row * (elemH + elemGap);
-    ctx.fillStyle = selected ? el.color : '#241010';
-    ctx.fillRect(ex, ey, elemW, elemH);
-    ctx.strokeStyle = selected ? el.glow : '#5a1e14';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(ex, ey, elemW, elemH);
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 15px "Courier New", monospace';
-    ctx.fillText(el.label, ex + elemW / 2, ey + 22);
-    ctx.font = '11px "Courier New", monospace';
-    ctx.fillStyle = '#e0d0c8';
-    ctx.fillText(el.trait, ex + elemW / 2, ey + 40);
-    menuButtons.elems.push({ id, x: ex, y: ey, w: elemW, h: elemH });
-    col++;
-    if (col >= cols) { col = 0; row++; }
+  const elemW = 140, elemH = 52, elemGap = 12;
+  const cols = 4;
+  let ey = 250;
+  for (let i = 0; i < ELEMENT_ORDER.length; i += cols) {
+    const rowIds = ELEMENT_ORDER.slice(i, i + cols);
+    const rowW = rowIds.length * elemW + (rowIds.length - 1) * elemGap;
+    let ex = W / 2 - rowW / 2;
+    for (const id of rowIds) {
+      const el = ELEMENTS[id];
+      const selected = selection.element === id;
+      ctx.fillStyle = selected ? el.color : '#241010';
+      ctx.fillRect(ex, ey, elemW, elemH);
+      ctx.strokeStyle = selected ? el.glow : '#5a1e14';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(ex, ey, elemW, elemH);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 13px "Courier New", monospace';
+      ctx.fillText(el.label, ex + elemW / 2, ey + 21);
+      ctx.font = '9px "Courier New", monospace';
+      ctx.fillStyle = '#e0d0c8';
+      ctx.fillText(el.trait, ex + elemW / 2, ey + 38);
+      menuButtons.elems.push({ id, x: ex, y: ey, w: elemW, h: elemH });
+      ex += elemW + elemGap;
+    }
+    ey += elemH + elemGap;
   }
 
   // boutons start + boutique
@@ -829,6 +1043,22 @@ function drawGameOver() {
   ctx.fillText('Clic ou Entrée : retour au menu (équipement conservé)', W / 2, H / 2 + 60);
 }
 
+function drawVictory() {
+  ctx.fillStyle = 'rgba(10,0,20,0.85)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#a855f7';
+  ctx.font = 'bold 30px "Courier New", monospace';
+  ctx.fillText(`${FINAL_BOSS_NAME} est tombé`, W / 2, H / 2 - 40);
+  ctx.fillStyle = '#fff';
+  ctx.font = '16px "Courier New", monospace';
+  ctx.fillText(`Tu as survécu jusqu'à la vague ${waveNumber}`, W / 2, H / 2);
+  ctx.fillText(`Or récolté ce run : ${runGoldEarned}`, W / 2, H / 2 + 26);
+  ctx.font = '14px "Courier New", monospace';
+  ctx.fillStyle = '#b58a80';
+  ctx.fillText('Clic ou Entrée : retour au menu (équipement conservé)', W / 2, H / 2 + 60);
+}
+
 // ---------------------------------------------------------------------------
 // Boucle principale
 // ---------------------------------------------------------------------------
@@ -838,6 +1068,7 @@ function update() {
   updatePlayer();
   updateWaves();
   updateEnemies();
+  updateProjectiles();
   updateParticles();
 }
 
@@ -850,15 +1081,20 @@ function draw() {
 
   drawBackground();
   for (const e of enemies) drawEnemy(e);
+  drawProjectiles();
   drawPlayer();
   drawParticles();
   drawHUD();
 
   if (state === 'shop') drawShop();
   if (state === 'gameover') drawGameOver();
+  if (state === 'victory') drawVictory();
 }
 
+let frameCount = 0;
+
 function loop() {
+  frameCount++;
   update();
   draw();
   requestAnimationFrame(loop);
