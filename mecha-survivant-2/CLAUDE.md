@@ -114,8 +114,9 @@ Autoloads (`autoload/`) : `EventBus` (tous les signaux transverses),
 `GameState` (vague, tier, mode smoke), `AudioManager`, `UpgradeManager`.
 
 - `systems/wave_manager.gd` — `5 + n*2` ennemis, `tier = floor((n-1)/2)`, boss
-  si `n % 5 == 0` (mapping explicite `BOSS_BY_WAVE` pour 5/10/15). La vague 20
-  est spéciale : voir « Le faux Titan et le vrai combat final » ci-dessous.
+  si `n % 5 == 0` **ou `n == 1`** (mapping explicite `BOSS_BY_WAVE` pour
+  1/5/10/15/20). La vague 1 est spéciale : voir « Le faux Titan et le vrai
+  combat final » ci-dessous.
 - `systems/enemy_stats.gd` — stats des six ennemis ordinaires et leur scaling
   par tier. **Les vitesses sont en pixels/seconde** : la v1 comptait en
   pixels/frame, tout a été multiplié par 60, timers compris.
@@ -136,27 +137,33 @@ Autoloads (`autoload/`) : `EventBus` (tous les signaux transverses),
   valeurs, jamais `self` ni `player` — un boss tué pendant l'annonce faisait
   planter l'impact.
 
-### Le faux Titan et le vrai combat final (vague 20)
+### Le faux Titan (vague 1) et le vrai combat final (vague 20)
 
 Le Titan de la Mort annoncé depuis la v1 n'a en réalité qu'1 point de vie
-(`scenes/bosses/titan_decoy.gd`) : sa barre s'affiche pleine à l'apparition
-puis se vide au premier coup. Sa mort ne passe **pas** par `die()` /
-`EventBus.boss_defeated` (qui ferait conclure la vague en victoire) mais par
-`EventBus.titan_decoy_defeated`, que `WaveManager` relaie en
-`EventBus.dialogue_requested` — une réplique affichée par
-`scenes/ui/dialogue_box.gd`, qui coupe `GameState.running` (donc joueur,
-ennemis et vagues, tous gardés par ce flag) jusqu'au clic. C'est seulement à
-`EventBus.dialogue_finished` que `WaveManager` fait entrer le vrai boss final,
-`scenes/bosses/galaxy_boss.gd` (trois phases). En mode smoke, la réplique est
-sautée instantanément, sinon `check.sh` resterait bloqué en attente d'un clic.
+(`scenes/bosses/titan_decoy.gd`) : c'est le boss qui ouvre le jeu, dès la
+vague 1. Sa barre s'affiche pleine à l'apparition puis se vide au premier
+coup. Sa mort ne passe **pas** par `die()` / `EventBus.boss_defeated` (qui
+ferait conclure la vague en victoire) mais par `EventBus.titan_decoy_defeated`,
+que `WaveManager` relaie en `EventBus.dialogue_requested` — une réplique
+affichée par `scenes/ui/dialogue_box.gd`, qui coupe `GameState.running` (donc
+joueur, ennemis et vagues, tous gardés par ce flag) jusqu'au clic. Une fois le
+dialogue refermé (`EventBus.dialogue_finished`), la vague se termine
+normalement, sans lien avec la suite — c'est la boucle habituelle de
+`WaveManager._process` (plus de boss vivant, plus d'ennemi vivant) qui conclut
+la vague. En mode smoke, la réplique est sautée instantanément, sinon
+`check.sh` resterait bloqué en attente d'un clic.
 
-Piège rencontré : faire naître le Boss Galaxie **synchrone** avec la mort du
-leurre plante le moteur (« Can't change this state while flushing queries »),
-parce que toute la chaîne remonte depuis la collision d'une balle — ajouter
-une `Area2D` en pleine mise à jour physique n'est pas permis. `WaveManager`
-ajoute donc le boss via `arena.call_deferred("add_child", boss)`, dans
-`_spawn_boss_script()`, utilisé pour **tous** les spawns de boss (pas
-seulement ce cas) pour rester cohérent.
+Le vrai boss final, `scenes/bosses/galaxy_boss.gd` (trois phases), n'a aucun
+lien avec le leurre : il apparaît directement à la vague 20, via le même
+`BOSS_BY_WAVE` que les autres boss.
+
+Piège rencontré (toujours d'actualité même sans l'enchaînement leurre → Boss
+Galaxie) : faire naître un boss **synchrone** avec la mort du boss précédent
+plante le moteur (« Can't change this state while flushing queries »), parce
+que toute la chaîne remonte depuis la collision d'une balle — ajouter une
+`Area2D` en pleine mise à jour physique n'est pas permis. `WaveManager` ajoute
+donc le boss via `arena.call_deferred("add_child", boss)`, dans
+`_spawn_boss_script()`, utilisé pour **tous** les spawns de boss.
 
 Les trois autres nouveaux boss (vagues 5/10/15) n'ont pas cette contrainte :
 `scenes/bosses/giant_knight.gd` (Chevalier Géant, corps-à-corps),

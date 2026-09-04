@@ -1,13 +1,14 @@
 class_name TitanDecoy
 extends BossBase
 ## Le Titan de la Mort annoncé depuis la v1 — sauf qu'il n'a plus qu'1 point de
-## vie. La barre affichée à son apparition (`boss_hp_changed` à 1.0) donne
-## l'illusion d'un vrai combat ; le premier coup la vide et le tue.
+## vie. Ouvre le jeu dès la vague 1 : la barre affichée à son apparition
+## (`boss_hp_changed` à 1.0) donne l'illusion d'un vrai combat ; le premier
+## coup la vide et le tue.
 ##
 ## Sa mort ne passe pas par `die()`/`boss_defeated` (qui ferait conclure la
 ## vague par une victoire) : elle émet `titan_decoy_defeated`, que
-## `WaveManager` relaie en réplique pausée avant de faire entrer le vrai boss
-## final, le Boss Galaxie.
+## `WaveManager` relaie en réplique pausée. Le vrai boss final, le Boss
+## Galaxie, n'a aucun lien avec lui : il apparaît directement à la vague 20.
 
 func configure_boss(tier: int) -> void:
 	super(tier)

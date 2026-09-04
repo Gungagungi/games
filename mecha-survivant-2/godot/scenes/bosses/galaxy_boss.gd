@@ -1,9 +1,9 @@
 class_name GalaxyBoss
 extends BossBase
-## Boss Galaxie : le vrai combat final, révélé une fois le Titan de la Mort
-## démasqué comme leurre (voir `titan_decoy.gd` et
-## `WaveManager._on_dialogue_finished`). Trois phases : barrage d'étoiles en
-## spirale, météores téléphonés et invocation d'ombres.
+## Boss Galaxie : le vrai combat final, à la vague 20 (voir `titan_decoy.gd`,
+## désormais un simple leurre comique de la vague 1, sans lien avec lui).
+## Trois phases : barrage d'étoiles en spirale, météores téléphonés et
+## invocation d'ombres.
 
 const PHASE_HP: Array[float] = [1400.0, 1800.0, 2200.0]
 

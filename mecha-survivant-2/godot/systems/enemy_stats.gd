@@ -55,14 +55,15 @@ const DEFS: Dictionary = {
 }
 
 ## Types disponibles à cette vague. Comme dans la v1, le flameling est exclu
-## de la vague 1 et des vagues de boss.
+## des vagues de boss (la vague 1 en est une depuis le Titan-leurre : aucune
+## vague de boss ne fait spawn d'ennemis ordinaires de toute façon).
 static func available_types(wave: int) -> Array[String]:
 	var out: Array[String] = []
 	for type in DEFS:
 		var def: Dictionary = DEFS[type]
 		if wave < int(def["min_wave"]):
 			continue
-		if type == "flameling" and (wave == 1 or GameState.is_boss_wave(wave)):
+		if type == "flameling" and GameState.is_boss_wave(wave):
 			continue
 		out.append(type)
 	return out

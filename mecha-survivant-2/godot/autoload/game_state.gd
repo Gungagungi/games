@@ -13,7 +13,7 @@ func tier() -> int:
 	return maxi(0, (wave - 1) / 2)
 
 func is_boss_wave(n: int) -> bool:
-	return n % BOSS_EVERY == 0
+	return n == 1 or n % BOSS_EVERY == 0
 
 func enemy_count(n: int) -> int:
 	return 5 + n * 2
