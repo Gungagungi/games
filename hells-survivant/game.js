@@ -69,7 +69,7 @@ const ELEMENTS = {
   violence: { label: 'Violence', color: '#c2410c', glow: '#ff7a3c', hpMult: 0.9, dmgMult: 1.6, speedMult: 1.1, trait: 'Dégâts élevés' },
   terre: { label: 'Terre', color: '#5a3a1e', glow: '#8a6238', hpMult: 1.9, dmgMult: 1, speedMult: 0.6, trait: 'Résistants, lents', cracked: true },
   feu: { label: 'Feu', color: '#ff8c1a', glow: '#ffd23c', hpMult: 1, dmgMult: 1, speedMult: 1, burn: true, trait: 'Brûlure', fireAura: true },
-  destruction: { label: 'Destruction', color: '#2a0a0a', glow: '#ff2020', hpMult: 1.4, dmgMult: 1.4, speedMult: 0.9, aoe: true, trait: 'Choc en zone', scarred: true },
+  destruction: { label: 'Destruction', color: '#2a0a0a', glow: '#ff2020', hpMult: 1.4, dmgMult: 1.4, speedMult: 0.9, ranged: true, bricks: true, trait: 'Lance des briques', scarred: true },
   ombre: { label: 'Ombre', color: '#3c1a5a', glow: '#a855f7', hpMult: 1, dmgMult: 0.9, speedMult: 0.9, ranged: true, trait: 'Tirs à distance' },
 };
 const ELEMENT_ORDER = ['cendres', 'sang', 'violence', 'terre', 'feu', 'destruction', 'ombre'];
@@ -424,13 +424,15 @@ function updateEnemies() {
       if (e.shootCooldown > 0) {
         e.shootCooldown--;
       } else if (dist < 420) {
-        const speed = 4.5;
+        const speed = elem.bricks ? 3.2 : 4.5;
         projectiles.push({
           x: e.x, y: e.y,
           vx: (dx / dist) * speed,
           vy: (dy / dist) * speed,
           dmg: e.dmg,
-          radius: e.isBoss ? 10 : 6,
+          radius: e.isBoss ? (elem.bricks ? 13 : 10) : (elem.bricks ? 9 : 6),
+          brick: !!elem.bricks,
+          rotation: 0,
         });
         e.shootCooldown = e.isBoss ? 55 : 90;
       }
@@ -449,9 +451,6 @@ function updateEnemies() {
       if (elem.burn) {
         player.burnTimer = 120;
       }
-      if (elem.aoe) {
-        addParticle(e.x, e.y - 20, 'ONDE DE CHOC', '#ff2020', false);
-      }
     }
     if (e.attackCooldown > 0) e.attackCooldown--;
   }
@@ -462,6 +461,7 @@ function updateProjectiles() {
     const p = projectiles[i];
     p.x += p.vx;
     p.y += p.vy;
+    if (p.brick) p.rotation += 0.18;
     if (p.x < -20 || p.x > W + 20 || p.y < -20 || p.y > H + 20) {
       projectiles.splice(i, 1);
       continue;
@@ -837,6 +837,21 @@ function drawEnemy(e) {
 
 function drawProjectiles() {
   for (const p of projectiles) {
+    if (p.brick) {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rotation);
+      ctx.fillStyle = '#7a2e1a';
+      ctx.strokeStyle = '#ff2020';
+      ctx.shadowColor = '#ff2020';
+      ctx.shadowBlur = 8;
+      ctx.lineWidth = 1.5;
+      ctx.fillRect(-p.radius, -p.radius * 0.7, p.radius * 2, p.radius * 1.4);
+      ctx.strokeRect(-p.radius, -p.radius * 0.7, p.radius * 2, p.radius * 1.4);
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      continue;
+    }
     ctx.fillStyle = '#a855f7';
     ctx.shadowColor = '#a855f7';
     ctx.shadowBlur = 10;
