@@ -3,6 +3,7 @@
 # Pour juste jouer sur une machine avec écran, scripts/play.sh suffit.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/godot-env.sh"
+"$(dirname "${BASH_SOURCE[0]}")/gen-version.sh"
 mkdir -p "$ROOT/export"
 "$GODOT" --headless --path "$ROOT/godot" --import
 "$GODOT" --headless --path "$ROOT/godot" --export-release "Web" ../export/index.html

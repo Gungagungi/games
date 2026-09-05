@@ -11,6 +11,10 @@
 /index.audio.worklet.js
 /index.audio.position.worklet.js
 
+# Version affichée en bas à gauche de l'écran-titre (scripts/gen-version.sh) :
+# régénérée à chaque build, jamais versionnée.
+/godot/version.txt
+
 # Génération d'assets (scripts/gen-sprites.py) : frames brutes mises en cache,
 # et jeton d'API. Le cache est reconstructible en repayant, le jeton jamais
 # à versionner.

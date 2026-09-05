@@ -38,6 +38,7 @@ scripts/check.sh           # non-régression sans écran (voir plus bas)
 scripts/gen-sprites.py     # génère les planches de sprites (voir « Assets »)
 scripts/gen-audio.py       # génère bruitages et musiques (voir « Audio »)
 scripts/preview-sheet.py   # agrandit une planche, case par case, pour la relire
+scripts/gen-version.sh     # écrit godot/version.txt (branche@hash), voir « Version »
 ```
 
 **Sur une machine avec écran, `scripts/play.sh` suffit pour jouer** : il lance
@@ -322,3 +323,33 @@ clic de `tools/scenarios/ms2-gameplay.js` — les revérifier sur une capture.
 
 La police par défaut de Godot **ne rend pas les emoji** : ne pas en mettre dans
 l'UI (le HUD affiche des libellés courts pour cette raison).
+
+## Version
+
+L'écran-titre affiche `branche@hash-court` en bas à gauche
+(`scenes/ui/start_screen.gd`, via `GameVersion.read()` dans `version.gd`). La
+donnée vient de `godot/version.txt`, écrit par `scripts/gen-version.sh`
+(`GITHUB_REF_NAME` si présent, sinon la branche git locale, `+` le hash court
+de HEAD) — **non versionné**, comme `/export/` : la CI le régénère à chaque
+déploiement, `scripts/build.sh` l'appelle avant l'import/export.
+
+Deux pièges déjà rencontrés :
+
+- **Un fichier `.gd` fictif n'aurait pas suffi.** Un premier essai encodait la
+  version directement dans une constante GDScript regénérée à chaque build —
+  mais ce fichier est versionné, donc le committer changerait le hash qu'il
+  est censé décrire (problème de la poule et l'œuf). Le séparer en
+  `version.txt` (donnée, gitignoré) + `version.gd` (logique de lecture,
+  versionné) évite ça : le script ne modifie jamais un fichier suivi par git.
+- **Un fichier texte brut n'est pas exporté par défaut.** Avec
+  `export_filter="all_resources"` (`export_presets.cfg`), Godot n'embarque que
+  les fichiers reconnus comme ressources (ceux avec un `.import`) — un `.txt`
+  généré à la main en est absent tant qu'il n'est pas explicitement listé dans
+  `include_filter`. Sans ça, `version.txt` compilait et s'exportait sans
+  erreur mais n'atterrissait jamais dans le `.pck`, et l'écran-titre retombait
+  silencieusement sur `"dev"` (le fallback de `GameVersion.read()` en
+  l'absence du fichier).
+
+Absent du `.pck` (éditeur, `play.sh` sans avoir lancé `gen-version.sh`),
+l'écran-titre affiche `"dev"` au lieu de planter — même tolérance qu'ailleurs
+dans le projet face à un asset manquant (voir `sprite_or_shape.gd`).

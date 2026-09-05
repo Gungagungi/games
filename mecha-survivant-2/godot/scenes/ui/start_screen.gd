@@ -48,3 +48,11 @@ func _ready() -> void:
 		AudioManager.sfx("ui_click")
 		start_requested.emit(_wave_select.get_item_id(_wave_select.selected)))
 	panel.add_child(play)
+
+	var version := Label.new()
+	version.text = GameVersion.read()
+	version.add_theme_font_size_override("font_size", 14)
+	version.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 0.4))
+	version.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	version.position = Vector2(12, -28)
+	add_child(version)
