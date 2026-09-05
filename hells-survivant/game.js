@@ -135,6 +135,7 @@ document.addEventListener('keydown', (e) => {
   }
   if (e.key === 'Escape' && state === 'shop') state = shopReturnState;
   if (e.key === 'Enter' && (state === 'gameover' || state === 'victory')) resetToMenu();
+  if (e.key.toLowerCase() === 'm') SoundEngine.toggleMuted();
 });
 document.addEventListener('keyup', (e) => { keysPressed[e.key.toLowerCase()] = false; });
 canvas.addEventListener('mousemove', (e) => {
@@ -189,22 +190,26 @@ function handleMenuClick() {
   for (const b of menuButtons.diffs) {
     if (mouseX >= b.x && mouseX <= b.x + b.w && mouseY >= b.y && mouseY <= b.y + b.h) {
       selection.difficulty = b.id;
+      SoundEngine.SFX.click();
       return;
     }
   }
   for (const b of menuButtons.elems) {
     if (mouseX >= b.x && mouseX <= b.x + b.w && mouseY >= b.y && mouseY <= b.y + b.h) {
       selection.element = b.id;
+      SoundEngine.SFX.click();
       return;
     }
   }
   const b = menuButtons.start;
   if (b && mouseX >= b.x && mouseX <= b.x + b.w && mouseY >= b.y && mouseY <= b.y + b.h) {
+    SoundEngine.SFX.click();
     startRun();
     return;
   }
   const s = menuButtons.shop;
   if (s && mouseX >= s.x && mouseX <= s.x + s.w && mouseY >= s.y && mouseY <= s.y + s.h) {
+    SoundEngine.SFX.click();
     shopReturnState = 'menu';
     state = 'shop';
   }
@@ -225,10 +230,12 @@ function startRun() {
   enemiesToSpawn = 0;
   runGoldEarned = 0;
   state = 'playing';
+  SoundEngine.playMusic('combat');
 }
 
 function resetToMenu() {
   state = 'menu';
+  SoundEngine.playMusic('menu');
 }
 
 // ---------------------------------------------------------------------------
@@ -288,11 +295,17 @@ function startWave() {
   if (isFinalBossWave()) {
     spawnEnemy(true, true);
     enemiesToSpawn = 0;
+    SoundEngine.playMusic('boss');
+    SoundEngine.SFX.bossWarning();
   } else if (isBossWave()) {
     spawnEnemy(true, false);
     enemiesToSpawn = 0;
+    SoundEngine.playMusic('boss');
+    SoundEngine.SFX.bossWarning();
   } else {
     enemiesToSpawn = currentEnemyCount();
+    SoundEngine.playMusic('combat');
+    SoundEngine.SFX.waveStart();
   }
   spawnTimer = 0;
 }
@@ -328,6 +341,7 @@ function doAttack() {
   const range = SWORDS[save.swordTier].range;
   player.attackTimer = 14;
   player.attackCooldown = 22;
+  SoundEngine.SFX.attack();
 
   for (const e of enemies) {
     const dx = e.x - player.x;
@@ -349,6 +363,7 @@ function damageEnemy(e, amount) {
   e.hitFlash = 8;
   addParticle(e.x, e.y - e.radius, `-${Math.round(amount)}`, '#fff', false);
   if (e.hp <= 0) killEnemy(e);
+  else SoundEngine.SFX.hitEnemy();
 }
 
 function killEnemy(e) {
@@ -357,8 +372,12 @@ function killEnemy(e) {
   runGoldEarned += e.goldValue;
   writeSave();
   addParticle(e.x, e.y, `+${e.goldValue} or`, '#ffd23c', false);
+  SoundEngine.SFX.enemyDeath();
+  SoundEngine.SFX.gold();
   if (e.isFinal) {
     state = 'victory';
+    SoundEngine.playMusic('victory');
+    SoundEngine.SFX.victory();
   }
 }
 
@@ -372,6 +391,7 @@ function updateEnemies() {
       if (e.chargeTimer <= 0 && !e.charging) {
         e.charging = true;
         e.chargeTelegraph = 45;
+        SoundEngine.SFX.bossCharge();
       }
       if (e.charging) {
         if (e.chargeTelegraph > 0) {
@@ -459,9 +479,12 @@ function hitPlayer(rawDmg) {
   const dmg = rawDmg * (1 - def);
   player.hp -= dmg;
   addParticle(player.x, player.y - player.radius - 10, `-${Math.round(dmg)}`, '#ff4444', false);
+  SoundEngine.SFX.hitPlayer();
   if (player.hp <= 0) {
     player.hp = 0;
     state = 'gameover';
+    SoundEngine.stopMusic();
+    SoundEngine.SFX.gameover();
   }
 }
 
@@ -526,7 +549,10 @@ const shopButtons = { sword: null, armor: null, close: null };
 function handleShopClick() {
   if (shopButtons.sword && withinButton(shopButtons.sword)) tryBuySword();
   if (shopButtons.armor && withinButton(shopButtons.armor)) tryBuyArmor();
-  if (shopButtons.close && withinButton(shopButtons.close)) state = shopReturnState;
+  if (shopButtons.close && withinButton(shopButtons.close)) {
+    SoundEngine.SFX.click();
+    state = shopReturnState;
+  }
 }
 
 function withinButton(b) {
@@ -540,6 +566,7 @@ function tryBuySword() {
     save.gold -= SWORDS[next].cost;
     save.swordTier = next;
     writeSave();
+    SoundEngine.SFX.purchase();
   }
 }
 
@@ -553,6 +580,7 @@ function tryBuyArmor() {
     player.maxHp += hpGain;
     player.hp += hpGain;
     writeSave();
+    SoundEngine.SFX.purchase();
   }
 }
 
@@ -850,6 +878,7 @@ function drawHUD() {
 
   ctx.textAlign = 'right';
   ctx.fillText(`I : boutique`, W - 20, 30);
+  ctx.fillText(SoundEngine.isMuted() ? 'M : son (coupé)' : 'M : son (activé)', W - 20, 48);
 
   if (waveIntermission > 0 && enemies.length === 0) {
     ctx.textAlign = 'center';
@@ -871,6 +900,7 @@ function drawMenu() {
   ctx.font = '14px "Courier New", monospace';
   ctx.fillStyle = '#b58a80';
   ctx.fillText('ZD ou clic : difficulté — ZS ou clic : élément — Entrée : combattre', W / 2, 96);
+  ctx.fillText(SoundEngine.isMuted() ? 'M : réactiver le son' : 'M : couper le son', W / 2, 114);
 
   // difficulté
   ctx.font = 'bold 18px "Courier New", monospace';
@@ -1090,6 +1120,8 @@ function draw() {
   if (state === 'gameover') drawGameOver();
   if (state === 'victory') drawVictory();
 }
+
+SoundEngine.playMusic('menu');
 
 let frameCount = 0;
 
