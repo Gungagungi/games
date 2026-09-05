@@ -183,17 +183,13 @@ référencés, mais toujours utilisables) — voir « Assets ».
 
 ## Assets
 
-**Les 24 planches de sprites d'origine sont là**, dont cinq boss aujourd'hui
-retirés du jeu (gravedigger, bone_colossus, plague, mega_boss, titan — ce
-dernier réutilisé tel quel par `titan_decoy.gd`, voir plus haut). **Les 21
-bruitages et les 4 musiques aussi** (voir « Audio »). En revanche, les quatre
-nouveaux boss (Chevalier Géant, Monstre des Égouts, Zombie Titan, Boss
-Galaxie) et le squelette de feu n'ont pas de planche dédiée : ils tournent en
-placeholder géométrique via `sprite_or_shape.gd`. Leur découpage (`SHEETS`),
-leur ligne de manifeste et leurs prompts (`scripts/sprite-prompts.json`) sont
-prêts — `idle`/`attack` pour les boss, `walk`/`death` pour le squelette,
-mêmes gabarits que les entités qu'ils remplacent — il ne manque que la
-génération (`scripts/gen-sprites.py --only <nom>`).
+**Les 29 planches de sprites sont là**, dont cinq boss aujourd'hui retirés du
+jeu (gravedigger, bone_colossus, plague, mega_boss, titan — ce dernier
+réutilisé tel quel par `titan_decoy.gd`, voir plus haut). Les quatre nouveaux
+boss (Chevalier Géant, Monstre des Égouts, Zombie Titan, Boss Galaxie,
+`idle`/`attack`, 96 ou 128 px) et le squelette de feu (`walk`/`death`, 32 px)
+ont chacun leur planche, générée via Retro Diffusion pour 1,71 $ au total.
+**Les 21 bruitages et les 4 musiques aussi** (voir « Audio »).
 `godot/assets/MANIFEST.md` donne la liste exacte des fichiers attendus pour ce
 qui existe, leurs dimensions et leur découpage. Déposer un fichier au bon nom
 suffit à le brancher, sans toucher au code.
