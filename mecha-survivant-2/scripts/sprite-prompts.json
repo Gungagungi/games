@@ -78,6 +78,16 @@
         "death": "burning down and collapsing into a flat pile of ash and dying embers"
       }
     },
+    "enemy_fire_skeleton": {
+      "subject": "burning skeleton archer wreathed in orange flame, charred bone frame, glowing ember eye sockets, holding a smoldering bow",
+      "actions": {
+        "walk": "skittering forward quickly, flames flickering",
+        "death": "collapsing into a burst of embers and scattering scorched bones"
+      },
+      "options": {
+        "rd_style": "rd_fast__low_res"
+      }
+    },
     "boss_gravedigger": {
       "subject": "towering undead gravedigger boss, tattered black burial coat, cracked iron shovel, deep red eye glow",
       "options": {
@@ -118,6 +128,62 @@
       "actions": {
         "idle": "breathing heavily, bile dripping",
         "attack": "heaving forward and spewing poison"
+      }
+    },
+    "boss_giant_knight": {
+      "subject": "hulking undead knight boss, dented grey-blue plate armour, tattered cape, oversized broadsword",
+      "options": {
+        "detail": "highly detailed",
+        "rd_style": "rd_fast__low_res",
+        "rd_anim_style": "rd_advanced_animation__idle",
+        "rd_anim_size": 128,
+        "rd_anim_style_attack": "rd_advanced_animation__attack"
+      },
+      "actions": {
+        "idle": "standing braced, cape shifting, sword point resting on the ground",
+        "attack": "charging forward with the broadsword lowered"
+      }
+    },
+    "boss_sewer_monster": {
+      "subject": "grotesque sewer-dwelling boss, bloated slime-green amphibious hide, dripping toxic ooze, clustered eyes, tentacle-lined maw",
+      "options": {
+        "detail": "highly detailed",
+        "rd_style": "rd_fast__low_res",
+        "rd_anim_style": "rd_advanced_animation__idle",
+        "rd_anim_size": 128,
+        "rd_anim_style_attack": "rd_advanced_animation__attack"
+      },
+      "actions": {
+        "idle": "hunched in the muck, ooze dripping and pooling",
+        "attack": "lunging forward and spewing a jet of toxic bile"
+      }
+    },
+    "boss_zombie_titan": {
+      "subject": "colossal zombie titan boss, towering rotten grey-green flesh stitched with rusted chains, exposed ribs, one arm ending in a jagged bone claw",
+      "options": {
+        "detail": "highly detailed",
+        "rd_style": "rd_fast__low_res",
+        "rd_anim_style": "rd_advanced_animation__idle",
+        "rd_anim_size": 128,
+        "rd_anim_style_attack": "rd_advanced_animation__attack"
+      },
+      "actions": {
+        "idle": "looming, rotten flesh twitching, chains swaying",
+        "attack": "swinging its clawed arm down in a crushing overhead blow"
+      }
+    },
+    "boss_galaxy_boss": {
+      "subject": "spectral cosmic entity boss, cloaked in swirling violet-and-black nebula matter, a crown of small orbiting stars, hollow star-filled eyes, trailing cosmic dust",
+      "options": {
+        "detail": "highly detailed",
+        "rd_style": "rd_fast__low_res",
+        "rd_anim_style": "rd_advanced_animation__idle",
+        "rd_anim_size": 128,
+        "rd_anim_style_attack": "rd_advanced_animation__attack"
+      },
+      "actions": {
+        "idle": "hovering, cosmic dust and stars swirling slowly",
+        "attack": "unleashing a burst of stellar energy outward"
       }
     },
     "megaboss": {

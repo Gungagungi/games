@@ -33,6 +33,11 @@ et là qu'il faudrait le changer si une planche livrée s'organisait autrement.
 | `enemy_risen.png` | 32×32 | 8 | `walk` 0-3, `death` 4-7 |
 | `enemy_shade.png` | 32×32 | 8 | `walk` 0-3, `death` 4-7 |
 | `enemy_flameling.png` | 32×32 | 8 | `walk` 0-3, `death` 4-7 |
+| `enemy_fire_skeleton.png` | 32×32 | 8 | `walk` 0-3, `death` 4-7 |
+| `boss_giant_knight.png` | 96×96 | 8 | `idle` 0-3, `attack` 4-7 |
+| `boss_sewer_monster.png` | 96×96 | 8 | `idle` 0-3, `attack` 4-7 |
+| `boss_zombie_titan.png` | 96×96 | 8 | `idle` 0-3, `attack` 4-7 |
+| `boss_galaxy_boss.png` | 128×128 | 8 | `idle` 0-3, `attack` 4-7 |
 | `boss_gravedigger.png` | 96×96 | 8 | `idle` 0-3, `attack` 4-7 |
 | `boss_bone_colossus.png` | 96×96 | 8 | `idle` 0-3, `attack` 4-7 |
 | `boss_plague.png` | 96×96 | 8 | `idle` 0-3, `attack` 4-7 |
