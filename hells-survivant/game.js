@@ -80,7 +80,7 @@ const BOSS_NAMES = {
   violence: 'Soldat blessé',
   terre: 'Voix Putréfiée',
   feu: 'Créature infernale',
-  destruction: 'Destruction',
+  destruction: 'Mangeur de soldats',
   ombre: "Sbire de l'ombre",
 };
 const FINAL_BOSS_ELEMENT = 'ombre';
