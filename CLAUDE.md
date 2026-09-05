@@ -30,6 +30,8 @@ C'est de l'outillage de développement : les jeux n'en dépendent pas et restent
 - Exception assumée : `mecha-survivant-2/` n'est pas du HTML/JS pur mais un projet **Godot 4** exporté en WebAssembly. Il a une étape de build (`scripts/build.sh`), son jeu jouable n'est pas versionné, et il ne s'ouvre pas en `file://` — voir son `CLAUDE.md`. C'est le seul jeu du dépôt dans ce cas.
 - Exception assumée : `mecha-survivant/` tient dans un unique `index.html` monolithique (CSS, HTML et JS inline) ; les itérations antérieures dorment dans `mecha-survivant/archives/`. Voir son propre `CLAUDE.md` ; ne pas l'éclater en `style.css` + `game.js` sans demande explicite.
 - Chaque nouveau jeu doit suivre la même convention que `pong/` : son propre dossier avec `index.html`, `style.css`, `game.js` (ou équivalent), sans dépendance sur d'autres jeux du dépôt.
+- `hells-survivant/` suit cette convention standard (roguelite avec progression persistante en `localStorage`).
+- Un nouveau jeu doit aussi être ajouté au tableau de `README.md` et au portail `index.html` — sinon il reste jouable mais invisible depuis le site publié.
 - `pong/game.js` illustre le patron à réutiliser pour un jeu basé sur Canvas 2D :
   - État du jeu dans des objets simples (`player`, `opponent`, `ball`) plutôt que des classes.
   - Contrôles clavier via une map `keysPressed` peuplée par les listeners `keydown`/`keyup`, lue à chaque frame (pas de logique dans les handlers eux-mêmes).
