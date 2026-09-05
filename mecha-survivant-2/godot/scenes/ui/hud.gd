@@ -34,12 +34,15 @@ func _ready() -> void:
 	_powers.custom_minimum_size = Vector2(280, 0)
 	left.add_child(_powers)
 
+	# Largeur calée sur les 896 px de `window/size/viewport_width` : au-delà de
+	# ~536 px de bande utile (340 de marge gauche pour ne pas chevaucher les
+	# barres du joueur, 20 de marge droite), la barre déborde de l'écran.
 	_boss_box.position = Vector2(340, 16)
-	_boss_box.custom_minimum_size = Vector2(600, 0)
+	_boss_box.custom_minimum_size = Vector2(520, 0)
 	_boss_label.add_theme_font_size_override("font_size", 18)
 	_boss_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_boss_box.add_child(_boss_label)
-	_boss_box.add_child(_styled(_boss_bar, Color(0.9, 0.35, 0.25), 600.0))
+	_boss_box.add_child(_styled(_boss_bar, Color(0.9, 0.35, 0.25), 520.0))
 	_boss_box.visible = false
 	add_child(_boss_box)
 
