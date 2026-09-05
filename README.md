@@ -9,6 +9,7 @@ Collection de petits jeux navigateur — un dossier par jeu. Tous sont en HTML/C
 | **Pong** | [`pong/index.html`](pong/index.html) | Le classique, en solo contre l'ordinateur ou à deux en local. |
 | **Mecha Survivant** | [`mecha-survivant/index.html`](mecha-survivant/index.html) | Survie/roguelite en Canvas 2D : vagues d'ennemis (morts-vivants, créatures de l'ombre, mobs de feu), un pouvoir à choisir entre chaque vague, un boss toutes les 5 vagues. |
 | **Mecha Survivant 2** | [en ligne](https://gungagungi.github.io/games/mecha-survivant-2/) | Les mêmes mécaniques, refondues sous Godot 4 : rendu pixel art et bande-son en fichiers. Ne s'ouvre pas en `file://` — voir [`mecha-survivant-2/`](mecha-survivant-2/). |
+| **Hell's Survivant** | [`hells-survivant/index.html`](hells-survivant/index.html) | Roguelite en Canvas 2D contre des vagues démoniaques avec boss élémentaires ; boutique entre les parties (épée, armure) dont la progression est conservée en `localStorage`. |
 
 Chaque jeu s'ouvre directement dans un navigateur. Si `file://` pose problème (selon le navigateur), servir le dossier en local, par exemple avec `python3 -m http.server`.
 
