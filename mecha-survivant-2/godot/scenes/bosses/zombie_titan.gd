@@ -1,19 +1,26 @@
 class_name ZombieTitan
 extends BossBase
-## Zombie Titan (vague 15) : colosse putréfié en deux phases. Invoque des
-## morts-vivants en masse et draine la vie au contact une fois enragé.
+## Zombie Titan (vague 15) : colosse putréfié en trois phases. Invoque des
+## morts-vivants en masse, draine la vie au contact une fois enragé, et laisse
+## pleuvoir ses propres membres arrachés en phase 2 avant l'éructation finale
+## à 360° de la dernière phase.
 
-const PHASE_HP: Array[float] = [900.0, 1400.0]
+const PHASE_HP: Array[float] = [900.0, 1300.0, 1700.0]
 
 const SLAM_INTERVAL := 3.6
 const SLAM_RADIUS := 170.0
 const SUMMON_INTERVAL := 4.2
 const POISON_INTERVAL := 2.4
+const LIMB_RAIN_INTERVAL := 5.5
+const LIMB_COUNT := 5
+const BURST_INTERVAL := 4.0
 
 var _slam_cd := SLAM_INTERVAL
 var _summon_cd := 2.0
 var _poison_cd := POISON_INTERVAL
 var _drain_cd := 0.0
+var _limb_cd := 3.0
+var _burst_cd := BURST_INTERVAL
 
 func configure_boss(tier: int) -> void:
 	super(tier)
@@ -43,6 +50,31 @@ func _behaviour(delta: float) -> void:
 			_shoot_at_player(240.0, hit_damage() * 0.4, 9.0,
 				Color(0.55, 0.85, 0.3), "proj_poison", true)
 		_lifedrain(delta)
+		_limb_cd -= delta
+		if _limb_cd <= 0.0:
+			_limb_cd = LIMB_RAIN_INTERVAL
+			_limb_rain()
+	if phase >= 2:
+		_burst_cd -= delta
+		if _burst_cd <= 0.0:
+			_burst_cd = BURST_INTERVAL
+			_vomit_burst()
+
+## Membres arrachés qui retombent au hasard sur l'arène : oblige à rester
+## mobile plutôt qu'à camper une zone sûre pendant le reste du combat.
+func _limb_rain() -> void:
+	var size := get_viewport_rect().size
+	for i in LIMB_COUNT:
+		var at := Vector2(randf_range(60.0, size.x - 60.0), randf_range(60.0, size.y - 60.0))
+		_telegraph_strike(at, 70.0, hit_damage() * 0.5, 0.7 + randf() * 0.3,
+			Color(0.5, 0.65, 0.35), 8.0)
+
+## Éructation finale à 360°, réservée à la dernière phase.
+func _vomit_burst() -> void:
+	_play_attack()
+	for i in 10:
+		_shoot_dir(Vector2.RIGHT.rotated(TAU * i / 10.0), 200.0, hit_damage() * 0.35,
+			9.0, Color(0.55, 0.85, 0.3), "proj_poison", true)
 
 ## Ponction de vie passive au contact, comme le Colosse Putréfié de la v1.
 func _lifedrain(delta: float) -> void:

@@ -2,20 +2,23 @@ class_name GalaxyBoss
 extends BossBase
 ## Boss Galaxie : le vrai combat final, à la vague 20 (voir `titan_decoy.gd`,
 ## désormais un simple leurre comique de la vague 1, sans lien avec lui).
-## Trois phases : barrage d'étoiles en spirale, météores téléphonés et
-## invocation d'ombres.
+## Trois phases : barrage d'étoiles en spirale, météores téléphonés,
+## téléportation laissant une traînée explosive, et supernova finale à 360°
+## en dernière phase.
 
-const PHASE_HP: Array[float] = [1400.0, 1800.0, 2200.0]
+const PHASE_HP: Array[float] = [1800.0, 2300.0, 3000.0]
 
 const BARRAGE_INTERVAL := 4.0
 const METEOR_INTERVAL := 3.2
 const SUMMON_INTERVAL := 5.0
 const TELEPORT_INTERVAL := 4.5
+const SUPERNOVA_INTERVAL := 6.0
 
 var _barrage_cd := 2.0
 var _meteor_cd := METEOR_INTERVAL
 var _summon_cd := SUMMON_INTERVAL
 var _teleport_cd := TELEPORT_INTERVAL
+var _supernova_cd := SUPERNOVA_INTERVAL
 var _spiral_angle := 0.0
 
 func configure_boss(tier: int) -> void:
@@ -48,6 +51,10 @@ func _behaviour(delta: float) -> void:
 		if _summon_cd <= 0.0:
 			_summon_cd = SUMMON_INTERVAL
 			_summon("res://scenes/enemies/shade.gd", "shade", 3, 10)
+		_supernova_cd -= delta
+		if _supernova_cd <= 0.0:
+			_supernova_cd = SUPERNOVA_INTERVAL
+			_supernova()
 
 func _star_barrage() -> void:
 	_play_attack()
@@ -63,11 +70,23 @@ func _meteors() -> void:
 		_telegraph_strike(at, 100.0, hit_damage() * 0.6, 0.9 + i * 0.15,
 			Color(0.7, 0.4, 1.0), 8.0)
 
+## Le boss se téléporte et laisse une traînée qui explose là où il se
+## tenait : un croc-en-jambe pour qui le suit encore du regard.
 func _teleport() -> void:
+	var old_pos := global_position
 	var dir := Vector2.RIGHT.rotated(randf() * TAU)
 	global_position = player.global_position + dir * 220.0
 	_clamp_inside()
 	EventBus.screen_shake_requested.emit(6.0)
+	_telegraph_strike(old_pos, 90.0, hit_damage() * 0.5, 0.5, Color(0.6, 0.3, 0.9), 8.0)
+
+## Supernova à 360°, réservée à la dernière phase.
+func _supernova() -> void:
+	_play_attack()
+	for i in 16:
+		_shoot_dir(Vector2.RIGHT.rotated(TAU * i / 16.0), 220.0, hit_damage() * 0.45,
+			10.0, Color(0.8, 0.6, 1.0), "proj_orb")
+	EventBus.screen_shake_requested.emit(10.0)
 
 func _clamp_inside() -> void:
 	var size := get_viewport_rect().size
