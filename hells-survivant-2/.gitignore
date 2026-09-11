@@ -1,0 +1,15 @@
+# Build web produit par scripts/build.sh — reconstruit en CI, jamais versionné.
+/export/
+/index.html
+/index.js
+/index.wasm
+/index.pck
+/index.png
+/index.icon.png
+/index.apple-touch-icon.png
+/index.audio.worklet.js
+/index.audio.position.worklet.js
+
+# Version affichée sur l'écran-titre (scripts/gen-version.sh) : régénérée à
+# chaque build, jamais versionnée.
+/godot/version.txt

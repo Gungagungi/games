@@ -1,8 +1,9 @@
 name: Déploiement GitHub Pages
 
-# Les jeux sont du HTML/CSS/JS statique et se publient tels quels — à une
-# exception près : mecha-survivant-2 est un projet Godot, dont l'export web est
-# construit ici plutôt que versionné (39 Mo de wasm à chaque rebuild).
+# Les jeux sont du HTML/CSS/JS statique et se publient tels quels — à deux
+# exceptions près : mecha-survivant-2 et hells-survivant-2 sont des projets
+# Godot, dont l'export web est construit ici plutôt que versionné (39 Mo de
+# wasm à chaque rebuild).
 
 on:
   push:
@@ -56,6 +57,13 @@ jobs:
           # Le jeu doit être servi depuis /mecha-survivant-2/, comme les autres.
           mv mecha-survivant-2/export/* mecha-survivant-2/
           rmdir mecha-survivant-2/export
+
+      - name: Exporter Hell's Survivant 2
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          hells-survivant-2/scripts/build.sh
+          mv hells-survivant-2/export/* hells-survivant-2/
+          rmdir hells-survivant-2/export
 
       - name: Empaqueter le site
         uses: actions/upload-pages-artifact@v3

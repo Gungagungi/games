@@ -27,10 +27,10 @@ C'est de l'outillage de développement : les jeux n'en dépendent pas et restent
 
 ## Architecture
 
-- Exception assumée : `mecha-survivant-2/` n'est pas du HTML/JS pur mais un projet **Godot 4** exporté en WebAssembly. Il a une étape de build (`scripts/build.sh`), son jeu jouable n'est pas versionné, et il ne s'ouvre pas en `file://` — voir son `CLAUDE.md`. C'est le seul jeu du dépôt dans ce cas.
+- Exception assumée : `mecha-survivant-2/` et `hells-survivant-2/` ne sont pas du HTML/JS pur mais des projets **Godot 4** exportés en WebAssembly. Ils ont une étape de build (`scripts/build.sh`), leur jeu jouable n'est pas versionné (la CI le construit), et ils ne s'ouvrent pas en `file://` — voir leur `CLAUDE.md`. Ce sont les deux seuls jeux du dépôt dans ce cas ; ils partagent la même version de Godot, installée par `mecha-survivant-2/scripts/install-godot.sh`.
 - Exception assumée : `mecha-survivant/` tient dans un unique `index.html` monolithique (CSS, HTML et JS inline) ; les itérations antérieures dorment dans `mecha-survivant/archives/`. Voir son propre `CLAUDE.md` ; ne pas l'éclater en `style.css` + `game.js` sans demande explicite.
 - Chaque nouveau jeu doit suivre la même convention que `pong/` : son propre dossier avec `index.html`, `style.css`, `game.js` (ou équivalent), sans dépendance sur d'autres jeux du dépôt.
-- `hells-survivant/` suit cette convention standard (roguelite avec progression persistante en `localStorage`).
+- `hells-survivant/` suit cette convention standard (roguelite avec progression persistante en `localStorage`). Sa refonte visuelle `hells-survivant-2/` (Godot) le laisse intact et jouable : ce n'est pas un remplacement.
 - Un nouveau jeu doit aussi être ajouté au tableau de `README.md` et au portail `index.html` — sinon il reste jouable mais invisible depuis le site publié.
 - `pong/game.js` illustre le patron à réutiliser pour un jeu basé sur Canvas 2D :
   - État du jeu dans des objets simples (`player`, `opponent`, `ball`) plutôt que des classes.
