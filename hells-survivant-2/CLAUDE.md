@@ -8,9 +8,13 @@ Refonte visuelle de `hells-survivant/`, sous **Godot 4** exporté en HTML5, dans
 un style pixel art façon *Heroes of Might and Magic 2*. Les mécaniques sont
 reprises telles quelles de la v1 : 3 difficultés, 7 éléments, boss toutes les
 5 vagues, Nécromancien Putréfié en vague 30 (élément Ombre), forge épée/armure
-persistante. Ce qui change : sprites, éclairage, particules, shaders, interface
-et sons en fichiers, là où la v1 dessinait des formes au Canvas 2D et
+persistante. Ce qui change : sprites, halos lumineux, particules, shaders,
+interface et sons en fichiers, là où la v1 dessinait des formes au Canvas 2D et
 synthétisait tout en Web Audio.
+
+**En ligne** : <https://gungagungi.github.io/games/hells-survivant-2/>, lié
+depuis le portail du dépôt. Premier chargement de quelques secondes (≈ 40 Mo de
+wasm, mis en cache ensuite).
 
 La v1 reste en place, intacte et jouable. Sa sauvegarde n'est **pas** partagée :
 la v2 écrit dans `user://save.cfg` (IndexedDB dans le navigateur).
@@ -29,8 +33,21 @@ scripts/build.sh           # import puis export HTML5 dans export/ (non versionn
 scripts/serve.sh [port]    # sert export/ (8123 par défaut)
 ```
 
-La CI (`.github/workflows/deploy-pages.yml`) construit le jeu à la publication
-et déplace `export/` à la racine du dossier, comme pour ms2.
+## Publication
+
+Chaque push sur `main` déclenche `.github/workflows/deploy-pages.yml` : l'étape
+« Exporter Hell's Survivant 2 » lance `scripts/build.sh` puis déplace `export/`
+à la racine du dossier, pour que le jeu soit servi depuis `/hells-survivant-2/`
+comme les autres. Rien du build n'est versionné (`export/`, `version.txt`,
+`.godot/` sont ignorés). Pas de branche de publication à part : pour mettre le
+jeu en ligne, il suffit de pousser sur `main`, puis de suivre le run
+(`gh run watch`) et de vérifier que `index.pck` et `index.wasm` répondent en 200.
+
+Godot est restauré depuis le cache de la CI, clé `godot-<version>-web`. Changer
+de version de Godot oblige à modifier **ensemble** `GODOT_VERSION` dans le
+workflow et `VERSION` dans `mecha-survivant-2/scripts/install-godot.sh` : les
+deux jeux partagent le même binaire et le même template, qui doivent coïncider
+exactement.
 
 ## Vérification
 
@@ -53,7 +70,9 @@ Deux points à connaître :
   `Dictionary`, tableau issu de `duplicate()`) est une erreur de compilation.
   Typer explicitement (`var hp: float = d["hp"]`, `for e: Enemy in ...`).
 
-Pour le visuel, `tools/` (racine du dépôt) pilote un Chromium headless :
+Pour le visuel, `tools/` (racine du dépôt) pilote un Chromium headless. Le port
+8124 évite de heurter `mecha-survivant-2/scripts/serve.sh`, qui prend le 8123 par
+défaut :
 
 ```sh
 scripts/serve.sh 8124 &
@@ -110,7 +129,7 @@ Tous libres — sources et licences dans `CREDITS.md`.
 
 **Sprites** : pack [Dungeon Crawl Stone Soup 32×32](https://opengameart.org/content/dungeon-crawl-32x32-tiles)
 (CC0). Ce sont des **images fixes** : l'animation est procédurale (balancement,
-fente de l'attaque, flash, dissolution, particules, lumières). Fichiers renommés
+fente de l'attaque, flash, dissolution, particules, halos). Fichiers renommés
 à la copie :
 
 | Rôle | Fichier du jeu | Original (`Dungeon Crawl Stone Soup Full/`) |
@@ -140,3 +159,17 @@ musiques bouclent par `Audio._enable_loop()` à l'exécution, sans toucher aux
 il n'y a ni `ffmpeg` ni encodeur OGG sur la machine.
 
 **Police** : MedievalSharp (SIL OFL), copiée de ms2.
+
+## Limites connues
+
+- **Le son n'a jamais été écouté** : la machine de développement n'a pas de
+  sortie audio, et le mode smoke charge les sons sans les jouer. Choix des
+  bruitages, volumes (`Audio`, −4 dB effets, −10 dB musique) et boucle de
+  `music/boss.wav` sont à valider à l'oreille.
+- Les traits d'ombre (`fx/bolt`) restent **bleutés** : le sprite source est bleu
+  et le `modulate` violet ne suffit pas à le recolorer.
+- Les sprites étant fixes, un monstre ne se retourne que par `flip_h` : pas
+  d'animation de marche ni d'attaque propre à chaque créature.
+- La CI affiche un avertissement de dépréciation de Node.js 20 sur les actions
+  (`checkout`, `cache`, `configure-pages`, `deploy-pages`…) : sans effet pour
+  l'instant, à traiter en passant à leurs versions suivantes.
