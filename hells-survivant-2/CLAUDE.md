@@ -122,6 +122,8 @@ Autoloads (`autoload/`) : `Data` (tables de la v1 : épées, armures, difficult�
   v1, acculé, il sortait de l'écran pour de bon.
 - Un coup qui tue plusieurs ennemis les touche tous (la v1 retirait l'ennemi
   du tableau en le parcourant et sautait le suivant).
+- L'or gagné croît de **+12 % par vague** au lieu de +5 % dans la v1
+  (`World._spawn_enemy`), pour raccourcir l'attente avant un achat à la forge.
 - La cadence des tireurs (Ombre, Destruction) suit la difficulté via
   `shoot_mult` : **Difficile garde le rechargement de la v1** (90 frames, 55
   pour un boss), Intermédiaire ×1,3 et Facile ×1,7. La v1 tirait à cadence fixe.
