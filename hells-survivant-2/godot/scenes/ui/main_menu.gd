@@ -39,7 +39,10 @@ func _ready() -> void:
 	diffs.add_theme_constant_override("separation", 12)
 	box.add_child(diffs)
 	for id in Data.DIFFICULTY_ORDER:
-		var b := UiTheme.button(Data.DIFFICULTIES[id]["label"], Vector2(160, 38))
+		# Même présentation que les éléments : sprite à gauche, texte aligné.
+		var b := UiTheme.button(Data.DIFFICULTIES[id]["label"], Vector2(176, 46))
+		b.icon = load("res://assets/sprites/ui/difficulty_%s.png" % id)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.toggle_mode = true
 		b.pressed.connect(_pick_difficulty.bind(id))
 		diffs.add_child(b)
