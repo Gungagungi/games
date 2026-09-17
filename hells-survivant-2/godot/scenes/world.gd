@@ -13,6 +13,8 @@ const LAVA_POOLS := 4
 var player: Player
 var enemies: Array[Enemy] = []
 var projectiles: Array[Projectile] = []
+## Fiole de soin au sol, une seule à la fois (voir `_drop_potion`).
+var potion: Pickup = null
 var wave_intermission := 0
 var enemies_to_spawn := 0
 var spawn_timer := 0
@@ -139,6 +141,9 @@ func clear_run() -> void:
 	for p in projectiles:
 		p.queue_free()
 	projectiles.clear()
+	if potion != null:
+		potion.queue_free()
+		potion = null
 	for c in fx_layer.get_children():
 		c.queue_free()
 
@@ -168,6 +173,7 @@ func _tick() -> void:
 	_update_player()
 	_update_waves()
 	_update_enemies()
+	_update_potion()
 	if Game.state == "playing":
 		_update_projectiles()
 
@@ -271,6 +277,41 @@ func _start_wave() -> void:
 		Audio.play_music("combat")
 		Audio.sfx("wave_start")
 	spawn_timer = 0
+	_drop_potion()
+
+## Une fiole par vague, jamais deux au sol : celle qu'on a laissée traîner tient
+## lieu de réserve pour la vague suivante.
+func _drop_potion() -> void:
+	if potion != null:
+		return
+	var margin := 90.0
+	var pos := Vector2.ZERO
+	# Ni sur le héros, ni dans un coin : quelques essais suffisent à trouver
+	# un emplacement atteignable sans traverser toute l'arène.
+	for _i in 12:
+		pos = Vector2(randf_range(margin, Data.ARENA.x - margin), randf_range(margin, Data.ARENA.y - margin))
+		if pos.distance_to(player.position) > 140.0:
+			break
+	potion = Pickup.new()
+	potion.position = pos
+	entities.add_child(potion)
+
+## Le soin ne se déclenche qu'à PV entamés : à pleine vie, la fiole reste au sol
+## plutôt que d'être gâchée en passant dessus.
+func _update_potion() -> void:
+	if potion == null or Game.state != "playing":
+		return
+	if player.hp >= player.max_hp:
+		return
+	if player.position.distance_to(potion.position) > potion.radius + player.radius:
+		return
+	var healed := minf(player.max_hp * potion.heal_ratio, player.max_hp - player.hp)
+	player.hp += healed
+	Fx.float_text(fx_layer, player.position + Vector2(0, -player.radius - 18), "+%d PV" % roundi(healed), Color("#5ee06a"))
+	Fx.sparks(fx_layer, potion.position, Color("#ff4455"))
+	Audio.sfx("purchase", 1.15)
+	potion.queue_free()
+	potion = null
 
 func _spawn_enemy(is_boss: bool, is_final: bool) -> void:
 	var diff := Game.diff()
@@ -338,6 +379,7 @@ func _update_enemies() -> void:
 	var elem := Game.elem()
 	var ranged: bool = elem.get("ranged", false)
 	var bricks: bool = elem.get("bricks", false)
+	var shoot_mult: float = Game.diff()["shoot_mult"]
 	var lifesteal: float = elem.get("lifesteal", 0.0)
 	var burn: bool = elem.get("burn", false)
 	for e in enemies:
@@ -386,7 +428,7 @@ func _update_enemies() -> void:
 				p.brick = bricks
 				entities.add_child(p)
 				projectiles.append(p)
-				e.shoot_cooldown = 55 if e.is_boss else 90
+				e.shoot_cooldown = roundi((55 if e.is_boss else 90) * shoot_mult)
 				if bricks:
 					Audio.sfx("throw", 0.8)
 			continue

@@ -23,10 +23,13 @@ const ARMORS := [
 	{"name": "Armure du Damné", "cost": 900, "hp": 230, "def": 0.40},
 ]
 
+## `shoot_mult` allonge le rechargement des tireurs (Ombre, Destruction) :
+## Difficile garde la cadence de la v1, les deux autres tirent plus lentement.
+## `sprite` : icône du menu, dans `assets/sprites/ui/difficulty_<id>.png`.
 const DIFFICULTIES := {
-	"facile": {"label": "Facile", "hp_mult": 0.7, "dmg_mult": 0.7, "gold_mult": 0.8},
-	"intermediaire": {"label": "Intermédiaire", "hp_mult": 1.0, "dmg_mult": 1.0, "gold_mult": 1.0},
-	"difficile": {"label": "Difficile", "hp_mult": 1.7, "dmg_mult": 1.6, "gold_mult": 1.6},
+	"facile": {"label": "Facile", "hp_mult": 0.7, "dmg_mult": 0.7, "gold_mult": 0.8, "shoot_mult": 1.7},
+	"intermediaire": {"label": "Intermédiaire", "hp_mult": 1.0, "dmg_mult": 1.0, "gold_mult": 1.0, "shoot_mult": 1.3},
+	"difficile": {"label": "Difficile", "hp_mult": 1.7, "dmg_mult": 1.6, "gold_mult": 1.6, "shoot_mult": 1.0},
 }
 const DIFFICULTY_ORDER := ["facile", "intermediaire", "difficile"]
 
