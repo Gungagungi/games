@@ -7,7 +7,7 @@ exigée par les licences CC0, elle est donnée ici par courtoisie.
 
 | Fichiers | Source | Licence |
 | --- | --- | --- |
-| `godot/assets/sprites/` (monstres, héros en calques, sols, lave, projectiles, or) | [Dungeon Crawl Stone Soup — 32×32 tiles](https://opengameart.org/content/dungeon-crawl-32x32-tiles), artistes de Dungeon Crawl Stone Soup | CC0 |
+| `godot/assets/sprites/` (monstres, héros en calques, sols, lave, projectiles, or, fiole, icônes de difficulté) | [Dungeon Crawl Stone Soup — 32×32 tiles](https://opengameart.org/content/dungeon-crawl-32x32-tiles), artistes de Dungeon Crawl Stone Soup | CC0 |
 
 Correspondance des sprites renommés : voir le tableau « Assets » de `CLAUDE.md`.
 

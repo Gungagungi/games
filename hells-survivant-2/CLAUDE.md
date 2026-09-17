@@ -95,8 +95,8 @@ Autoloads (`autoload/`) : `Data` (tables de la v1 : épées, armures, difficult�
   frames, sont repris tels quels : les formules de `game.js` se relisent ligne à
   ligne. Seul le rendu suit la fréquence d'affichage. Ne pas convertir ces
   compteurs en secondes par petites touches.
-- `scenes/entities/` — `Player`, `Enemy`, `Projectile` ne portent que l'état
-  (champs de la v1) et leur visuel ; ils ne décident de rien.
+- `scenes/entities/` — `Player`, `Enemy`, `Projectile`, `Pickup` ne portent que
+  l'état (champs de la v1) et leur visuel ; ils ne décident de rien.
 - `scenes/fx.gd` — halos, auras de particules par élément, textes flottants,
   pièces d'or. `shaders/sprite.gdshader` fait le flash de coup, le contour
   (télégraphe de charge des boss) et la dissolution à la mort.
@@ -122,6 +122,13 @@ Autoloads (`autoload/`) : `Data` (tables de la v1 : épées, armures, difficult�
   v1, acculé, il sortait de l'écran pour de bon.
 - Un coup qui tue plusieurs ennemis les touche tous (la v1 retirait l'ennemi
   du tableau en le parcourant et sautait le suivant).
+- La cadence des tireurs (Ombre, Destruction) suit la difficulté via
+  `shoot_mult` : **Difficile garde le rechargement de la v1** (90 frames, 55
+  pour un boss), Intermédiaire ×1,3 et Facile ×1,7. La v1 tirait à cadence fixe.
+- Une **fiole de soin** tombe à chaque début de vague (`World._drop_potion`) et
+  rend 20 % des PV max. Elle n'existe pas dans la v1. Jamais deux au sol : celle
+  qu'on laisse traîner tient lieu de réserve. Elle ne se ramasse qu'à PV
+  entamés, sinon un simple passage dessus la gâcherait.
 
 ## Assets
 
@@ -144,7 +151,14 @@ fente de l'attaque, flash, dissolution, particules, halos). Fichiers renommés
 | Boss final | `zonguldrok_lich` | `monster/undead/zonguldrok_lich_1` |
 | Héros | `player/base`, `body_N`, `legs_N`, `boots_N`, `head_N`, `cloak_N`, `sword_N` | `player/…` (calques paperdoll, N = niveau d'armure ou d'épée) |
 | Arène | `dungeon/floor_0..6`, `lava_0..3` | `dungeon/floor/volcanic_floor_*`, `lava_*` |
-| Projectiles, or | `fx/brick`, `fx/bolt`, `fx/gold` | `effect/rock_0_new`, `effect/magic_bolt_1`, `item/gold/gold_pile_5` |
+| Projectiles, or, fiole | `fx/brick`, `fx/bolt`, `fx/gold`, `fx/potion` | `effect/rock_0_new`, `effect/magic_bolt_1`, `item/gold/gold_pile_5`, `item/potion/ruby` |
+| Difficultés (menu) | `ui/difficulty_facile`, `_intermediaire`, `_difficile` | `monster/animals/rat`, `monster/orc`, `monster/ogre` |
+
+Les trois icônes de difficulté suivent la même convention que les éléments, mais
+sans clé dans `Data` : le menu les charge par `ui/difficulty_<id>.png`, d'après
+l'identifiant de `Data.DIFFICULTY_ORDER`. Le rat, l'orc et l'ogre ne disent rien
+de l'enfer ; ils sont là parce qu'ils **s'échelonnent lisiblement en taille** à
+32 px, sans empiéter sur les sprites d'élément voisins.
 
 Le sprite de chaque élément est déclaré dans `Data.ELEMENTS` (`sprite`,
 `boss_sprite`). Un calque de héros absent (`body_0`, `sword_0`…) est simplement
@@ -162,14 +176,15 @@ il n'y a ni `ffmpeg` ni encodeur OGG sur la machine.
 
 ## Limites connues
 
-- **Le son n'a jamais été écouté** : la machine de développement n'a pas de
-  sortie audio, et le mode smoke charge les sons sans les jouer. Choix des
-  bruitages, volumes (`Audio`, −4 dB effets, −10 dB musique) et boucle de
-  `music/boss.wav` sont à valider à l'oreille.
+- Les bruitages ont été validés à l'oreille et sont bons. Restent à écouter les
+  **musiques**, en particulier la boucle de `music/boss.wav` : la machine de
+  développement n'a pas de sortie audio et le mode smoke charge les sons sans
+  les jouer.
+- La fiole de soin **emprunte le bruitage `purchase`**, faute d'un son de
+  gorgée dans les packs copiés.
+- Le mode smoke maintient le héros à PV pleins, si bien que `check.sh`
+  **n'exerce jamais le ramassage de la fiole** — seule son apparition l'est.
 - Les traits d'ombre (`fx/bolt`) restent **bleutés** : le sprite source est bleu
   et le `modulate` violet ne suffit pas à le recolorer.
 - Les sprites étant fixes, un monstre ne se retourne que par `flip_h` : pas
   d'animation de marche ni d'attaque propre à chaque créature.
-- La CI affiche un avertissement de dépréciation de Node.js 20 sur les actions
-  (`checkout`, `cache`, `configure-pages`, `deploy-pages`…) : sans effet pour
-  l'instant, à traiter en passant à leurs versions suivantes.
