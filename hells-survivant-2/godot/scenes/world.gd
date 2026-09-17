@@ -343,7 +343,9 @@ func _spawn_enemy(is_boss: bool, is_final: bool) -> void:
 	e.is_boss = is_boss
 	e.is_final = is_final
 	e.charge_timer = 180.0 + randf() * 60.0 if is_boss else 0.0
-	e.gold_value = roundi(gold_base * gold_mult * (1.0 + Game.wave * 0.05))
+	# Écart assumé avec la v1 (+5 %/vague) : +12 % rend l'équipement de la forge
+	# atteignable sans enchaîner les parties.
+	e.gold_value = roundi(gold_base * gold_mult * (1.0 + Game.wave * 0.12))
 	entities.add_child(e)
 	enemies.append(e)
 
