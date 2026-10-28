@@ -25,6 +25,23 @@ La sortie remonte aussi les erreurs de console de la page. Pour un effet qui ne 
 
 C'est de l'outillage de développement : les jeux n'en dépendent pas et restent sans dépendance.
 
+Les deux jeux Godot ont en plus leur propre `scripts/check.sh`, qui joue quatre parties
+accélérées sans écran (mode smoke). Il n'assert rien : c'est la sortie qui se lit. Voir
+leur `CLAUDE.md`.
+
+`TESTS.md` est un document d'analyse — état de la couverture et pistes pour transformer
+`capture.js` et `check.sh` en vérifications qui échouent seules. **Rien de ce qu'il décrit
+n'est implémenté** : ne pas le lire comme une description de l'existant.
+
+## Publication
+
+`.github/workflows/deploy-pages.yml` publie le dépôt sur GitHub Pages à chaque push sur
+`main`. Les jeux purs partent tels quels ; les deux projets Godot sont **exportés dans le
+workflow** plutôt que versionnés (39 Mo de wasm par build). La variable `GODOT_VERSION` du
+workflow doit rester alignée sur la version fixée dans
+`mecha-survivant-2/scripts/install-godot.sh` — sinon la CI construit avec un moteur autre
+que celui du poste local.
+
 ## Architecture
 
 - Exception assumée : `mecha-survivant-2/` et `hells-survivant-2/` ne sont pas du HTML/JS pur mais des projets **Godot 4** exportés en WebAssembly. Ils ont une étape de build (`scripts/build.sh`), leur jeu jouable n'est pas versionné (la CI le construit), et ils ne s'ouvrent pas en `file://` — voir leur `CLAUDE.md`. Ce sont les deux seuls jeux du dépôt dans ce cas ; ils partagent la même version de Godot, installée par `mecha-survivant-2/scripts/install-godot.sh`.
