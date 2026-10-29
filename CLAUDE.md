@@ -42,13 +42,21 @@ workflow doit rester alignée sur la version fixée dans
 `mecha-survivant-2/scripts/install-godot.sh` — sinon la CI construit avec un moteur autre
 que celui du poste local.
 
+Le site est servi sur le domaine personnalisé `jeux.lambertdeharosanchez.com` (l'ancienne
+adresse `gungagungi.github.io/games/` y redirige). Le domaine est déclaré dans les
+réglages Pages du dépôt, pas par un fichier `CNAME` : avec un déploiement par workflow,
+GitHub ignore ce fichier. Côté DNS, un `CNAME jeux → gungagungi.github.io` chez
+Cloudflare, en « DNS uniquement » pour que GitHub émette lui-même le certificat. Le
+portfolio (`~/dev/pro/portfolio`) renvoie vers ce domaine depuis sa section « Jeux » : un
+nouveau jeu doit aussi y être ajouté.
+
 ## Architecture
 
 - Exception assumée : `mecha-survivant-2/` et `hells-survivant-2/` ne sont pas du HTML/JS pur mais des projets **Godot 4** exportés en WebAssembly. Ils ont une étape de build (`scripts/build.sh`), leur jeu jouable n'est pas versionné (la CI le construit), et ils ne s'ouvrent pas en `file://` — voir leur `CLAUDE.md`. Ce sont les deux seuls jeux du dépôt dans ce cas ; ils partagent la même version de Godot, installée par `mecha-survivant-2/scripts/install-godot.sh`.
 - Exception assumée : `mecha-survivant/` tient dans un unique `index.html` monolithique (CSS, HTML et JS inline) ; les itérations antérieures dorment dans `mecha-survivant/archives/`. Voir son propre `CLAUDE.md` ; ne pas l'éclater en `style.css` + `game.js` sans demande explicite.
 - Chaque nouveau jeu doit suivre la même convention que `pong/` : son propre dossier avec `index.html`, `style.css`, `game.js` (ou équivalent), sans dépendance sur d'autres jeux du dépôt.
 - `hells-survivant/` suit cette convention standard (roguelite avec progression persistante en `localStorage`). Sa refonte visuelle `hells-survivant-2/` (Godot) le laisse intact et jouable : ce n'est pas un remplacement.
-- Un nouveau jeu doit aussi être ajouté au tableau de `README.md` et au portail `index.html` — sinon il reste jouable mais invisible depuis le site publié.
+- Un nouveau jeu doit aussi être ajouté au tableau de `README.md`, au portail `index.html` et à la section « Jeux » du portfolio (`~/dev/pro/portfolio/site/index.html`) — sinon il reste jouable mais invisible depuis le site publié.
 - `pong/game.js` illustre le patron à réutiliser pour un jeu basé sur Canvas 2D :
   - État du jeu dans des objets simples (`player`, `opponent`, `ball`) plutôt que des classes.
   - Contrôles clavier via une map `keysPressed` peuplée par les listeners `keydown`/`keyup`, lue à chaque frame (pas de logique dans les handlers eux-mêmes).

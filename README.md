@@ -2,15 +2,15 @@
 
 Collection de petits jeux navigateur — un dossier par jeu. Tous sont en HTML/CSS/JS pur, sans dépendance ni étape de build, à l'exception de Mecha Survivant 2 et Hell's Survivant 2, projets Godot exportés en WebAssembly.
 
-**Jouer en ligne : https://gungagungi.github.io/games/**
+**Jouer en ligne : https://jeux.lambertdeharosanchez.com/**
 
 | Jeu | Lancer | Description |
 | --- | --- | --- |
 | **Pong** | [`pong/index.html`](pong/index.html) | Le classique, en solo contre l'ordinateur ou à deux en local. |
 | **Mecha Survivant** | [`mecha-survivant/index.html`](mecha-survivant/index.html) | Survie/roguelite en Canvas 2D : vagues d'ennemis (morts-vivants, créatures de l'ombre, mobs de feu), un pouvoir à choisir entre chaque vague, un boss toutes les 5 vagues. |
-| **Mecha Survivant 2** | [en ligne](https://gungagungi.github.io/games/mecha-survivant-2/) | Les mêmes mécaniques, refondues sous Godot 4 : rendu pixel art et bande-son en fichiers. Ne s'ouvre pas en `file://` — voir [`mecha-survivant-2/`](mecha-survivant-2/). |
+| **Mecha Survivant 2** | [en ligne](https://jeux.lambertdeharosanchez.com/mecha-survivant-2/) | Les mêmes mécaniques, refondues sous Godot 4 : rendu pixel art et bande-son en fichiers. Ne s'ouvre pas en `file://` — voir [`mecha-survivant-2/`](mecha-survivant-2/). |
 | **Hell's Survivant** | [`hells-survivant/index.html`](hells-survivant/index.html) | Roguelite en Canvas 2D contre des vagues démoniaques avec boss élémentaires ; boutique entre les parties (épée, armure) dont la progression est conservée en `localStorage`. |
-| **Hell's Survivant 2** | [en ligne](https://gungagungi.github.io/games/hells-survivant-2/) | Les mêmes mécaniques, refondues sous Godot 4 dans un style pixel art façon Heroes of Might and Magic 2 : sprites Dungeon Crawl (CC0), éclairage, auras d'éléments, héros dont l'équipement se voit. Ne s'ouvre pas en `file://` — voir [`hells-survivant-2/`](hells-survivant-2/). |
+| **Hell's Survivant 2** | [en ligne](https://jeux.lambertdeharosanchez.com/hells-survivant-2/) | Les mêmes mécaniques, refondues sous Godot 4 dans un style pixel art façon Heroes of Might and Magic 2 : sprites Dungeon Crawl (CC0), éclairage, auras d'éléments, héros dont l'équipement se voit. Ne s'ouvre pas en `file://` — voir [`hells-survivant-2/`](hells-survivant-2/). |
 
 Chaque jeu s'ouvre directement dans un navigateur. Si `file://` pose problème (selon le navigateur), servir le dossier en local, par exemple avec `python3 -m http.server`.
 
@@ -26,4 +26,4 @@ Les jeux n'ont besoin de rien : ouvrir le fichier HTML suffit. Pour les inspecte
 
 ## Mise en ligne
 
-Le site est publié sur GitHub Pages par [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml), à chaque poussée sur `main`. Le dépôt est publié tel quel — `index.html` à la racine sert de portail vers les jeux — après une seule étape de construction : les exports web de Mecha Survivant 2 et de Hell's Survivant 2, que la CI produit avec Godot plutôt que de les versionner.
+Le site est publié sur GitHub Pages par [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml), à chaque poussée sur `main`. Le dépôt est publié tel quel — `index.html` à la racine sert de portail vers les jeux — après une seule étape de construction : les exports web de Mecha Survivant 2 et de Hell's Survivant 2, que la CI produit avec Godot plutôt que de les versionner. Il est servi sur le domaine personnalisé `jeux.lambertdeharosanchez.com`, déclaré dans les réglages Pages du dépôt.

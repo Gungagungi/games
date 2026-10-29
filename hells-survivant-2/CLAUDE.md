@@ -12,7 +12,7 @@ persistante. Ce qui change : sprites, halos lumineux, particules, shaders,
 interface et sons en fichiers, là où la v1 dessinait des formes au Canvas 2D et
 synthétisait tout en Web Audio.
 
-**En ligne** : <https://gungagungi.github.io/games/hells-survivant-2/>, lié
+**En ligne** : <https://jeux.lambertdeharosanchez.com/hells-survivant-2/>, lié
 depuis le portail du dépôt. Premier chargement de quelques secondes (≈ 40 Mo de
 wasm, mis en cache ensuite).
 
