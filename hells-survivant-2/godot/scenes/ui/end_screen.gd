@@ -1,9 +1,10 @@
 class_name EndScreen
 extends Control
-## Défaite, ou victoire contre le boss final (Ombre ou Chaos).
+## Défaite, ou victoire contre le boss final (Ombre ou Chaos) ou le Conclave.
 
 signal back_requested
 
+var world: World
 var _panel_style: StyleBoxFlat
 var _title: Label
 var _wave: Label
@@ -38,7 +39,9 @@ func _ready() -> void:
 
 func present(victory: bool) -> void:
 	if victory:
-		_title.text = Data.final_boss(Game.element)["fallen"]
+		# En Conclave, l'élément du menu n'a pas forcément de boss final.
+		var final := Data.BOSS_RUSH if Game.boss_rush else Data.final_boss(Game.element)
+		_title.text = final["fallen"]
 		_title.add_theme_color_override("font_color", Color("#c084fc"))
 		_panel_style.border_color = Color("#a855f7")
 		_wave.text = "Tu as survécu jusqu'à la vague %d" % Game.wave
@@ -47,6 +50,17 @@ func present(victory: bool) -> void:
 		_title.add_theme_color_override("font_color", Color("#ff3c3c"))
 		_panel_style.border_color = UiTheme.GOLD
 		_wave.text = "Vague atteinte : %d" % Game.wave
+	if Game.boss_rush and world != null:
+		var secs := world.rush_ticks / 60
+		var time := "%d:%02d" % [secs / 60, secs % 60]
+		if victory:
+			_wave.text = "Les %d boss vaincus en %s" % [world.rush_total, time]
+		else:
+			var alive := 0
+			for e in world.enemies:
+				if e.is_boss:
+					alive += 1
+			_wave.text = "Boss restants : %d / %d, après %s" % [alive, world.rush_total, time]
 	_gold.text = "Or récolté ce run : %d" % Game.run_gold
 
 func _gui_input(event: InputEvent) -> void:

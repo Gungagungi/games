@@ -16,6 +16,8 @@ var run_gold := 0
 ## partie. Un boss sort de la file en apparaissant ; comme la vague ne s'achève
 ## qu'à sa mort, un boss tué ne revient jamais.
 var boss_queue: Array[String] = []
+## Niveau spécial « Conclave des boss » (voir `World.start_boss_rush`).
+var boss_rush := false
 var smoke_test := false
 
 func set_state(s: String) -> void:

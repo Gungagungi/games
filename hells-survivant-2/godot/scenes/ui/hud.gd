@@ -112,6 +112,9 @@ func _process(_delta: float) -> void:
 	_wave.text = "Vague %d%s" % [Game.wave, tag]
 	_mode.text = "%s — %s" % [Game.diff()["label"], Game.elem()["label"]]
 	_sound.text = "M : son (coupé)" if Save.muted else "M : son (activé)"
+	if Game.boss_rush:
+		_process_boss_rush()
+		return
 
 	var boss := world.current_boss()
 	_boss_panel.visible = boss != null
@@ -122,3 +125,22 @@ func _process(_delta: float) -> void:
 
 	_banner.visible = world.wave_intermission > 0 and world.enemies.is_empty()
 	_banner.text = "Vague %d arrive…" % Game.wave
+
+## Conclave : boss restants, temps écoulé et une barre pour la vie cumulée de
+## tous les boss (chacun a aussi la sienne au-dessus de sa tête).
+func _process_boss_rush() -> void:
+	var alive := 0
+	var hp := 0.0
+	for e in world.enemies:
+		if e.is_boss:
+			alive += 1
+			hp += maxf(0.0, e.hp)
+	var secs := world.rush_ticks / 60
+	_wave.text = "Boss restants : %d / %d" % [alive, world.rush_total]
+	_mode.text = "%s — %d:%02d" % [Game.diff()["label"], secs / 60, secs % 60]
+	_boss_panel.visible = true
+	_boss_name.text = Data.BOSS_RUSH["name"]
+	_boss_bar.max_value = maxf(1.0, world.rush_max_hp)
+	_boss_bar.value = hp
+	_banner.visible = world.rush_intro > 0
+	_banner.text = "Le conclave des boss s'assemble…"

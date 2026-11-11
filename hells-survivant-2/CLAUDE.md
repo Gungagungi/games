@@ -10,8 +10,9 @@ reprises telles quelles de la v1 : 3 difficultés, 7 éléments, boss toutes les
 5 vagues, Nécromancien Putréfié en vague 30 (élément Ombre), forge épée/armure
 persistante. Ce qui change : sprites, halos lumineux, particules, shaders,
 interface et sons en fichiers, là où la v1 dessinait des formes au Canvas 2D et
-synthétisait tout en Web Audio. S'y ajoute un mode absent de la v1, le
-**Chaos** (voir « Mode Chaos »).
+synthétisait tout en Web Audio. S'y ajoutent deux modes absents de la v1 : le
+**Chaos** (voir « Mode Chaos ») et le niveau spécial **Conclave des boss**
+(voir « Conclave des boss »).
 
 **En ligne** : <https://jeux.lambertdeharosanchez.com/hells-survivant-2/>, lié
 depuis le portail du dépôt. Premier chargement de quelques secondes (≈ 40 Mo de
@@ -52,19 +53,23 @@ exactement.
 
 ## Vérification
 
-`scripts/check.sh` joue sept parties accélérées via le mode smoke de
+`scripts/check.sh` joue huit parties accélérées via le mode smoke de
 `scenes/main.gd` (`--headless -- --smoke [--element=X] [--difficulty=X]
-[--wave=N] [--duration=S]`) : vagues ordinaires (Sang, vague 1), boss de mêlée
-(Feu, vague 5), boss tireur de briques en Difficile (Destruction, vague 10), et
-boss final jusqu'à la **victoire** (Ombre, vague 30), puis trois parties Chaos :
-vagues mélangées (vague 1), dernier boss de la file (vague 35) et Créature
-cauchemardesque jusqu'à la victoire (vague 40, sur 60 s au lieu de 20 : elle
-saute, charge et se dédouble, le pilote automatique met plus longtemps à la
-finir). Chaque apparition de boss est
-écrite dans la sortie (`[smoke] vague N : <boss>`). Le héros y est immortel,
-équipé au maximum (en mémoire, `Save.write()` ne fait rien en smoke) et combat
-tout seul. Une partie échoue si elle ne progresse pas, si une vague de boss
-final ne se conclut pas en victoire, ou sur toute erreur GDScript.
+[--wave=N] [--duration=S] [--boss-rush]`) : vagues ordinaires (Sang, vague 1),
+boss de mêlée (Feu, vague 5), boss tireur de briques en Difficile (Destruction,
+vague 10), et boss final jusqu'à la **victoire** (Ombre, vague 30), puis trois
+parties Chaos : vagues mélangées (vague 1), dernier boss de la file (vague 35)
+et Créature cauchemardesque jusqu'à la victoire (vague 40, sur 60 s au lieu de
+20 : elle saute, charge et se dédouble, le pilote automatique met plus
+longtemps à la finir), enfin le Conclave des boss jusqu'à la victoire (60 s
+aussi). Chaque apparition de boss est écrite dans la sortie
+(`[smoke] vague N : <boss>`). Le héros y est immortel, équipé au maximum (en
+mémoire, `Save.write()` ne fait rien en smoke) et combat tout seul. Une partie
+échoue si elle ne progresse pas, si une vague de boss final ne se conclut pas
+en victoire, ou sur toute erreur GDScript. Le Conclave échoue en plus si deux
+sprites de boss (doubles de la Créature compris) se recouvrent de plus de
+8 px : la sortie donne le pire écart (`chevauchement max`, −6 px quand ils se
+touchent à la limite).
 
 Deux points à connaître :
 
@@ -85,10 +90,15 @@ scripts/serve.sh 8124 &
 node tools/capture.js http://localhost:8124/index.html tools/shots/hs2.png --wait 15000 --no-step
 HS2_ELEMENT_STEPS=3 node tools/capture.js http://localhost:8124/index.html tools/shots/feu.png \
   --scenario tools/scenarios/hs2-gameplay.js --no-step
+HS2_PLAY_MS=7000 node tools/capture.js http://localhost:8124/index.html tools/shots/conclave.png \
+  --scenario tools/scenarios/hs2-boss-rush.js --no-step
 ```
 
-Le scénario passe l'écran-titre **au clavier** (Z/S, Entrée), sans coordonnée
-de clic : changer la mise en page du menu ne le casse pas.
+Les scénarios passent l'écran-titre **au clavier** (Z/S, Entrée, B), sans
+coordonnée de clic : changer la mise en page du menu ne les casse pas.
+`hs2-boss-rush.js` écrit aussi `<sortie>-menu.png` et `<sortie>-intro.png`.
+Chromium headless fait tourner le wasm bien plus lentement que le temps réel :
+7 s d'attente ne donnent qu'une seconde de combat environ.
 
 ## Architecture
 
@@ -155,6 +165,37 @@ l'un des 7 `Data.MOB_ELEMENTS` à l'apparition.
   Toutes les attaques sont télégraphiées. Les créatures nées pendant le tick
   passent par `World.queue_spawn`. Sa mort emporte doubles et mini-créatures,
   sans prime.
+
+### Conclave des boss
+
+Niveau spécial, sans équivalent dans la v1, lancé par le bouton du menu ou la
+touche B (`World.start_boss_rush`). Il ignore l'élément et la vague de départ du
+menu et garde la difficulté. Les **9 boss** entrent ensemble : les 7 boss
+d'élément, le Nécromancien Putréfié et la Créature cauchemardesque
+(`Data.BOSS_RUSH_ROSTER`), avec les PV et l'or d'une vague 10
+(`Data.BOSS_RUSH`).
+
+- **Annonce** : 2 s (`RUSH_INTRO`) pendant lesquelles les boss restent figés en
+  anneau autour du héros, pour qu'on les voie tous.
+- **Comportement** : chacun garde son IA de boss (mêlée, tir, charge, brûlure,
+  vol de vie). S'y ajoutent une **promenade** (`_wander_bosses` : pas de côté
+  autour du héros, dont le sens s'inverse lentement et diffère d'un boss à
+  l'autre) et une **séparation** (`_separate_bosses`) qui écarte deux boss dont
+  les sprites se chevauchent. La distance minimale suit la taille du sprite
+  (`Enemy.top()`), pas la hitbox de la v1 : c'est la lisibilité qui est visée,
+  l'équilibrage des coups ne change pas.
+- La **Créature cauchemardesque** garde son jeu d'attaques (`Nightmare`) et ne
+  se promène pas : elle bouge déjà par ses sauts et ruées. Ses doubles sont
+  séparés comme des boss (`_is_bulky`) ; sa mort emporte doubles et
+  mini-créatures, mais ne gagne pas la partie tant qu'un autre boss vit.
+- Un boss ne monte pas dans la bande du haut réservée au HUD (`RUSH_HUD_TOP`).
+- Pas de vagues : une fiole tombe toutes les 20 s (`RUSH_POTION_EVERY`), la
+  victoire arrive à la mort du dernier boss, boss finals compris, et l'écran de
+  fin donne le temps. Nom et barre de vie de chaque boss sont dessinés par
+  `scenes/boss_tags.gd` ; le HUD affiche les boss restants et la vie cumulée.
+- `Game.boss_rush` est remis à faux par `World.start_run`.
+- C'est un mode de **fin de jeu** : sans équipement, le héros tombe en
+  quelques secondes, même en Facile.
 
 ### Écarts assumés avec la v1
 

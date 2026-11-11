@@ -3,9 +3,10 @@ extends Node
 ## clavier de la v1.
 ##
 ## Mode smoke : `godot --headless --path godot -- --smoke [--element=X]
-## [--difficulty=X] [--wave=N] [--duration=S]` joue une partie accélérée sans
-## rendu puis quitte, avec un code de sortie non nul en cas d'échec. Le héros y
-## est immortel, équipé au maximum, et combat tout seul.
+## [--difficulty=X] [--wave=N] [--duration=S] [--boss-rush]` joue une partie
+## accélérée sans rendu puis quitte, avec un code de sortie non nul en cas
+## d'échec. Le héros y est immortel, équipé au maximum, et combat tout seul.
+## `--boss-rush` lance le Conclave des boss, qui doit finir en victoire.
 
 const SMOKE_TIME_SCALE := 8.0
 
@@ -19,6 +20,11 @@ var _smoke_left := 0.0
 var _smoke_start_wave := 1
 var _smoke_expect_victory := false
 var _smoke_done := false
+## Conclave : pire chevauchement de sprites de boss vu pendant la partie. Un
+## léger recouvrement reste possible quand les boss sont acculés dans un coin ;
+## au-delà de la tolérance, la séparation est cassée.
+const SMOKE_MAX_OVERLAP := 8.0
+var _smoke_overlap := -INF
 
 func _ready() -> void:
 	randomize()
@@ -43,9 +49,11 @@ func _ready() -> void:
 	shop.world = world
 	root.add_child(shop)
 	end_screen = EndScreen.new()
+	end_screen.world = world
 	root.add_child(end_screen)
 
 	menu.start_requested.connect(func() -> void: world.start_run(Game.start_wave))
+	menu.boss_rush_requested.connect(world.start_boss_rush)
 	menu.shop_requested.connect(Game.open_shop)
 	shop.closed.connect(Game.close_shop)
 	end_screen.back_requested.connect(_back_to_menu)
@@ -144,21 +152,34 @@ func _start_smoke_if_asked() -> void:
 	# En mémoire seulement : Save.write() ne fait rien en mode smoke.
 	Save.sword_tier = Data.SWORDS.size() - 1
 	Save.armor_tier = Data.ARMORS.size() - 1
-	_smoke_expect_victory = Data.is_final_boss_wave(Game.element, _smoke_start_wave)
-	print("[smoke] %s / %s, départ vague %d" % [Game.element, Game.difficulty, _smoke_start_wave])
+	var rush := "--boss-rush" in args
+	_smoke_expect_victory = rush or Data.is_final_boss_wave(Game.element, _smoke_start_wave)
+	if rush:
+		print("[smoke] %s / %s" % [Data.BOSS_RUSH["name"], Game.difficulty])
+	else:
+		print("[smoke] %s / %s, départ vague %d" % [Game.element, Game.difficulty, _smoke_start_wave])
 	Game.open_shop()
 	Game.close_shop()
-	world.start_run(_smoke_start_wave)
+	if rush:
+		world.start_boss_rush()
+	else:
+		world.start_run(_smoke_start_wave)
 
 func _process(delta: float) -> void:
 	if not Game.smoke_test or _smoke_done:
 		return
 	_drive_smoke_player()
+	if Game.boss_rush:
+		_smoke_overlap = maxf(_smoke_overlap, world.boss_overlap())
 	_smoke_left -= delta / Engine.time_scale
 	if Game.state != "victory" and _smoke_left > 0.0:
 		return
 	_smoke_done = true
 	var ok := Game.state == "victory" if _smoke_expect_victory else Game.wave > _smoke_start_wave
+	if Game.boss_rush:
+		print("[smoke] chevauchement max entre boss : %.1f px (tolérance %.0f)" % [
+			_smoke_overlap, SMOKE_MAX_OVERLAP])
+		ok = ok and _smoke_overlap <= SMOKE_MAX_OVERLAP
 	print("[smoke] %s — état : %s, vague atteinte : %d, ennemis vivants : %d, or gagné : %d" % [
 		"OK" if ok else "ÉCHEC", Game.state, Game.wave, world.enemies.size(), Game.run_gold])
 	get_tree().quit(0 if ok else 1)
