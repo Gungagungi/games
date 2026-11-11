@@ -8,6 +8,8 @@ signal shop_requested
 var _diff_buttons := {}
 var _elem_buttons := {}
 var _trait: Label
+var _wave_label: Label
+var _wave_info: Label
 var _equip: Label
 var _hints: Label
 
@@ -75,6 +77,25 @@ func _ready() -> void:
 	_trait.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_trait)
 
+	# Sélecteur de niveau : départ direct à la vague choisie (« téléportation »).
+	box.add_child(_section("Vague de départ"))
+	var waves := HBoxContainer.new()
+	waves.alignment = BoxContainer.ALIGNMENT_CENTER
+	waves.add_theme_constant_override("separation", 8)
+	box.add_child(waves)
+	for step: int in [-5, -1]:
+		waves.add_child(_wave_button(step))
+	_wave_label = UiTheme.label("", 22, UiTheme.GOLD, 4)
+	_wave_label.custom_minimum_size = Vector2(130, 0)
+	_wave_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_wave_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	waves.add_child(_wave_label)
+	for step: int in [1, 5]:
+		waves.add_child(_wave_button(step))
+	_wave_info = UiTheme.label("", 14, UiTheme.MUTED)
+	_wave_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(_wave_info)
+
 	var actions := HBoxContainer.new()
 	actions.alignment = BoxContainer.ALIGNMENT_CENTER
 	actions.add_theme_constant_override("separation", 20)
@@ -109,6 +130,15 @@ func _section(text: String) -> Label:
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return l
 
+func _wave_button(step: int) -> Button:
+	var text := ("−%d" if step < 0 else "+%d") % absi(step)
+	var b := UiTheme.button(text, Vector2(56, 40), 18)
+	b.pressed.connect(func() -> void:
+		Game.set_start_wave(Game.start_wave + step)
+		Audio.sfx("click")
+		refresh())
+	return b
+
 func _pick_difficulty(id: String) -> void:
 	Game.difficulty = id
 	Audio.sfx("click")
@@ -116,6 +146,7 @@ func _pick_difficulty(id: String) -> void:
 
 func _pick_element(id: String) -> void:
 	Game.element = id
+	Game.set_start_wave(Game.start_wave)
 	Audio.sfx("click")
 	refresh()
 
@@ -130,9 +161,20 @@ func refresh() -> void:
 	var final := Data.final_boss(Game.element)
 	var tag := "  —  boss final en vague %d" % final["wave"] if not final.is_empty() else ""
 	_trait.text = "%s : %s%s" % [elem["label"], elem["trait"], tag]
+	_wave_label.text = "Vague %d" % Game.start_wave
+	_wave_info.text = _wave_description(Game.start_wave)
 	_equip.text = "Équipement : %s — %s — Or : %d" % [Save.sword()["name"], Save.armor()["name"], Save.gold]
-	_hints.text = "QD : difficulté — ZS : élément — Entrée : combattre — I : forge — M : %s" % (
+	_hints.text = "QD : difficulté — ZS : élément — AE : vague — Entrée : combattre — I : forge — M : %s" % (
 		"réactiver le son" if Save.muted else "couper le son")
+
+func _wave_description(w: int) -> String:
+	if Data.is_final_boss_wave(Game.element, w):
+		return "Boss final : %s" % Data.final_boss(Game.element)["name"]
+	if Data.is_boss_wave(w):
+		if Game.is_chaos():
+			return "Vague de boss (tiré au hasard)" if w <= 35 else "Vague ordinaire"
+		return "Vague de boss : %s" % Data.BOSS_NAMES[Game.element]
+	return "Prochain boss en vague %d" % (w + 5 - w % 5)
 
 ## Commandes clavier de la v1. Z/S bouclent sur les 7 éléments et le Chaos :
 ## la v1 bouclait sur 6 et sautait l'Ombre au clavier.
@@ -148,8 +190,14 @@ func handle_key(key: Key) -> void:
 			Game.difficulty = Data.DIFFICULTY_ORDER[(d + 1) % nd]
 		KEY_Z, KEY_UP:
 			Game.element = Data.ELEMENT_ORDER[(e - 1 + ne) % ne]
+			Game.set_start_wave(Game.start_wave)
 		KEY_S, KEY_DOWN:
 			Game.element = Data.ELEMENT_ORDER[(e + 1) % ne]
+			Game.set_start_wave(Game.start_wave)
+		KEY_A, KEY_PAGEDOWN:
+			Game.set_start_wave(Game.start_wave - 1)
+		KEY_E, KEY_PAGEUP:
+			Game.set_start_wave(Game.start_wave + 1)
 		KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
 			start_requested.emit()
 			return

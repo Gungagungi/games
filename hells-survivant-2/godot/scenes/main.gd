@@ -45,7 +45,7 @@ func _ready() -> void:
 	end_screen = EndScreen.new()
 	root.add_child(end_screen)
 
-	menu.start_requested.connect(func() -> void: world.start_run())
+	menu.start_requested.connect(func() -> void: world.start_run(Game.start_wave))
 	menu.shop_requested.connect(Game.open_shop)
 	shop.closed.connect(Game.close_shop)
 	end_screen.back_requested.connect(_back_to_menu)
