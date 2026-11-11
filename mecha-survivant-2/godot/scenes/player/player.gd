@@ -46,7 +46,7 @@ var _visual: SpriteOrShape
 func _ready() -> void:
 	add_to_group("player")
 	collision_layer = 1
-	collision_mask = 0
+	collision_mask = Level.WALL_LAYER
 	var shape := CollisionShape2D.new()
 	var circle := CircleShape2D.new()
 	circle.radius = 16.0
@@ -132,8 +132,11 @@ func _move(delta: float) -> void:
 	else:
 		_visual.play("walk")
 
+## Filet de sécurité : l'enceinte du niveau arrête déjà le mech.
 func _clamp_to_arena() -> void:
-	var rect := get_viewport_rect()
+	if Level.current == null:
+		return
+	var rect := Level.current.world_rect()
 	position.x = clampf(position.x, 20.0, rect.size.x - 20.0)
 	position.y = clampf(position.y, 20.0, rect.size.y - 20.0)
 

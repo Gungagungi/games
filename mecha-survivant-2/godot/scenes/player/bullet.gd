@@ -35,7 +35,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	position += direction * SPEED * delta
 	_life -= delta
-	if _life <= 0.0 or not get_viewport_rect().grow(40.0).has_point(position):
+	if _life <= 0.0 or Level.blocks_projectile(position):
 		queue_free()
 
 func _on_body_entered(body: Node) -> void:

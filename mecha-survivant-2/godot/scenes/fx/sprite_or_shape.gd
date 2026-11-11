@@ -42,6 +42,12 @@ const SHEETS := {
 	"fx_hit": {"hframes": 5},
 	"hazard_poison": {"hframes": 4, "fps": 6.0},
 	"tiles_floor": {"hframes": 4},
+	# Décor du niveau, découpé dans les packs Kenney (scripts/import-kenney.py) ;
+	# l'ordre des cases est lu par scenes/level.gd.
+	"tiles_ground": {"hframes": 7},
+	"tiles_indoor": {"hframes": 5},
+	"tiles_wall": {"hframes": 8},
+	"tiles_props": {"hframes": 19},
 	"ui_upgrades": {"hframes": 8},
 }
 

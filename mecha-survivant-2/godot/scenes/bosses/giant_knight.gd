@@ -39,6 +39,5 @@ func _charge() -> void:
 		player.take_damage(hit_damage() * 1.2)
 
 func _clamp_inside() -> void:
-	var size := get_viewport_rect().size
-	global_position.x = clampf(global_position.x, radius, size.x - radius)
-	global_position.y = clampf(global_position.y, radius, size.y - radius)
+	var world := Level.current.world_rect().grow(-radius)
+	global_position = global_position.clamp(world.position, world.end)

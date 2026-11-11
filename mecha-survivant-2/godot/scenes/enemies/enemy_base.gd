@@ -9,6 +9,9 @@ extends Area2D
 ## l'interroger.
 
 const CONTACT_INTERVAL := 0.5
+## Rayon de collision contre les murs, plafonné : un zombie de haut tier
+## (rayon 30) doit encore passer une porte de deux cases.
+const WALL_RADIUS := 12.0
 
 var type_id := "zombie"
 var max_hp := 30.0
@@ -78,9 +81,23 @@ func _process(delta: float) -> void:
 func _behaviour(delta: float) -> void:
 	_chase(delta)
 
+## Poursuite (factor > 0) ou repli (factor < 0). Hors boss, le chemin suit le
+## champ de distances du niveau — par les portes, autour des murs — et le
+## déplacement glisse sur les cases pleines. Les boss vont tout droit et
+## traversent les ruines.
 func _chase(delta: float, factor: float = 1.0) -> void:
-	var dir := (player.global_position - global_position).normalized()
-	global_position += dir * speed * factor * delta
+	var level := Level.current
+	if is_boss or level == null:
+		var straight := (player.global_position - global_position).normalized()
+		global_position += straight * speed * factor * delta
+		return
+	var dir: Vector2
+	if factor >= 0.0:
+		dir = level.flow_dir(global_position, player.global_position)
+	else:
+		dir = (player.global_position - global_position).normalized()
+	global_position = level.move_circle(global_position,
+		dir * speed * factor * delta, minf(radius, WALL_RADIUS))
 
 func _check_contact() -> void:
 	if _contact_cd > 0.0 or _deals_no_contact_damage():

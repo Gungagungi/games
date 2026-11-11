@@ -63,9 +63,10 @@ func _behaviour(delta: float) -> void:
 ## Membres arrachés qui retombent au hasard sur l'arène : oblige à rester
 ## mobile plutôt qu'à camper une zone sûre pendant le reste du combat.
 func _limb_rain() -> void:
-	var size := get_viewport_rect().size
+	var view := Level.current.view_rect().grow(-60.0)
 	for i in LIMB_COUNT:
-		var at := Vector2(randf_range(60.0, size.x - 60.0), randf_range(60.0, size.y - 60.0))
+		var at := Vector2(randf_range(view.position.x, view.end.x),
+			randf_range(view.position.y, view.end.y))
 		_telegraph_strike(at, 70.0, hit_damage() * 0.5, 0.7 + randf() * 0.3,
 			Color(0.5, 0.65, 0.35), 8.0)
 
