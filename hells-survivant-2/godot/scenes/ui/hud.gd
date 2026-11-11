@@ -57,7 +57,7 @@ func _ready() -> void:
 	right.set_anchor_and_offset(SIDE_LEFT, 1.0, -220)
 	right.set_anchor_and_offset(SIDE_RIGHT, 1.0, -14)
 	right.set_anchor_and_offset(SIDE_TOP, 0.0, 12)
-	var shop_hint := UiTheme.label("I : forge", 14, UiTheme.PARCH, 4)
+	var shop_hint := UiTheme.label("I : forge — P : menu", 14, UiTheme.PARCH, 4)
 	shop_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	right.add_child(shop_hint)
 	_sound = UiTheme.label("", 14, UiTheme.PARCH, 4)

@@ -35,7 +35,9 @@ run --element=destruction --wave=10 --difficulty=difficile
 run --element=ombre --wave=30
 run --element=chaos --wave=1
 run --element=chaos --wave=35
-run --element=chaos --wave=40
+# La Créature cauchemardesque saute, charge et se dédouble : le pilote
+# automatique met plus de 20 s à la finir.
+run --element=chaos --wave=40 --duration=60
 
 if [ "$fail" -ne 0 ]; then
   echo "check : ÉCHEC" >&2

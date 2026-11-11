@@ -109,6 +109,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			Game.close_shop()
 		else:
 			Game.open_shop()
+	elif key == KEY_P and Game.state != "menu":
+		# Retour au menu principal depuis n'importe quel écran ; en partie,
+		# elle est abandonnée (l'or déjà gagné reste acquis).
+		_back_to_menu()
 	elif key == KEY_ESCAPE and Game.state == "shop":
 		Game.close_shop()
 	elif key in [KEY_ENTER, KEY_KP_ENTER] and Game.state in ["gameover", "victory"]:

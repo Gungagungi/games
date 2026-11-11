@@ -20,6 +20,9 @@ var enemies_to_spawn := 0
 var spawn_timer := 0
 ## Direction imposée par le pilote automatique du mode smoke.
 var smoke_dir := Vector2.ZERO
+## Créatures nées pendant le parcours de `enemies` (doubles et mini-créatures
+## de la Créature cauchemardesque), ajoutées à la fin du tick.
+var _spawn_queue: Array[Enemy] = []
 
 var entities: Node2D
 var fx_layer: Node2D
@@ -163,6 +166,7 @@ func clear_run() -> void:
 		potion = null
 	for c in fx_layer.get_children():
 		c.queue_free()
+	_spawn_queue.clear()
 
 func reset_player() -> void:
 	player.max_hp = Save.armor()["hp"]
@@ -392,6 +396,9 @@ func _spawn_enemy(element: String, is_boss: bool, is_final: bool) -> void:
 	enemies.append(e)
 
 func damage_enemy(e: Enemy, amount: float) -> void:
+	# Déjà retiré : un double emporté par la mort du boss pendant le même coup.
+	if not enemies.has(e):
+		return
 	e.hp -= amount
 	e.hit_flash = 8
 	Fx.float_text(fx_layer, e.position + Vector2(0, -e.top() - 12), "-%d" % roundi(amount), Color.WHITE)
@@ -415,13 +422,36 @@ func _kill_enemy(e: Enemy) -> void:
 	if e.is_boss:
 		shake(7.0)
 	if e.is_final:
+		# Les doubles et mini-créatures meurent avec la Créature, sans prime.
+		for o: Enemy in enemies.duplicate():
+			if o.is_clone or o.is_mini:
+				enemies.erase(o)
+				Fx.puff(fx_layer, o.position, o.glow, o.sprite_scale)
+				o.die()
 		Game.set_state("victory")
 		Audio.stop_music()
 		Audio.sfx("victory", 1.0, 0.0)
 
+func queue_spawn(e: Enemy) -> void:
+	_spawn_queue.append(e)
+
 func _update_enemies() -> void:
+	_tick_enemies()
+	for e in _spawn_queue:
+		entities.add_child(e)
+		enemies.append(e)
+	_spawn_queue.clear()
+
+func _tick_enemies() -> void:
 	var shoot_mult: float = Game.diff()["shoot_mult"]
 	for e in enemies:
+		if Nightmare.handles(e):
+			if e.hit_flash > 0:
+				e.hit_flash -= 1
+			Nightmare.tick(self, e)
+			if Game.state != "playing":
+				return
+			continue
 		# Par monstre : en Chaos, les éléments se côtoient dans la même vague.
 		var elem: Dictionary = Data.ELEMENTS[e.element]
 		var ranged: bool = elem.get("ranged", false)

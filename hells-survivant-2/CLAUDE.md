@@ -58,7 +58,9 @@ exactement.
 (Feu, vague 5), boss tireur de briques en Difficile (Destruction, vague 10), et
 boss final jusqu'à la **victoire** (Ombre, vague 30), puis trois parties Chaos :
 vagues mélangées (vague 1), dernier boss de la file (vague 35) et Créature
-cauchemardesque jusqu'à la victoire (vague 40). Chaque apparition de boss est
+cauchemardesque jusqu'à la victoire (vague 40, sur 60 s au lieu de 20 : elle
+saute, charge et se dédouble, le pilote automatique met plus longtemps à la
+finir). Chaque apparition de boss est
 écrite dans la sortie (`[smoke] vague N : <boss>`). Le héros y est immortel,
 équipé au maximum (en mémoire, `Save.write()` ne fait rien en smoke) et combat
 tout seul. Une partie échoue si elle ne progresse pas, si une vague de boss
@@ -133,12 +135,31 @@ l'un des 7 `Data.MOB_ELEMENTS` à l'apparition.
   qu'à la mort de son boss, un boss tué ne revient jamais. Les 7 boss occupent
   les vagues 5 à 35.
 - **Boss final** : la Créature cauchemardesque en vague 40 (`Data.FINAL_BOSSES`).
-  Elle fonce et charge comme les autres boss, et a en plus la brûlure et le vol
-  de vie. Sa prime est fixe : **300 or**, quelle que soit la difficulté. La
-  victoire mène à l'écran de fin, puis au menu.
+  Sa prime est fixe : **300 or**, quelle que soit la difficulté. La victoire
+  mène à l'écran de fin, puis au menu. Contrairement aux autres boss, elle a
+  son propre jeu d'attaques, dans `scenes/nightmare.gd` (`Nightmare.tick`,
+  appelé par `World` à la place de la logique commune) :
+  - au contact, brûlure et vol de vie ;
+  - **laser** tiré de l'œil : visée, direction figée, puis rayon qui balaie
+    lentement vers le héros. La position de l'œil (`Enemy.eye_offset`) est
+    repérée sur le sprite 32×32 : à refaire si on change de sprite ;
+  - **fouet** : trois tentacules à longue portée ; **balayage** circulaire quand
+    le héros est proche ; **ruée** en ligne droite ;
+  - **saut** sur la position du héros, puis **onde de choc** en anneau : on n'est
+    touché qu'au passage du front ;
+  - **invocation** de mini-créatures (`is_mini`), monstres de mêlée ordinaires
+    d'élément Chaos, six au plus ;
+  - **dédoublement** à 75, 50 et 25 % de PV : le double (`is_clone`) reprend ses
+    attaques sauf laser, invocation et dédoublement.
+
+  Toutes les attaques sont télégraphiées. Les créatures nées pendant le tick
+  passent par `World.queue_spawn`. Sa mort emporte doubles et mini-créatures,
+  sans prime.
 
 ### Écarts assumés avec la v1
 
+- **P ramène au menu principal** depuis la partie, la forge ou l'écran de fin
+  (la partie en cours est abandonnée, l'or gagné reste acquis). Absent de la v1.
 - **Sélecteur de vague de départ** au menu (boutons −5/−1/+1/+5, touches A/E),
   absent de la v1 : `Game.start_wave`, borné à la vague du boss final de
   l'élément (30 Ombre, 40 Chaos), sinon à 50. Non sauvegardé. Un départ en
@@ -217,5 +238,8 @@ il n'y a ni `ffmpeg` ni encodeur OGG sur la machine.
   **n'exerce jamais le ramassage de la fiole** — seule son apparition l'est.
 - Les traits d'ombre (`fx/bolt`) restent **bleutés** : le sprite source est bleu
   et le `modulate` violet ne suffit pas à le recolorer.
+- Les parties smoke se jouent **une par une** : lancées en parallèle, chacune
+  ralentit (le pas fixe est plafonné par frame) et la vague 40 du Chaos
+  n'aboutit plus en 60 s.
 - Les sprites étant fixes, un monstre ne se retourne que par `flip_h` : pas
   d'animation de marche ni d'attaque propre à chaque créature.

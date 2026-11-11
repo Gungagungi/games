@@ -29,7 +29,7 @@ func _ready() -> void:
 	_title = UiTheme.label("", 36, Color.WHITE, 6)
 	_wave = UiTheme.label("", 18)
 	_gold = UiTheme.label("", 18, Color("#ffd23c"))
-	var hint := UiTheme.label("Clic ou Entrée : retour au menu (équipement conservé)", 14, UiTheme.MUTED)
+	var hint := UiTheme.label("Clic, Entrée ou P : retour au menu (équipement conservé)", 14, UiTheme.MUTED)
 	for l in [_title, _wave, _gold, hint]:
 		(l as Label).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		box.add_child(l)
