@@ -2,7 +2,7 @@
 # Non-régression sans écran : joue plusieurs parties accélérées (vagues
 # ordinaires, boss de mêlée, boss tireur de briques, boss final jusqu'à la
 # victoire, puis le mode Chaos : vague mélangée, dernier boss de la file, boss
-# final). Échoue sur toute erreur GDScript ou partie qui n'aboutit pas.
+# final, et le Conclave des boss jusqu'à la victoire). Échoue sur toute erreur GDScript ou partie qui n'aboutit pas.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/godot-env.sh"
 ensure_import
@@ -36,6 +36,7 @@ run --element=ombre --wave=30
 run --element=chaos --wave=1
 run --element=chaos --wave=35
 run --element=chaos --wave=40
+run --boss-rush --duration=40
 
 if [ "$fail" -ne 0 ]; then
   echo "check : ÉCHEC" >&2

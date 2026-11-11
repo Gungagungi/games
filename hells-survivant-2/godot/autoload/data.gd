@@ -87,6 +87,20 @@ const FINAL_BOSSES := {
 		"fallen": "La Créature cauchemardesque est tombée", "sprite": "unseen_horror", "gold": 300},
 }
 
+## Conclave des boss, niveau spécial : les 7 boss d'élément et les deux boss
+## finals en même temps dans l'arène. `wave` fixe la croissance des PV et de
+## l'or, comme si le combat avait lieu à cette vague.
+const BOSS_RUSH := {"name": "Conclave des boss", "wave": 10,
+	"fallen": "Le conclave des boss est vaincu"}
+## Ordre de l'anneau d'apparition, en partant du haut dans le sens horaire :
+## [élément, boss final ?]. Les deux boss finals, plus gros, occupent les
+## places de droite et de gauche (3e et 7e), là où l'arène est la plus large.
+const BOSS_RUSH_ROSTER := [
+	["cendres", false], ["sang", false], ["ombre", true], ["violence", false],
+	["terre", false], ["feu", false], ["chaos", true], ["destruction", false],
+	["ombre", false],
+]
+
 ## Pas de temps de la v1 : tous ses compteurs décomptaient une frame à 60 fps.
 const V1_FPS := 60.0
 

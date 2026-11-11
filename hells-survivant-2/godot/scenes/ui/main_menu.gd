@@ -1,9 +1,11 @@
 class_name MainMenu
 extends Control
-## Choix de l'arène : difficulté, élément des monstres, accès à la forge.
+## Choix de l'arène : difficulté, élément des monstres, accès à la forge et au
+## Conclave des boss.
 
 signal start_requested
 signal shop_requested
+signal boss_rush_requested
 
 var _diff_buttons := {}
 var _elem_buttons := {}
@@ -100,12 +102,19 @@ func _ready() -> void:
 	actions.alignment = BoxContainer.ALIGNMENT_CENTER
 	actions.add_theme_constant_override("separation", 20)
 	box.add_child(actions)
-	var start := UiTheme.button("Entrer dans l'arène", Vector2(250, 52), 20)
+	var start := UiTheme.button("Entrer dans l'arène", Vector2(220, 52), 20)
 	start.pressed.connect(func() -> void:
 		Audio.sfx("click")
 		start_requested.emit())
 	actions.add_child(start)
-	var shop := UiTheme.button("Forge infernale", Vector2(250, 52), 20)
+	# Niveau spécial : ignore l'élément et la vague, garde la difficulté.
+	var rush := UiTheme.button(Data.BOSS_RUSH["name"], Vector2(220, 52), 20)
+	rush.icon = load("res://assets/sprites/monsters/%s.png" % Data.final_boss("ombre")["sprite"])
+	rush.pressed.connect(func() -> void:
+		Audio.sfx("click")
+		boss_rush_requested.emit())
+	actions.add_child(rush)
+	var shop := UiTheme.button("Forge infernale", Vector2(220, 52), 20)
 	shop.pressed.connect(func() -> void:
 		Audio.sfx("click")
 		shop_requested.emit())
@@ -164,7 +173,7 @@ func refresh() -> void:
 	_wave_label.text = "Vague %d" % Game.start_wave
 	_wave_info.text = _wave_description(Game.start_wave)
 	_equip.text = "Équipement : %s — %s — Or : %d" % [Save.sword()["name"], Save.armor()["name"], Save.gold]
-	_hints.text = "QD : difficulté — ZS : élément — AE : vague — Entrée : combattre — I : forge — M : %s" % (
+	_hints.text = "QD : difficulté — ZS : élément — AE : vague — Entrée : combattre — B : conclave — I : forge — M : %s" % (
 		"réactiver le son" if Save.muted else "couper le son")
 
 func _wave_description(w: int) -> String:
@@ -200,6 +209,9 @@ func handle_key(key: Key) -> void:
 			Game.set_start_wave(Game.start_wave + 1)
 		KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
 			start_requested.emit()
+			return
+		KEY_B:
+			boss_rush_requested.emit()
 			return
 		_:
 			return

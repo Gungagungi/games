@@ -9,6 +9,18 @@ const MAX_TICKS_PER_FRAME := 16
 ## Tuiles de 32 px dessinées en 64 : même texel que les créatures.
 const TILE := 64
 const LAVA_POOLS := 4
+## Conclave des boss : boss figés pendant l'annonce, fiole périodique (pas de
+## vagues pour en faire tomber), écart minimal entre deux sprites de boss.
+const RUSH_INTRO := 120
+const RUSH_POTION_EVERY := 1200
+const RUSH_GAP := 6.0
+## Anneau d'apparition : centre un peu sous celui de l'arène et demi-axes,
+## pour qu'aucun boss ne naisse sous la barre du HUD.
+const RUSH_RING_CENTER := Vector2(450, 325)
+const RUSH_RING := Vector2(330, 175)
+## Bande du haut réservée au HUD (barre du Conclave) : un boss n'y monte pas,
+## sinon son nom et sa barre de vie passeraient dessous.
+const RUSH_HUD_TOP := 60.0
 
 var player: Player
 var enemies: Array[Enemy] = []
@@ -20,6 +32,13 @@ var enemies_to_spawn := 0
 var spawn_timer := 0
 ## Direction imposée par le pilote automatique du mode smoke.
 var smoke_dir := Vector2.ZERO
+## Conclave des boss : frames d'annonce restantes, frames de combat écoulées,
+## nombre de boss et somme de leurs PV à l'apparition (barre du HUD).
+var rush_intro := 0
+var rush_ticks := 0
+var rush_total := 0
+var rush_max_hp := 0.0
+var _rush_potion_timer := 0
 
 var entities: Node2D
 var fx_layer: Node2D
@@ -57,6 +76,11 @@ func _ready() -> void:
 	fx_layer = Node2D.new()
 	fx_layer.z_index = 10
 	add_child(fx_layer)
+	# Hors de `fx_layer`, que `clear_run` vide à chaque partie.
+	var tags := BossTags.new()
+	tags.world = self
+	tags.z_index = 11
+	add_child(tags)
 
 	player = Player.new()
 	player.position = Data.ARENA / 2.0
@@ -140,6 +164,8 @@ static func boss_name(e: Enemy) -> String:
 ## Boss de la vague en cours ou annoncée, "" s'il n'y en a pas. En Chaos, avant
 ## l'apparition, c'est la tête de file qui est annoncée.
 func wave_boss_name() -> String:
+	if Game.boss_rush:
+		return Data.BOSS_RUSH["name"]
 	var boss := current_boss()
 	if boss:
 		return boss_name(boss)
@@ -183,6 +209,8 @@ func start_run(start_wave := 1) -> void:
 	enemies_to_spawn = 0
 	spawn_timer = 0
 	Game.run_gold = 0
+	Game.boss_rush = false
+	rush_intro = 0
 	Game.boss_queue.clear()
 	if Game.is_chaos():
 		for id: String in Data.MOB_ELEMENTS:
@@ -197,8 +225,16 @@ func start_run(start_wave := 1) -> void:
 
 func _tick() -> void:
 	_update_player()
-	_update_waves()
-	_update_enemies()
+	if Game.boss_rush:
+		_update_boss_rush()
+	else:
+		_update_waves()
+	# Pendant l'annonce du Conclave, les boss restent figés en anneau.
+	if rush_intro == 0:
+		_update_enemies()
+		if Game.boss_rush and Game.state == "playing":
+			_wander_bosses()
+			_separate_bosses()
 	_update_potion()
 	if Game.state == "playing":
 		_update_projectiles()
@@ -353,7 +389,7 @@ func _update_potion() -> void:
 	potion.queue_free()
 	potion = null
 
-func _spawn_enemy(element: String, is_boss: bool, is_final: bool) -> void:
+func _spawn_enemy(element: String, is_boss: bool, is_final: bool) -> Enemy:
 	var diff := Game.diff()
 	var elem: Dictionary = Data.ELEMENTS[element]
 	var pos := Vector2.ZERO
@@ -390,6 +426,7 @@ func _spawn_enemy(element: String, is_boss: bool, is_final: bool) -> void:
 		e.gold_value = Data.final_boss(element)["gold"]
 	entities.add_child(e)
 	enemies.append(e)
+	return e
 
 func damage_enemy(e: Enemy, amount: float) -> void:
 	e.hp -= amount
@@ -414,7 +451,9 @@ func _kill_enemy(e: Enemy) -> void:
 	e.die()
 	if e.is_boss:
 		shake(7.0)
-	if e.is_final:
+	# Conclave : seule la chute du dernier boss compte, boss finals compris.
+	var won := current_boss() == null if Game.boss_rush else e.is_final
+	if won and Game.state == "playing":
 		Game.set_state("victory")
 		Audio.stop_music()
 		Audio.sfx("victory", 1.0, 0.0)
@@ -509,3 +548,108 @@ func _update_projectiles() -> void:
 			hit_player(p.dmg)
 			if Game.state != "playing":
 				return
+
+# ---------------------------------------------------------------------------
+# Conclave des boss
+# ---------------------------------------------------------------------------
+
+## Niveau spécial : tous les boss en même temps, disposés en anneau autour du
+## héros. Chacun garde son comportement (mêlée, tir, charge, brûlure, vol de
+## vie) ; s'y ajoutent une promenade autour du héros et une séparation qui
+## empêche deux boss de se superposer. Pas de vagues : la partie est gagnée
+## quand le dernier boss tombe.
+func start_boss_rush() -> void:
+	start_run(Data.BOSS_RUSH["wave"])
+	Game.boss_rush = true
+	wave_intermission = 0
+	rush_intro = RUSH_INTRO
+	rush_ticks = 0
+	_rush_potion_timer = 0
+	rush_max_hp = 0.0
+	var roster := Data.BOSS_RUSH_ROSTER
+	var names: Array[String] = []
+	for i in roster.size():
+		var element: String = roster[i][0]
+		var is_final: bool = roster[i][1]
+		var e := _spawn_enemy(element, true, is_final)
+		# Décalage d'un demi-pas : aucun boss pile en haut, sous la barre du HUD.
+		var a := -PI / 2.0 + TAU * (i + 0.5) / roster.size()
+		e.position = RUSH_RING_CENTER + Vector2(cos(a), sin(a)) * RUSH_RING
+		# Charges étalées : sinon les neuf boss chargeraient presque ensemble.
+		e.charge_timer = 120.0 + randf() * 240.0
+		Fx.puff(fx_layer, e.position, e.glow, e.sprite_scale)
+		rush_max_hp += e.max_hp
+		names.append(boss_name(e))
+	rush_total = roster.size()
+	Audio.play_music("boss")
+	if Game.smoke_test:
+		print("[smoke] conclave : %d boss — %s" % [rush_total, ", ".join(names)])
+
+func _update_boss_rush() -> void:
+	if rush_intro > 0:
+		rush_intro -= 1
+		if rush_intro == 0:
+			Audio.sfx("boss_warning")
+			shake(6.0)
+			_drop_potion()
+		return
+	rush_ticks += 1
+	_rush_potion_timer += 1
+	if _rush_potion_timer >= RUSH_POTION_EVERY:
+		_rush_potion_timer = 0
+		_drop_potion()
+
+## Pas de côté autour du héros, dont le sens s'inverse lentement et diffère
+## d'un boss à l'autre : les boss rôdent au lieu de converger en tas.
+func _wander_bosses() -> void:
+	for e in enemies:
+		if not e.is_boss or e.charging:
+			continue
+		var to := player.position - e.position
+		if to == Vector2.ZERO:
+			continue
+		var phase := float(e.get_instance_id() % 628) * 0.01
+		var side := sin(rush_ticks * 0.008 + phase)
+		e.position += to.normalized().orthogonal() * side * e.speed * 0.8
+
+## Écarte deux boss dont les sprites se chevauchent. La distance minimale suit
+## la taille du sprite (`top()`), pas la hitbox de la v1, bien plus petite :
+## c'est ce qui garde chaque boss lisible. Quelques passes suffisent à résorber
+## les chevauchements en chaîne autour du héros.
+func _separate_bosses() -> void:
+	var bosses: Array[Enemy] = []
+	for e in enemies:
+		if e.is_boss:
+			bosses.append(e)
+	for _pass in 4:
+		for i in bosses.size():
+			for j in range(i + 1, bosses.size()):
+				var a := bosses[i]
+				var b := bosses[j]
+				var min_d := a.top() + b.top() + RUSH_GAP
+				var d := b.position - a.position
+				var len := d.length()
+				if len >= min_d:
+					continue
+				var n := d / len if len > 0.01 else Vector2.RIGHT.rotated(randf() * TAU)
+				var push := (min_d - len) / 2.0
+				a.position -= n * push
+				b.position += n * push
+		for e in bosses:
+			var lo := Vector2(e.top(), e.top() + RUSH_HUD_TOP)
+			e.position = e.position.clamp(lo, Data.ARENA - Vector2.ONE * e.top())
+
+## Pire chevauchement entre deux sprites de boss, en pixels ; négatif, c'est
+## l'écart entre les deux boss les plus proches (−RUSH_GAP quand ils se
+## touchent à la limite). Mesuré par le mode smoke pour vérifier la séparation.
+func boss_overlap() -> float:
+	var worst := -INF
+	for i in enemies.size():
+		var a := enemies[i]
+		if not a.is_boss:
+			continue
+		for j in range(i + 1, enemies.size()):
+			var b := enemies[j]
+			if b.is_boss:
+				worst = maxf(worst, a.top() + b.top() - a.position.distance_to(b.position))
+	return worst
