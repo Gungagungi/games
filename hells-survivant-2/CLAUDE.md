@@ -139,6 +139,11 @@ l'un des 7 `Data.MOB_ELEMENTS` à l'apparition.
 
 ### Écarts assumés avec la v1
 
+- **Sélecteur de vague de départ** au menu (boutons −5/−1/+1/+5, touches A/E),
+  absent de la v1 : `Game.start_wave`, borné à la vague du boss final de
+  l'élément (30 Ombre, 40 Chaos), sinon à 50. Non sauvegardé. Un départ en
+  cours de partie ne donne ni or ni équipement ; en Chaos, les boss des vagues
+  sautées sont réputés tués (`World.start_run`).
 - Le menu au clavier boucle sur les **7** éléments et le Chaos (la v1 bouclait
   sur 6 et sautait l'Ombre).
 - Un tireur (Destruction, Ombre) qui recule s'arrête au bord de l'arène : dans la

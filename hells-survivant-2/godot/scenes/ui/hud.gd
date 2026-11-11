@@ -68,10 +68,20 @@ func _ready() -> void:
 	var bs := UiTheme.panel_style(Color(0.1, 0.03, 0.05, 0.85))
 	bs.set_content_margin_all(6)
 	_boss_panel.add_theme_stylebox_override("panel", bs)
-	add_child(_boss_panel)
-	_boss_panel.set_anchor_and_offset(SIDE_LEFT, 0.5, -190)
-	_boss_panel.set_anchor_and_offset(SIDE_RIGHT, 0.5, 190)
-	_boss_panel.set_anchor_and_offset(SIDE_TOP, 0.0, 10)
+	# Centrée par un conteneur pleine largeur : des ancres à 0,5 + offsets
+	# laissaient la barre étirée et collée à gauche (offsets recalculés contre
+	# un parent pas encore dimensionné).
+	var boss_row := CenterContainer.new()
+	add_child(boss_row)
+	boss_row.anchor_left = 0.0
+	boss_row.anchor_right = 1.0
+	boss_row.anchor_top = 0.0
+	boss_row.anchor_bottom = 0.0
+	boss_row.offset_left = 0
+	boss_row.offset_right = 0
+	boss_row.offset_top = 10
+	boss_row.offset_bottom = 10
+	boss_row.add_child(_boss_panel)
 	var bbox := VBoxContainer.new()
 	_boss_panel.add_child(bbox)
 	_boss_name = UiTheme.label("", 18, UiTheme.GOLD, 4)
