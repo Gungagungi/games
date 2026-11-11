@@ -42,7 +42,7 @@ func _process(delta: float) -> void:
 		return
 	position += direction * speed * delta
 	life -= delta
-	if life <= 0.0 or not get_viewport_rect().grow(60.0).has_point(position):
+	if life <= 0.0 or Level.blocks_projectile(position):
 		queue_free()
 		return
 	var p := get_tree().get_first_node_in_group("player") as Player

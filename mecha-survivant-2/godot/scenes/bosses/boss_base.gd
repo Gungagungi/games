@@ -115,7 +115,9 @@ func _summon(script_path: String, type: String, count: int, cap: int = 8) -> voi
 		var minion: EnemyBase = load(script_path).new()
 		minion.configure(EnemyStats.scaled(type, GameState.tier()))
 		var angle := randf() * TAU
-		minion.position = global_position + Vector2.RIGHT.rotated(angle) * 90.0
+		# Le boss peut se tenir dans un mur : l'invocation, elle, n'y passe pas.
+		minion.position = Level.current.nearest_free(
+			global_position + Vector2.RIGHT.rotated(angle) * 90.0)
 		get_parent().add_child(minion)
 
 func _count_of_type(type: String) -> int:
