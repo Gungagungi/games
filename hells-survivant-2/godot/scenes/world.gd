@@ -134,6 +134,23 @@ func current_boss() -> Enemy:
 			return e
 	return null
 
+static func boss_name(e: Enemy) -> String:
+	return Data.final_boss(e.element)["name"] if e.is_final else Data.BOSS_NAMES[e.element]
+
+## Boss de la vague en cours ou annoncée, "" s'il n'y en a pas. En Chaos, avant
+## l'apparition, c'est la tête de file qui est annoncée.
+func wave_boss_name() -> String:
+	var boss := current_boss()
+	if boss:
+		return boss_name(boss)
+	if Data.is_final_boss_wave(Game.element, Game.wave):
+		return Data.final_boss(Game.element)["name"]
+	if not Data.is_boss_wave(Game.wave):
+		return ""
+	if Game.is_chaos():
+		return "" if Game.boss_queue.is_empty() else Data.BOSS_NAMES[Game.boss_queue[0]]
+	return Data.BOSS_NAMES[Game.element]
+
 func clear_run() -> void:
 	for e in enemies:
 		e.queue_free()
@@ -166,6 +183,15 @@ func start_run(start_wave := 1) -> void:
 	enemies_to_spawn = 0
 	spawn_timer = 0
 	Game.run_gold = 0
+	Game.boss_queue.clear()
+	if Game.is_chaos():
+		for id: String in Data.MOB_ELEMENTS:
+			Game.boss_queue.append(id)
+		Game.boss_queue.shuffle()
+		# Départ en cours de partie (mode smoke) : les boss des vagues déjà
+		# passées sont réputés tués.
+		for _i in mini((start_wave - 1) / 5, Game.boss_queue.size()):
+			Game.boss_queue.pop_front()
 	Game.set_state("playing")
 	Audio.play_music("combat")
 
@@ -257,7 +283,8 @@ func _update_waves() -> void:
 	if enemies_to_spawn > 0:
 		spawn_timer -= 1
 		if spawn_timer <= 0:
-			_spawn_enemy(false, false)
+			var element: String = Data.MOB_ELEMENTS.pick_random() if Game.is_chaos() else Game.element
+			_spawn_enemy(element, false, false)
 			enemies_to_spawn -= 1
 			spawn_timer = 35
 	if enemies.is_empty() and enemies_to_spawn == 0 and wave_intermission == 0:
@@ -266,8 +293,12 @@ func _update_waves() -> void:
 		Fx.float_text(fx_layer, Data.ARENA / 2.0 - Vector2(0, 40), "Vague %d dans 1,5s" % Game.wave, Color("#ffd23c"), true)
 
 func _start_wave() -> void:
-	if Data.is_final_boss_wave(Game.element, Game.wave) or Data.is_boss_wave(Game.wave):
-		_spawn_enemy(true, Data.is_final_boss_wave(Game.element, Game.wave))
+	var is_final := Data.is_final_boss_wave(Game.element, Game.wave)
+	var boss_element := Game.element if is_final else _next_boss_element()
+	if boss_element != "":
+		_spawn_enemy(boss_element, true, is_final)
+		if Game.smoke_test:
+			print("[smoke] vague %d : %s" % [Game.wave, wave_boss_name()])
 		enemies_to_spawn = 0
 		Audio.play_music("boss")
 		Audio.sfx("boss_warning")
@@ -278,6 +309,15 @@ func _start_wave() -> void:
 		Audio.sfx("wave_start")
 	spawn_timer = 0
 	_drop_potion()
+
+## Élément du boss de cette vague, "" s'il n'y en a pas. En Chaos, le boss
+## quitte la file à son apparition : la vague ne finit qu'à sa mort.
+func _next_boss_element() -> String:
+	if not Data.is_boss_wave(Game.wave):
+		return ""
+	if Game.is_chaos():
+		return "" if Game.boss_queue.is_empty() else Game.boss_queue.pop_front()
+	return Game.element
 
 ## Une fiole par vague, jamais deux au sol : celle qu'on a laissée traîner tient
 ## lieu de réserve pour la vague suivante.
@@ -313,9 +353,9 @@ func _update_potion() -> void:
 	potion.queue_free()
 	potion = null
 
-func _spawn_enemy(is_boss: bool, is_final: bool) -> void:
+func _spawn_enemy(element: String, is_boss: bool, is_final: bool) -> void:
 	var diff := Game.diff()
-	var elem := Game.elem()
+	var elem: Dictionary = Data.ELEMENTS[element]
 	var pos := Vector2.ZERO
 	match randi() % 4:
 		0: pos = Vector2(-30, randf() * Data.ARENA.y)
@@ -339,13 +379,15 @@ func _spawn_enemy(is_boss: bool, is_final: bool) -> void:
 	e.max_hp = e.hp
 	e.dmg = base_dmg * dmg_mult
 	e.speed = base_speed * 0.7 if is_boss else base_speed
-	e.element = Game.element
+	e.element = element
 	e.is_boss = is_boss
 	e.is_final = is_final
 	e.charge_timer = 180.0 + randf() * 60.0 if is_boss else 0.0
 	# Écart assumé avec la v1 (+5 %/vague) : +12 % rend l'équipement de la forge
 	# atteignable sans enchaîner les parties.
 	e.gold_value = roundi(gold_base * gold_mult * (1.0 + Game.wave * 0.12))
+	if is_final and Data.final_boss(element).has("gold"):
+		e.gold_value = Data.final_boss(element)["gold"]
 	entities.add_child(e)
 	enemies.append(e)
 
@@ -378,13 +420,14 @@ func _kill_enemy(e: Enemy) -> void:
 		Audio.sfx("victory", 1.0, 0.0)
 
 func _update_enemies() -> void:
-	var elem := Game.elem()
-	var ranged: bool = elem.get("ranged", false)
-	var bricks: bool = elem.get("bricks", false)
 	var shoot_mult: float = Game.diff()["shoot_mult"]
-	var lifesteal: float = elem.get("lifesteal", 0.0)
-	var burn: bool = elem.get("burn", false)
 	for e in enemies:
+		# Par monstre : en Chaos, les éléments se côtoient dans la même vague.
+		var elem: Dictionary = Data.ELEMENTS[e.element]
+		var ranged: bool = elem.get("ranged", false)
+		var bricks: bool = elem.get("bricks", false)
+		var lifesteal: float = elem.get("lifesteal", 0.0)
+		var burn: bool = elem.get("burn", false)
 		if e.hit_flash > 0:
 			e.hit_flash -= 1
 		e.face_left = player.position.x < e.position.x

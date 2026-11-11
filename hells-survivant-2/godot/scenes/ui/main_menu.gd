@@ -127,14 +127,15 @@ func refresh() -> void:
 	for id in _elem_buttons:
 		(_elem_buttons[id] as Button).set_pressed_no_signal(id == Game.element)
 	var elem := Game.elem()
-	var tag := "  —  boss final en vague %d" % Data.FINAL_BOSS_WAVE if Game.element == Data.FINAL_BOSS_ELEMENT else ""
+	var final := Data.final_boss(Game.element)
+	var tag := "  —  boss final en vague %d" % final["wave"] if not final.is_empty() else ""
 	_trait.text = "%s : %s%s" % [elem["label"], elem["trait"], tag]
 	_equip.text = "Équipement : %s — %s — Or : %d" % [Save.sword()["name"], Save.armor()["name"], Save.gold]
 	_hints.text = "QD : difficulté — ZS : élément — Entrée : combattre — I : forge — M : %s" % (
 		"réactiver le son" if Save.muted else "couper le son")
 
-## Commandes clavier de la v1. Les éléments sont 7 : la v1 bouclait sur 6 et
-## sautait l'Ombre au clavier.
+## Commandes clavier de la v1. Z/S bouclent sur les 7 éléments et le Chaos :
+## la v1 bouclait sur 6 et sautait l'Ombre au clavier.
 func handle_key(key: Key) -> void:
 	var d := Data.DIFFICULTY_ORDER.find(Game.difficulty)
 	var e := Data.ELEMENT_ORDER.find(Game.element)

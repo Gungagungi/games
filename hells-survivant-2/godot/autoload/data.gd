@@ -56,8 +56,18 @@ const ELEMENTS := {
 	"ombre": {"label": "Ombre", "color": Color("#3c1a5a"), "glow": Color("#a855f7"),
 		"hp_mult": 1.0, "dmg_mult": 0.9, "speed_mult": 0.9, "ranged": true, "trait": "Tirs à distance",
 		"sprite": "shadow_imp", "boss_sprite": "shadow_fiend"},
+	# Mode Chaos, pas un élément de monstre : chaque monstre tire l'un des
+	# `MOB_ELEMENTS`, les 7 boss passent dans un ordre aléatoire. Cette entrée ne
+	# sert qu'au menu, au HUD et au boss final, d'où les multiplicateurs neutres.
+	# Le boss final ne tire pas : il fonce, brûle et vole de la vie.
+	"chaos": {"label": "Chaos", "color": Color("#4a0e3a"), "glow": Color("#e040c0"),
+		"hp_mult": 1.0, "dmg_mult": 1.0, "speed_mult": 1.0, "lifesteal": 0.35, "burn": true,
+		"trait": "Tous les éléments, les 7 boss en ordre aléatoire", "sprite": "unseen_horror"},
 }
-const ELEMENT_ORDER := ["cendres", "sang", "violence", "terre", "feu", "destruction", "ombre"]
+const ELEMENT_ORDER := ["cendres", "sang", "violence", "terre", "feu", "destruction", "ombre", "chaos"]
+const CHAOS := "chaos"
+## Éléments que peut prendre un monstre ordinaire ou un boss de vague.
+const MOB_ELEMENTS := ["cendres", "sang", "violence", "terre", "feu", "destruction", "ombre"]
 
 const BOSS_NAMES := {
 	"cendres": "Chevalier de cendres",
@@ -68,10 +78,14 @@ const BOSS_NAMES := {
 	"destruction": "Mangeur de soldats",
 	"ombre": "Sbire de l'ombre",
 }
-const FINAL_BOSS_ELEMENT := "ombre"
-const FINAL_BOSS_WAVE := 30
-const FINAL_BOSS_NAME := "Nécromancien Putréfié"
-const FINAL_BOSS_SPRITE := "zonguldrok_lich"
+## Boss final par mode : le vaincre gagne la partie. `fallen` titre l'écran de
+## victoire ; `gold` fixe la prime au lieu du calcul habituel (difficulté, vague).
+const FINAL_BOSSES := {
+	"ombre": {"wave": 30, "name": "Nécromancien Putréfié",
+		"fallen": "Le Nécromancien Putréfié est tombé", "sprite": "zonguldrok_lich"},
+	"chaos": {"wave": 40, "name": "Créature cauchemardesque",
+		"fallen": "La Créature cauchemardesque est tombée", "sprite": "unseen_horror", "gold": 300},
+}
 
 ## Pas de temps de la v1 : tous ses compteurs décomptaient une frame à 60 fps.
 const V1_FPS := 60.0
@@ -83,4 +97,7 @@ func is_boss_wave(wave: int) -> bool:
 	return wave % 5 == 0
 
 func is_final_boss_wave(element: String, wave: int) -> bool:
-	return element == FINAL_BOSS_ELEMENT and wave == FINAL_BOSS_WAVE
+	return FINAL_BOSSES.has(element) and wave == FINAL_BOSSES[element]["wave"]
+
+func final_boss(element: String) -> Dictionary:
+	return FINAL_BOSSES.get(element, {})
