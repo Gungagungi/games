@@ -107,7 +107,9 @@ func _begin_game(start_wave: int) -> void:
 	UpgradeManager.reset()
 	arena.clear_transients()
 	arena.player.reset_stats()
-	arena.player.position = get_viewport().get_visible_rect().size * 0.5
+	arena.level.generate()
+	arena.player.position = arena.level.start_position()
+	arena.snap_camera()
 	_apply_starting_scaling(start_wave)
 	GameState.reset(start_wave)
 	arena.waves.start_wave(start_wave)

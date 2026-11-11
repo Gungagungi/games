@@ -39,6 +39,9 @@ var rush_ticks := 0
 var rush_total := 0
 var rush_max_hp := 0.0
 var _rush_potion_timer := 0
+## Créatures nées pendant le parcours de `enemies` (doubles et mini-créatures
+## de la Créature cauchemardesque), ajoutées à la fin du tick.
+var _spawn_queue: Array[Enemy] = []
 
 var entities: Node2D
 var fx_layer: Node2D
@@ -189,6 +192,7 @@ func clear_run() -> void:
 		potion = null
 	for c in fx_layer.get_children():
 		c.queue_free()
+	_spawn_queue.clear()
 
 func reset_player() -> void:
 	player.max_hp = Save.armor()["hp"]
@@ -429,6 +433,9 @@ func _spawn_enemy(element: String, is_boss: bool, is_final: bool) -> Enemy:
 	return e
 
 func damage_enemy(e: Enemy, amount: float) -> void:
+	# Déjà retiré : un double emporté par la mort du boss pendant le même coup.
+	if not enemies.has(e):
+		return
 	e.hp -= amount
 	e.hit_flash = 8
 	Fx.float_text(fx_layer, e.position + Vector2(0, -e.top() - 12), "-%d" % roundi(amount), Color.WHITE)
@@ -451,6 +458,13 @@ func _kill_enemy(e: Enemy) -> void:
 	e.die()
 	if e.is_boss:
 		shake(7.0)
+	if e.is_final:
+		# Les doubles et mini-créatures meurent avec la Créature, sans prime.
+		for o: Enemy in enemies.duplicate():
+			if o.is_clone or o.is_mini:
+				enemies.erase(o)
+				Fx.puff(fx_layer, o.position, o.glow, o.sprite_scale)
+				o.die()
 	# Conclave : seule la chute du dernier boss compte, boss finals compris.
 	var won := current_boss() == null if Game.boss_rush else e.is_final
 	if won and Game.state == "playing":
@@ -458,9 +472,26 @@ func _kill_enemy(e: Enemy) -> void:
 		Audio.stop_music()
 		Audio.sfx("victory", 1.0, 0.0)
 
+func queue_spawn(e: Enemy) -> void:
+	_spawn_queue.append(e)
+
 func _update_enemies() -> void:
+	_tick_enemies()
+	for e in _spawn_queue:
+		entities.add_child(e)
+		enemies.append(e)
+	_spawn_queue.clear()
+
+func _tick_enemies() -> void:
 	var shoot_mult: float = Game.diff()["shoot_mult"]
 	for e in enemies:
+		if Nightmare.handles(e):
+			if e.hit_flash > 0:
+				e.hit_flash -= 1
+			Nightmare.tick(self, e)
+			if Game.state != "playing":
+				return
+			continue
 		# Par monstre : en Chaos, les éléments se côtoient dans la même vague.
 		var elem: Dictionary = Data.ELEMENTS[e.element]
 		var ranged: bool = elem.get("ranged", false)
@@ -603,7 +634,9 @@ func _update_boss_rush() -> void:
 ## d'un boss à l'autre : les boss rôdent au lieu de converger en tas.
 func _wander_bosses() -> void:
 	for e in enemies:
-		if not e.is_boss or e.charging:
+		# La Créature cauchemardesque se déplace par ses propres attaques
+		# (saut, ruée, laser) : un pas de côté les fausserait.
+		if not e.is_boss or e.charging or Nightmare.handles(e):
 			continue
 		var to := player.position - e.position
 		if to == Vector2.ZERO:
@@ -619,7 +652,7 @@ func _wander_bosses() -> void:
 func _separate_bosses() -> void:
 	var bosses: Array[Enemy] = []
 	for e in enemies:
-		if e.is_boss:
+		if _is_bulky(e):
 			bosses.append(e)
 	for _pass in 4:
 		for i in bosses.size():
@@ -646,10 +679,15 @@ func boss_overlap() -> float:
 	var worst := -INF
 	for i in enemies.size():
 		var a := enemies[i]
-		if not a.is_boss:
+		if not _is_bulky(a):
 			continue
 		for j in range(i + 1, enemies.size()):
 			var b := enemies[j]
-			if b.is_boss:
+			if _is_bulky(b):
 				worst = maxf(worst, a.top() + b.top() - a.position.distance_to(b.position))
 	return worst
+
+## Séparés entre eux dans le Conclave : les boss, et les doubles de la
+## Créature cauchemardesque, qui ont une taille de boss sans en être.
+static func _is_bulky(e: Enemy) -> bool:
+	return e.is_boss or e.is_clone

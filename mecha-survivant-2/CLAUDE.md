@@ -38,6 +38,7 @@ scripts/check.sh           # non-régression sans écran (voir plus bas)
 scripts/gen-sprites.py     # génère les planches de sprites (voir « Assets »)
 scripts/gen-audio.py       # génère bruitages et musiques (voir « Audio »)
 scripts/preview-sheet.py   # agrandit une planche, case par case, pour la relire
+scripts/import-kenney.py   # découpe le décor dans les packs Kenney (voir « Le niveau »)
 scripts/gen-version.sh     # écrit godot/version.txt (branche@hash), voir « Version »
 ```
 
@@ -109,11 +110,16 @@ Deux points à connaître :
   capture : les boutons sont peints dans le canvas, il n'y a pas de DOM. Changer
   la mise en page de `start_screen.gd` oblige à réajuster ces constantes.
 
+Pour juger la génération du niveau d'un coup d'œil, `index.html?apercu-carte`
+dézoome la caméra sur la carte entière (web seulement, sans effet en jeu
+normal) — même commande de capture, avec ce paramètre dans l'URL.
+
 ## Architecture
 
 Autoloads (`autoload/`) : `EventBus` (tous les signaux transverses),
 `GameState` (vague, tier, mode smoke), `AudioManager`, `UpgradeManager`.
 
+- `scenes/level.gd` — le niveau, voir « Le niveau » ci-dessous.
 - `systems/wave_manager.gd` — `5 + n*2` ennemis, `tier = floor((n-1)/2)`, boss
   si `n % 5 == 0` **ou `n == 1`** (mapping explicite `BOSS_BY_WAVE` pour
   1/5/10/15/20). La vague 1 est spéciale : voir « Le faux Titan et le vrai
@@ -180,6 +186,45 @@ référencés, mais toujours utilisables) — voir « Assets ».
   d'`arena.gd`, l'onde de choc, le télégraphe et la flaque de poison gardent
   chacun leur rendu géométrique en secours, et `HitSpark` ne s'instancie pas du
   tout tant que `fx_hit.png` manque.
+
+## Le niveau
+
+L'arène n'est plus l'écran : c'est un village en ruine de 112×64 cases de
+32 px (environ 4×4 écrans), **régénéré à chaque partie** par `level.gd`
+(`generate()`, appelé par `main.gd` au lancement). Une `Camera2D` de
+`arena.gd` suit le mech, bornée à la carte ; le screen shake passe par son
+`offset` (décaler l'arène comme avant déplacerait la caméra avec elle).
+
+Génération : trame de rues de 3 cases dont un tronçon sur cinq manque, une
+place dégagée au centre (départ du mech), des maisons aux murs d'une case avec
+des portes de deux cases, usées (brèches franchissables, pans écroulés
+pleins, mobilier renversé), quelques cimetières, des obstacles épars. Un BFS
+depuis la place marque les cases accessibles (`_reach`) : seules elles
+accueillent apparitions et invocations.
+
+**Tout ce qui supposait « arène = écran » passe par `Level.current`** :
+`spawn_point()` (juste hors champ, case accessible), `view_rect()` (ce que
+montre la caméra : pluies de météores et de membres des boss),
+`world_rect()` (bornes), `nearest_free()` (invocations). Ne plus jamais
+utiliser `get_viewport_rect()` comme taille du terrain.
+
+Collisions — trois mécanismes, un par famille :
+
+- le mech (`CharacterBody2D`) heurte un `StaticBody2D` de couche
+  `Level.WALL_LAYER`, fait d'un rectangle par suite horizontale de cases
+  pleines ;
+- les ennemis (`Area2D` déplacés à la main) passent par `_chase()` →
+  `move_circle()`, qui glisse sur la grille, avec un rayon plafonné
+  (`WALL_RADIUS`) pour qu'un gros zombie passe encore une porte ;
+- les projectiles meurent sur `Level.blocks_projectile()` (mur, obstacle ou
+  hors carte).
+
+Les ennemis suivent un **champ de distances** (BFS depuis la case du mech,
+recalculé seulement quand il change de case) plutôt que la ligne droite : un
+calcul pour toute la horde, qui contourne les murs et passe par les portes.
+À courte distance et en vue directe, ils vont tout droit. **Les boss
+traversent les murs** — choix de conception, des géants dans des ruines :
+`_chase()` les laisse en ligne droite, et c'est voulu.
 
 ## Assets
 

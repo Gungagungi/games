@@ -17,7 +17,8 @@ const BOSS_BY_WAVE := {
 	15: "res://scenes/bosses/zombie_titan.gd",
 	20: "res://scenes/bosses/galaxy_boss.gd",
 }
-const SPAWN_MARGIN := 60.0
+const BOSS_OFFSET := 140.0
+const BOSS_MARGIN := 80.0
 
 var arena: Node2D
 var remaining_to_spawn := 0
@@ -83,14 +84,9 @@ func _spawn_regular() -> void:
 	enemy.position = _edge_position()
 	arena.add_child(enemy)
 
-## Apparition sur un bord de l'arène, hors champ.
+## Apparition juste hors champ, sur une case libre et accessible du niveau.
 func _edge_position() -> Vector2:
-	var rect := arena.get_viewport_rect().size
-	match randi() % 4:
-		0: return Vector2(randf() * rect.x, -SPAWN_MARGIN)
-		1: return Vector2(randf() * rect.x, rect.y + SPAWN_MARGIN)
-		2: return Vector2(-SPAWN_MARGIN, randf() * rect.y)
-		_: return Vector2(rect.x + SPAWN_MARGIN, randf() * rect.y)
+	return Level.current.spawn_point()
 
 func _spawn_boss(n: int) -> void:
 	_spawn_boss_script(BOSS_BY_WAVE.get(n, "res://scenes/bosses/giant_knight.gd"))
@@ -98,7 +94,11 @@ func _spawn_boss(n: int) -> void:
 func _spawn_boss_script(path: String) -> void:
 	var boss: EnemyBase = load(path).new()
 	boss.configure_boss(GameState.tier())
-	boss.position = arena.get_viewport_rect().size * Vector2(0.5, 0.25)
+	# Au-dessus du joueur, en haut de l'écran comme avant ; le boss traverse
+	# les ruines, peu importe où il tombe.
+	var world := Level.current.world_rect().grow(-BOSS_MARGIN)
+	var player := get_tree().get_first_node_in_group("player") as Node2D
+	boss.position = (player.position + Vector2(0.0, -BOSS_OFFSET)).clamp(world.position, world.end)
 	# `call_deferred` : un spawn de boss peut arriver ici en réaction directe à
 	# la mort du boss précédent, elle-même remontée depuis la collision d'une
 	# balle. Ajouter une Area2D en pleine mise à jour physique fait planter le

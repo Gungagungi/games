@@ -64,9 +64,10 @@ func _star_barrage() -> void:
 			hit_damage() * 0.35, 8.0, Color(0.65, 0.5, 1.0), "proj_orb")
 
 func _meteors() -> void:
-	var size := get_viewport_rect().size
+	var view := Level.current.view_rect().grow(-80.0)
 	for i in 3:
-		var at := Vector2(randf_range(80.0, size.x - 80.0), randf_range(80.0, size.y - 80.0))
+		var at := Vector2(randf_range(view.position.x, view.end.x),
+			randf_range(view.position.y, view.end.y))
 		_telegraph_strike(at, 100.0, hit_damage() * 0.6, 0.9 + i * 0.15,
 			Color(0.7, 0.4, 1.0), 8.0)
 
@@ -89,6 +90,5 @@ func _supernova() -> void:
 	EventBus.screen_shake_requested.emit(10.0)
 
 func _clamp_inside() -> void:
-	var size := get_viewport_rect().size
-	global_position.x = clampf(global_position.x, radius, size.x - radius)
-	global_position.y = clampf(global_position.y, radius, size.y - radius)
+	var world := Level.current.world_rect().grow(-radius)
+	global_position = global_position.clamp(world.position, world.end)
