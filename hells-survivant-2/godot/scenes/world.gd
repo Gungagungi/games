@@ -199,6 +199,7 @@ func reset_player() -> void:
 	player.hp = player.max_hp
 	player.position = Data.ARENA / 2.0
 	player.burn_timer = 0
+	player.knock_timer = 0
 	player.attack_timer = 0
 	player.attack_cooldown = 0
 	player.facing = Vector2(0, 1)
@@ -251,6 +252,12 @@ func _update_player() -> void:
 	var dir := Vector2(Input.get_axis("move_left", "move_right"), Input.get_axis("move_up", "move_down"))
 	if Game.smoke_test:
 		dir = smoke_dir
+	if player.knock_timer > 0:
+		# Projeté : le joueur ne dirige plus le héros jusqu'à l'arrêt.
+		player.knock_timer -= 1
+		var k := 1.0 - float(player.knock_timer) / player.knock_time
+		player.position = player.knock_from.lerp(player.knock_to, 1.0 - (1.0 - k) * (1.0 - k))
+		dir = Vector2.ZERO
 	player.moving = dir != Vector2.ZERO
 	if player.moving:
 		dir = dir.normalized()
@@ -292,6 +299,16 @@ func do_attack() -> void:
 			continue
 		if absf(angle_difference(d.angle(), facing_angle)) < PI / 2.2:
 			damage_enemy(e, sword_dmg)
+
+## Projette le héros jusqu'à `to` en `frames` frames, en ralentissant à
+## l'arrivée (champ de force de la Créature cauchemardesque).
+func knock_player(to: Vector2, frames: int) -> void:
+	if Game.state != "playing":
+		return
+	player.knock_from = player.position
+	player.knock_to = to.clamp(Vector2.ONE * player.radius, Data.ARENA - Vector2.ONE * player.radius)
+	player.knock_time = maxi(frames, 1)
+	player.knock_timer = player.knock_time
 
 func hit_player(raw_dmg: float) -> void:
 	if Game.state != "playing":

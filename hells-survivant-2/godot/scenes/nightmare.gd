@@ -12,9 +12,12 @@ extends RefCounted
 ## - ruée : charge en ligne droite ;
 ## - saut : elle bondit sur la position du héros, et l'atterrissage lance une
 ##   onde de choc en anneau, qu'on évite en étant loin ou déjà derrière le front ;
-## - invocation : des mini-créatures, monstres de mêlée ordinaires.
+## - invocation : des mini-créatures, monstres de mêlée ordinaires ;
+## - champ de force : une sphère gonfle autour d'elle puis éclate, quand le héros
+##   est proche ; s'il est pris dedans, il est blessé et projeté à l'autre bout
+##   de l'arène (`World.knock_player`).
 ## À 75, 50 et 25 % de PV, elle se dédouble : le double reprend ses attaques,
-## sauf le laser, l'invocation et le dédoublement. Sa mort emporte doubles et
+## sauf le laser, l'invocation, le champ de force et le dédoublement. Sa mort emporte doubles et
 ## mini-créatures.
 
 const LASER_AIM := 60
@@ -54,6 +57,12 @@ const WAVE_HALF := 16.0
 const SUMMON_TIME := 36
 const SUMMON_COUNT := 3
 const MINIS_MAX := 6
+
+const FIELD_AIM := 48
+const FIELD_TIME := 24
+const FIELD_R := 200.0
+## Vitesse de la projection, en px par frame (au départ : elle ralentit ensuite).
+const FIELD_KNOCK_SPEED := 22.0
 
 const SPLIT_TIME := 40
 const SPLIT_AT := [0.75, 0.5, 0.25]
@@ -148,6 +157,13 @@ static func tick(w: World, e: Enemy) -> void:
 			if e.nm_timer <= 0:
 				_summon(w, e)
 				_end(e)
+		"field_aim":
+			if e.nm_timer <= 0:
+				_start(e, "field", FIELD_TIME)
+				_field(w, e, dir, dist)
+		"field":
+			if e.nm_timer <= 0:
+				_end(e)
 		"split":
 			if e.nm_timer <= 0:
 				_split(w, e)
@@ -186,6 +202,8 @@ static func _choose(w: World, e: Enemy, dist: float) -> void:
 	var options: Array[String] = []
 	if dist < SWEEP_R + 40.0:
 		options = ["sweep", "sweep", "jump", "dash"]
+		if e.is_final:
+			options.append_array(["field", "field"])
 	else:
 		options = ["lash", "lash", "dash", "jump"]
 		if e.is_final:
@@ -212,6 +230,9 @@ static func _choose(w: World, e: Enemy, dist: float) -> void:
 		"summon":
 			_start(e, "summon", SUMMON_TIME)
 			Audio.sfx("boss_warning", 1.2)
+		"field":
+			_start(e, "field_aim", FIELD_AIM)
+			Audio.sfx("boss_charge", 0.8)
 
 static func _start(e: Enemy, attack: String, frames: int) -> void:
 	e.nm_attack = attack
@@ -263,6 +284,55 @@ static func _lash(w: World, e: Enemy) -> void:
 				break
 	if e.nm_timer <= 0:
 		_end(e)
+
+## Éclatement du champ de force : le héros pris dedans est blessé et projeté.
+static func _field(w: World, e: Enemy, dir: Vector2, dist: float) -> void:
+	var p := w.player
+	Audio.sfx("boss_warning", 0.7)
+	Fx.puff(w.fx_layer, e.position, e.glow, 3.0)
+	w.shake(10.0)
+	if dist >= FIELD_R + p.radius:
+		return
+	_hit(w, e, 1.4, false)
+	var away := dir if dist > 1.0 else Vector2.from_angle(randf() * TAU)
+	var target := knock_target(e.position, p.position, away, p.radius)
+	var frames := clampi(ceili(p.position.distance_to(target) / FIELD_KNOCK_SPEED * 2.0), 10, 60)
+	w.knock_player(target, frames)
+
+## Point d'arrivée de la projection : parmi les points du bord de l'arène situés
+## devant le héros (dans le sens où il s'éloigne de la Créature), le plus loin
+## d'elle, avec une préférence pour la ligne droite. Si le héros est déjà
+## plaqué contre un mur, aucun point n'est devant lui : on prend alors le plus
+## loin de la Créature, où qu'il soit.
+static func knock_target(boss: Vector2, from: Vector2, away: Vector2, margin: float) -> Vector2:
+	var lo := Vector2.ONE * margin
+	var hi := Data.ARENA - lo
+	var best := from
+	var best_score := -INF
+	var fallback := from
+	var fallback_score := -INF
+	const STEPS := 24
+	for side in 4:
+		for i in STEPS + 1:
+			var f := float(i) / STEPS
+			var pt: Vector2
+			match side:
+				0: pt = Vector2(lerpf(lo.x, hi.x, f), lo.y)
+				1: pt = Vector2(lerpf(lo.x, hi.x, f), hi.y)
+				2: pt = Vector2(lo.x, lerpf(lo.y, hi.y, f))
+				_: pt = Vector2(hi.x, lerpf(lo.y, hi.y, f))
+			var far := pt.distance_to(boss)
+			if far > fallback_score:
+				fallback_score = far
+				fallback = pt
+			var go := pt - from
+			if go.length() < 1.0 or go.normalized().dot(away) < 0.3:
+				continue
+			var score := far + 200.0 * go.normalized().dot(away)
+			if score > best_score:
+				best_score = score
+				best = pt
+	return best if best_score > -INF else fallback
 
 static func _minis(w: World) -> int:
 	var n := 0

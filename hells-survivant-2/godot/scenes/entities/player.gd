@@ -24,6 +24,11 @@ var attack_timer := 0
 var attack_cooldown := 0
 var burn_timer := 0
 var moving := false
+## Projection en cours (`World.knock_player`) : trajet et frames restantes.
+var knock_from := Vector2.ZERO
+var knock_to := Vector2.ZERO
+var knock_time := 1
+var knock_timer := 0
 
 var _rig: Node2D
 var _layers := {}

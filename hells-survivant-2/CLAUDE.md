@@ -159,8 +159,13 @@ l'un des 7 `Data.MOB_ELEMENTS` à l'apparition.
     touché qu'au passage du front ;
   - **invocation** de mini-créatures (`is_mini`), monstres de mêlée ordinaires
     d'élément Chaos, six au plus ;
+  - **champ de force**, quand le héros est proche : une sphère gonfle autour
+    d'elle (le cercle de sa portée, 200 px, s'affiche dès le début), puis
+    éclate. Le héros pris dedans est blessé et **projeté à l'autre bout de
+    l'arène** (`World.knock_player`) : il glisse, sans contrôle, vers le point
+    du bord le plus éloigné d'elle, devant lui (`Nightmare.knock_target`) ;
   - **dédoublement** à 75, 50 et 25 % de PV : le double (`is_clone`) reprend ses
-    attaques sauf laser, invocation et dédoublement.
+    attaques sauf laser, invocation, champ de force et dédoublement.
 
   Toutes les attaques sont télégraphiées. Les créatures nées pendant le tick
   passent par `World.queue_spawn`. Sa mort emporte doubles et mini-créatures,

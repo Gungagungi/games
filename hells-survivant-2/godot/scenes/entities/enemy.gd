@@ -133,7 +133,7 @@ func _process(delta: float) -> void:
 	elif nm_attack == "jump_crouch":
 		# Accroupie avant le saut : écrasée et tremblante.
 		_sprite.scale = Vector2(1.1, 0.88) * sprite_scale
-	elif nm_attack in ["split", "summon"]:
+	elif nm_attack in ["split", "summon", "field_aim"]:
 		_sprite.position.x += randf_range(-1.5, 1.5) * sprite_scale
 	_mat.set_shader_parameter("flash", 0.85 if hit_flash > 0 else 0.0)
 	if charging and charge_telegraph > 0:
@@ -142,7 +142,7 @@ func _process(delta: float) -> void:
 		_sprite.scale = Vector2.ONE * sprite_scale * (1.0 + 0.06 * sin(_t * 30.0))
 		if _light:
 			_light.energy = 1.6
-	elif nm_attack in ["split", "summon", "laser_aim", "laser"]:
+	elif nm_attack in ["split", "summon", "laser_aim", "laser", "field_aim"]:
 		_mat.set_shader_parameter("outline", 0.6 + 0.4 * sin(_t * 24.0))
 		_sprite.scale = Vector2.ONE * sprite_scale
 		if _light:
@@ -235,6 +235,22 @@ class NightmareFx extends Node2D:
 				draw_line(eye, end, Color(1, 0.9, 1, 1), 9.0 * open)
 				draw_circle(eye, 22.0 * pulse * open, Color(BEAM, 0.9))
 				draw_circle(eye, 10.0 * open, Color.WHITE)
+			"field_aim":
+				# La sphère gonfle jusqu'à sa taille finale, de plus en plus vive.
+				var f := 1.0 - k / Nightmare.FIELD_AIM
+				var c := Vector2(0, -4.0 * e.sprite_scale)
+				var pulse := 0.5 + 0.5 * sin(_t * (12.0 + 30.0 * f))
+				draw_circle(c, Nightmare.FIELD_R * f, Color(BEAM, 0.08 + 0.12 * f))
+				draw_arc(c, Nightmare.FIELD_R * f, 0.0, TAU, 64, Color(1, 0.85, 1, 0.3 + 0.5 * f), 3.0)
+				# Limite de la zone touchée, dès le début : le temps de sortir.
+				draw_arc(c, Nightmare.FIELD_R, 0.0, TAU, 64, Color(BEAM, 0.25 + 0.35 * pulse), 2.0)
+			"field":
+				var f := 1.0 - k / Nightmare.FIELD_TIME
+				var c := Vector2(0, -4.0 * e.sprite_scale)
+				var r := Nightmare.FIELD_R * (1.0 + 0.25 * f)
+				draw_circle(c, r, Color(BEAM, 0.35 * (1.0 - f)))
+				draw_arc(c, r, 0.0, TAU, 64, Color(BEAM, 0.8 * (1.0 - f)), 18.0 * (1.0 - f) + 2.0)
+				draw_arc(c, r, 0.0, TAU, 64, Color(1, 0.9, 1, 1.0 - f), 4.0)
 			"shockwave":
 				var r := Nightmare.wave_radius(e)
 				var a := k / Nightmare.WAVE_TIME
