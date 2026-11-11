@@ -52,7 +52,11 @@ et là qu'il faudrait le changer si une planche livrée s'organisait autrement.
 | `fx_shockwave.png` | 64×64 | 6 | onde de choc, déroulée une fois sur 0,35 s |
 | `fx_hit.png` | 64×64 | 5 | impact, déroulé une fois à chaque coup encaissé |
 | `fx_telegraph.png` | 64×64 | 1 | cercle d'annonce, opacité pilotée par le code |
-| `tiles_floor.png` | 32×32 | 4 | variantes de dalle, tirées au hachage des coordonnées |
+| `tiles_floor.png` | 32×32 | 4 | pavés des rues et de la place, variante tirée au hachage des coordonnées |
+| `tiles_ground.png` | 16×16 | 7 | herbe ×2, herbe caillouteuse, terre ×2, pierre, pavés (Kenney) |
+| `tiles_indoor.png` | 16×16 | 5 | sols intérieurs : brique brune, brique grise, parquet ×3 (Kenney) |
+| `tiles_wall.png` | 16×16 | 8 | faces de mur : lisse, fissurées ×5 ; pans écroulés ×2 (Kenney) |
+| `tiles_props.png` | 16×16 | 19 | arbres morts ×3, tombes ×5, rochers ×4, tonneaux ×2, mobilier ×5 (Kenney) |
 | `hazard_poison.png` | 48×48 | 4 | flaque de poison, en boucle |
 | `ui_upgrades.png` | 32×32 | 8 | cadence, dégâts, coque, vitesse, salve, bouclier, onde, endurance — **cet ordre exactement**, c'est celui de `UpgradeManager.ALL` |
 | `icon.png` | 64×64 | 1 | icône du jeu (placeholder généré, à remplacer) |
@@ -91,6 +95,24 @@ scripts/preview-sheet.py titan                 # relire la planche, case par cas
 
 Une planche produite à la main ou par un autre outil reste parfaitement
 valable : le jeu ne connaît que le fichier, jamais son origine.
+
+**Décor du niveau (Kenney, CC0)** — les quatre planches `tiles_ground`,
+`tiles_indoor`, `tiles_wall` et `tiles_props` ne sont pas générées : elles sont
+découpées dans deux packs de Kenney, [Roguelike/RPG
+pack](https://opengameart.org/content/roguelikerpg-pack-1700-tiles) et
+[Roguelike Indoor pack](https://opengameart.org/content/roguelike-indoor-pack),
+domaine public (licence dans `KENNEY-LICENSE.txt`, crédit non obligatoire mais
+donné ici). Les packs eux-mêmes ne sont pas versionnés : seules les tuiles
+employées le sont, désaturées et assombries à l'import.
+
+```sh
+scripts/import-kenney.py --rpg "Roguelike pack.zip" --indoor "Roguelike Indoor pack.zip"
+```
+
+Les cases sont en 16 px, affichées à 32 (une case de niveau). Leur ordre est un
+contrat avec les constantes `GROUND_*`, `WALL_*` et `PROP_*` de
+`scenes/level.gd` : changer une tuile se fait dans `PLANCHES` du script,
+réordonner oblige à suivre dans `level.gd`.
 
 ## Polices — `assets/fonts/`
 

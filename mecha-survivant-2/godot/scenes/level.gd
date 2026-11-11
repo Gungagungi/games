@@ -26,8 +26,8 @@ const COLS := 112
 const ROWS := 64
 const WALL_LAYER := 16
 
-const TINT := Color(0.56, 0.6, 0.7)         ## Kenney est gai : on l'éteint
-const STREET_TINT := Color(0.85, 0.85, 0.9)
+const TINT := Color.WHITE        ## l'étalonnage est fait à l'import (import-kenney.py)
+const STREET_TINT := Color(0.62, 0.62, 0.68)
 
 ## Contenu d'une case.
 enum { GROUND, STREET, FLOOR, WALL, BLOCK }
@@ -84,6 +84,13 @@ func _ready() -> void:
 	generate()
 
 # --- requêtes ------------------------------------------------------------
+
+## Outil de capture (web seulement) : `index.html?apercu-carte` montre toute
+## la carte d'un coup, pour juger la génération sans parcourir le niveau.
+static func overview_requested() -> bool:
+	if not OS.has_feature("web"):
+		return false
+	return str(JavaScriptBridge.eval("location.search", true)).contains("apercu-carte")
 
 func world_rect() -> Rect2:
 	return Rect2(Vector2.ZERO, Vector2(COLS, ROWS) * CELL)
@@ -271,7 +278,7 @@ func generate() -> void:
 	for i in n:
 		_variant[i] = randi() % 256
 
-	_plaza = Rect2i(_center - Vector2i(9, 6), Vector2i(18, 12))
+	_plaza = Rect2i(_center - Vector2i(6, 4), Vector2i(12, 8))
 	var streets := _lay_streets()
 	_fill_rect(_plaza, STREET)
 	_scatter_dirt()
@@ -312,10 +319,25 @@ func _lay_streets() -> Array[Rect2i]:
 		ys.push_back(y)
 	xs = _keep_between(xs, 3, COLS - 6)
 	ys = _keep_between(ys, 3, ROWS - 6)
+	# Rues tracées tronçon par tronçon (d'un carrefour au suivant), dont un
+	# sur cinq manque : la trame reste lisible sans faire damier. Les îlots,
+	# eux, restent découpés sur la trame complète.
+	var cut_x: Array[int] = [1]
+	cut_x.append_array(ys)
+	cut_x.append(ROWS - 1)
 	for sx in xs:
-		_fill_rect(Rect2i(sx, 1, 3, ROWS - 2), STREET)
+		for j in cut_x.size() - 1:
+			if sx != _center.x - 1 and randf() < 0.2:
+				continue
+			_fill_rect(Rect2i(sx, cut_x[j], 3, cut_x[j + 1] - cut_x[j] + 3), STREET)
+	var cut_y: Array[int] = [1]
+	cut_y.append_array(xs)
+	cut_y.append(COLS - 1)
 	for sy in ys:
-		_fill_rect(Rect2i(1, sy, COLS - 2, 3), STREET)
+		for i in cut_y.size() - 1:
+			if sy != _center.y - 1 and randf() < 0.2:
+				continue
+			_fill_rect(Rect2i(cut_y[i], sy, cut_y[i + 1] - cut_y[i] + 3, 3), STREET)
 	var blocks: Array[Rect2i] = []
 	var bx: Array[int] = [-2]
 	bx.append_array(xs)
@@ -327,7 +349,7 @@ func _lay_streets() -> Array[Rect2i]:
 		for i in bx.size() - 1:
 			var r := Rect2i(bx[i] + 3, by[j] + 3, bx[i + 1] - bx[i] - 3, by[j + 1] - by[j] - 3)
 			r = r.intersection(Rect2i(2, 2, COLS - 4, ROWS - 4))
-			if r.size.x >= 6 and r.size.y >= 6 and not r.intersects(_plaza.grow(1)):
+			if r.size.x >= 6 and r.size.y >= 6:
 				blocks.append(r)
 	return blocks
 
@@ -358,18 +380,24 @@ func _scatter_dirt() -> void:
 func _raise_buildings(blocks: Array[Rect2i]) -> void:
 	blocks.shuffle()
 	for b in blocks:
-		if randf() < 0.18:
+		if randf() < 0.12:
 			continue          # îlot laissé en friche (ou en cimetière, plus bas)
-		var count := 2 if b.size.x >= 18 and randf() < 0.7 else 1
+		var count := 2 if b.size.x >= 15 and randf() < 0.8 else 1
 		var slot_w := b.size.x / count
 		for k in count:
 			if slot_w - 1 < 6 or b.size.y - 1 < 5:
 				continue
-			var w := randi_range(6, mini(12, slot_w - 1))
-			var h := randi_range(5, mini(9, b.size.y - 1))
-			var x0 := b.position.x + k * slot_w + randi_range(0, slot_w - w - 1)
-			var y0 := b.position.y + randi_range(0, b.size.y - h - 1)
-			_house(Rect2i(x0, y0, w, h))
+			# Quelques essais : l'îlot peut mordre sur les abords de la place,
+			# qui doivent rester dégagés.
+			for attempt in 4:
+				var w := randi_range(6, mini(14, slot_w - 1))
+				var h := randi_range(5, mini(10, b.size.y - 1))
+				var x0 := b.position.x + k * slot_w + randi_range(0, slot_w - w - 1)
+				var y0 := b.position.y + randi_range(0, b.size.y - h - 1)
+				var house := Rect2i(x0, y0, w, h)
+				if not house.intersects(_plaza.grow(2)):
+					_house(house)
+					break
 
 func _house(r: Rect2i) -> void:
 	var floor_v := randi() % 5
@@ -395,9 +423,10 @@ func _house(r: Rect2i) -> void:
 				continue
 			var roll := randf()
 			if roll < 0.08:
+				# Brèche : franchissable, donc sans rocher dessus — un rocher
+				# qui ne bloque pas se confondrait avec ceux qui bloquent.
 				_kind[i] = FLOOR
 				_variant[i] = floor_v
-				_prop[i] = PROP_ROCKS[randi() % 2] if randf() < 0.5 else -1
 			elif roll < 0.2:
 				_kind[i] = BLOCK
 				_prop[i] = PROP_STUB_BASE + WALL_STUBS[randi() % WALL_STUBS.size()]

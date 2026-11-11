@@ -14,6 +14,7 @@ var waves: WaveManager
 var camera: Camera2D
 
 var _shake := 0.0
+var _overview := false
 
 func _ready() -> void:
 	level = Level.new()
@@ -30,6 +31,12 @@ func _ready() -> void:
 	add_child(camera)
 	camera.make_current()
 	snap_camera()
+	if Level.overview_requested():
+		_overview = true
+		var view := get_viewport_rect().size
+		var z := minf(view.x / world.size.x, view.y / world.size.y)
+		camera.zoom = Vector2(z, z)
+		camera.position = world.get_center()
 	waves = WaveManager.new()
 	waves.arena = self
 	add_child(waves)
@@ -38,10 +45,14 @@ func _ready() -> void:
 
 ## Recentre la caméra sur le mech sans transition (début de partie).
 func snap_camera() -> void:
+	if _overview:
+		return
 	camera.position = player.position
 	camera.reset_smoothing()
 
 func _process(delta: float) -> void:
+	if _overview:
+		return
 	camera.position = player.position
 	if _shake > 0.0:
 		_shake = maxf(0.0, _shake - delta * 40.0)

@@ -60,6 +60,28 @@ PLANCHES = {
 }
 
 
+# Étalonnage « village mort » : Kenney est vif et gai, le jeu ne l'est pas.
+# Désaturation partielle, assombrissement, léger froid dans les ombres. Fait
+# ici plutôt qu'en `modulate` dans le moteur : un modulate multiplie, il ne
+# sait pas retirer de la couleur.
+DESATURATE = 0.6
+DARKEN = 0.68
+COOL = (0.94, 1.0, 1.1)
+
+
+def grade(img: Image) -> Image:
+    px = img.pixels
+    for i in range(0, len(px), 4):
+        if px[i + 3] == 0:
+            continue
+        r, g, b = px[i], px[i + 1], px[i + 2]
+        lum = 0.3 * r + 0.59 * g + 0.11 * b
+        for k, c in enumerate((r, g, b)):
+            v = (c + (lum - c) * DESATURATE) * DARKEN * COOL[k]
+            px[i + k] = max(0, min(255, int(v)))
+    return img
+
+
 def load_sheet(zip_path: Path, member: str) -> Image:
     with zipfile.ZipFile(zip_path) as z:
         return Image.decode(z.read(member))
@@ -82,7 +104,7 @@ def main() -> int:
                 return 1
             frames.append(sheet.crop(col * PITCH, row * PITCH, TILE, TILE))
         out = SPRITES / f"{name}.png"
-        out.write_bytes(strip(frames, TILE).encode())
+        out.write_bytes(grade(strip(frames, TILE)).encode())
         print(f"{out.relative_to(ROOT)}  {len(frames)} cases")
 
     with zipfile.ZipFile(args.rpg) as z:
