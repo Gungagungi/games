@@ -36,7 +36,7 @@ var _dying := 0.0
 func _ready() -> void:
 	var elem: Dictionary = Data.ELEMENTS[element]
 	glow = elem["glow"]
-	var key: String = Data.FINAL_BOSS_SPRITE if is_final else (elem["boss_sprite"] if is_boss else elem["sprite"])
+	var key: String = Data.final_boss(element)["sprite"] if is_final else (elem["boss_sprite"] if is_boss else elem["sprite"])
 	# Texel ×2 comme le héros et le sol ; la hitbox (`radius`) reste celle de la v1.
 	sprite_scale = 4.0 if is_final else (3.0 if is_boss else 2.0)
 	_t = randf() * TAU

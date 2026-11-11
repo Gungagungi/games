@@ -97,11 +97,8 @@ func _process(_delta: float) -> void:
 	_hp_bar.value = p.hp
 	_hp_label.text = "%d / %d PV" % [roundi(p.hp), roundi(p.max_hp)]
 	_gold.text = str(Save.gold)
-	var tag := ""
-	if Data.is_final_boss_wave(Game.element, Game.wave):
-		tag = " — " + Data.FINAL_BOSS_NAME
-	elif Data.is_boss_wave(Game.wave):
-		tag = " — " + Data.BOSS_NAMES[Game.element]
+	var boss_name := world.wave_boss_name()
+	var tag := " — " + boss_name if boss_name != "" else ""
 	_wave.text = "Vague %d%s" % [Game.wave, tag]
 	_mode.text = "%s — %s" % [Game.diff()["label"], Game.elem()["label"]]
 	_sound.text = "M : son (coupé)" if Save.muted else "M : son (activé)"
@@ -109,7 +106,7 @@ func _process(_delta: float) -> void:
 	var boss := world.current_boss()
 	_boss_panel.visible = boss != null
 	if boss:
-		_boss_name.text = Data.FINAL_BOSS_NAME if boss.is_final else Data.BOSS_NAMES[boss.element]
+		_boss_name.text = World.boss_name(boss)
 		_boss_bar.max_value = boss.max_hp
 		_boss_bar.value = maxf(0.0, boss.hp)
 

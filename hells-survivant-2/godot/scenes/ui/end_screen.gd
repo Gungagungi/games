@@ -1,6 +1,6 @@
 class_name EndScreen
 extends Control
-## Défaite ou victoire contre le Nécromancien Putréfié.
+## Défaite, ou victoire contre le boss final (Ombre ou Chaos).
 
 signal back_requested
 
@@ -38,7 +38,7 @@ func _ready() -> void:
 
 func present(victory: bool) -> void:
 	if victory:
-		_title.text = "%s est tombé" % Data.FINAL_BOSS_NAME
+		_title.text = Data.final_boss(Game.element)["fallen"]
 		_title.add_theme_color_override("font_color", Color("#c084fc"))
 		_panel_style.border_color = Color("#a855f7")
 		_wave.text = "Tu as survécu jusqu'à la vague %d" % Game.wave

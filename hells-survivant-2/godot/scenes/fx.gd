@@ -102,6 +102,15 @@ static func element_aura(element: String, s: float) -> CPUParticles2D:
 			p.gravity = Vector2(0, -30)
 			p.initial_velocity_max = 20.0
 			p.spread = 180.0
+		"chaos":
+			# Boss final du mode Chaos : volutes magenta qui tournoient autour de lui.
+			p = _emitter(18, 1.4, Color(1, 0.3, 0.8, 0.9), Color(0.25, 0, 0.35, 0))
+			p.gravity = Vector2.ZERO
+			p.initial_velocity_min = 6.0
+			p.initial_velocity_max = 18.0
+			p.orbit_velocity_min = 0.3
+			p.orbit_velocity_max = 0.6
+			p.spread = 180.0
 		_:
 			p = _emitter(12, 1.2, Color(0.75, 0.4, 1, 0.8), Color(0.2, 0, 0.4, 0))
 			p.gravity = Vector2(0, -20)

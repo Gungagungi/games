@@ -25,7 +25,7 @@ La sortie remonte aussi les erreurs de console de la page. Pour un effet qui ne 
 
 C'est de l'outillage de développement : les jeux n'en dépendent pas et restent sans dépendance.
 
-Les deux jeux Godot ont en plus leur propre `scripts/check.sh`, qui joue quatre parties
+Les deux jeux Godot ont en plus leur propre `scripts/check.sh`, qui joue plusieurs parties
 accélérées sans écran (mode smoke). Il n'assert rien : c'est la sortie qui se lit. Voir
 leur `CLAUDE.md`.
 
