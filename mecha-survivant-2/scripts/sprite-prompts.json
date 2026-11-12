@@ -186,6 +186,20 @@
         "attack": "unleashing a burst of stellar energy outward"
       }
     },
+    "boss_destroyer": {
+      "subject": "towering humanoid cosmic overlord boss in a sleek black high-tech armored bodysuit, smooth helmet with a single wide glowing yellow visor, a glowing yellow emblem in the middle of his chest, broad shoulders, menacing and imposing",
+      "options": {
+        "detail": "highly detailed",
+        "rd_style": "rd_fast__low_res",
+        "rd_anim_style": "rd_advanced_animation__idle",
+        "rd_anim_size": 128,
+        "rd_anim_style_attack": "rd_advanced_animation__attack"
+      },
+      "actions": {
+        "idle": "standing still, yellow visor and chest emblem pulsing with light",
+        "attack": "firing yellow laser beams from his visor and chest emblem"
+      }
+    },
     "megaboss": {
       "subject": "crowned undead overlord boss, black and crimson armour, shattered halo of violet energy, immense presence",
       "options": {

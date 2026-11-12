@@ -17,6 +17,8 @@ const BOSS_BY_WAVE := {
 	15: "res://scenes/bosses/zombie_titan.gd",
 	20: "res://scenes/bosses/galaxy_boss.gd",
 }
+## Boss du niveau spécial, hors de la boucle des vagues.
+const DESTROYER := "res://scenes/bosses/destroyer_boss.gd"
 const BOSS_OFFSET := 140.0
 const BOSS_MARGIN := 80.0
 
@@ -54,8 +56,22 @@ func start_wave(n: int) -> void:
 		spawn_cd = 0.0
 		AudioManager.play_music("dungeon")
 
+## Niveau spécial : le Destructeur d'univers seul, sans renforts. La vague ne
+## se conclut jamais ici — c'est la gemme dorée qu'il lâche qui termine la
+## partie (`EventBus.golden_gem_collected`, écouté par `main.gd`).
+func start_destroyer() -> void:
+	wave_active = true
+	_boss_alive = false
+	remaining_to_spawn = 0
+	AudioManager.sfx("wave_start")
+	EventBus.wave_started.emit(GameState.wave)
+	_spawn_boss_script(DESTROYER)
+	AudioManager.play_music("titan")
+
 func _process(delta: float) -> void:
 	if not wave_active or not GameState.running:
+		return
+	if GameState.special_level:
 		return
 	if remaining_to_spawn > 0:
 		spawn_cd -= delta
@@ -110,6 +126,9 @@ func _spawn_boss_script(path: String) -> void:
 
 func _on_boss_defeated() -> void:
 	_boss_alive = false
+	if GameState.special_level:
+		wave_active = false
+		return
 	if wave_active and _living_enemies() <= 1:
 		wave_active = false
 		EventBus.wave_cleared.emit(GameState.wave)

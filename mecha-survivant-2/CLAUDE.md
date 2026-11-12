@@ -85,8 +85,8 @@ rendent cela tenable :
 
 ## Vérification
 
-`scripts/check.sh` joue quatre parties en accéléré, sans rendu, via le mode
-smoke de `scenes/main.gd` (`--headless -- --smoke [--wave=N]`) : le mech
+`scripts/check.sh` joue cinq parties en accéléré, sans rendu, via le mode
+smoke de `scenes/main.gd` (`--headless -- --smoke [--wave=N | --destroyer]`) : le mech
 y est immortel et tire tout seul, sinon rien n'irait plus loin que la première
 vague. Toute erreur GDScript apparaît dans la sortie. C'est le test de
 non-régression du jeu — le lancer après chaque changement.
@@ -109,6 +109,10 @@ Deux points à connaître :
 - Le scénario `ms2-gameplay.js` clique par **coordonnées** relevées sur une
   capture : les boutons sont peints dans le canvas, il n'y a pas de DOM. Changer
   la mise en page de `start_screen.gd` oblige à réajuster ces constantes.
+
+`MS2_DESTROYER=1` fait cliquer au scénario le bouton du niveau spécial (sous
+LANCER, vers `y = 440`) au lieu de LANCER ; `MS2_PLAY_MS` règle la durée de jeu
+avant la capture.
 
 Pour juger la génération du niveau d'un coup d'œil, `index.html?apercu-carte`
 dézoome la caméra sur la carte entière (web seulement, sans effet en jeu
@@ -186,6 +190,38 @@ référencés, mais toujours utilisables) — voir « Assets ».
   d'`arena.gd`, l'onde de choc, le télégraphe et la flaque de poison gardent
   chacun leur rendu géométrique en secours, et `HitSpark` ne s'instancie pas du
   tout tant que `fx_hit.png` manque.
+
+### Le niveau spécial : le Destructeur d'univers
+
+Un second bouton de l'écran-titre, **sous** LANCER pour ne pas décaler les
+clics du scénario de capture, lance `main._begin_destroyer()` : les pouvoirs
+et le tier d'une partie menée à la vague 20, puis
+`WaveManager.start_destroyer()`, qui fait entrer
+`scenes/bosses/destroyer_boss.gd` seul. Aucune vague ne tourne ;
+`GameState.special_level` coupe la conclusion de vague de `WaveManager`.
+
+- **Cinq phases**, chacune ajoute une attaque et resserre les cadences de
+  10 % : rayon de visière, éventail du symbole, étoile de huit rayons + double
+  tir de visière, balayage + effondrement d'étoiles, cage tournante + spirale
+  d'orbes. Les rayons sont des `LaserBeam` (`scenes/fx/laser_beam.gd`, que plus
+  rien n'utilisait), généralisés : origine décalée (`offset`), durées,
+  largeur, couleur, et `sweep` pour un rayon qui balaie en tirant.
+- **Les lasers partent de la visière et du symbole du torse** : `VISOR` et
+  `CORE` sont des décalages depuis le centre du boss, et le dessin de la
+  classe interne `Figure` est calé dessus.
+- **Dessiné en code** : la planche `boss_destroyer.png` est déclarée (SHEETS,
+  manifeste, prompt) mais pas générée — les deux comptes de génération étaient
+  à sec. Tant qu'elle manque, `_shape_kind()` renvoie `"none"` (pas de disque
+  de secours) et `Figure` dessine la silhouette ; une planche déposée prend le
+  relais sans toucher au code, mais devra placer visière et symbole aux
+  hauteurs de `VISOR` et `CORE`, sans quoi les rayons partiront d'ailleurs.
+- **Sa mort lâche la gemme dorée** (`scenes/fx/golden_gem.gd`, dessinée en
+  code, attirée vers le mech à courte distance), posée sur une case libre et
+  ajoutée en différé. La ramasser émet `EventBus.golden_gem_collected` :
+  `main.gd` affiche « JEU RÉUSSI ». En smoke, elle se ramasse seule et la
+  partie s'arrête là ; le Destructeur a droit à 60 s de smoke au lieu de 25,
+  le tirage des pouvoirs faisant varier la durée du combat du simple au
+  triple.
 
 ## Le niveau
 

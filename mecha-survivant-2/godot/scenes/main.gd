@@ -8,6 +8,10 @@ extends Node
 ## la première vague.
 
 const SMOKE_DURATION := 25.0
+## Le Destructeur d'univers encaisse ~20 000 PV sur cinq phases : il lui faut
+## plus de temps que les vagues pour aller jusqu'à la gemme, quel que soit le
+## tirage des pouvoirs.
+const SMOKE_DURATION_DESTROYER := 60.0
 const SMOKE_TIME_SCALE := 8.0
 
 var arena: Arena
@@ -36,6 +40,8 @@ func _ready() -> void:
 	add_child(dialogue_box)
 
 	start_screen.start_requested.connect(_begin_game)
+	start_screen.destroyer_requested.connect(_begin_destroyer)
+	EventBus.golden_gem_collected.connect(_on_golden_gem)
 	upgrade_screen.upgrade_chosen.connect(_on_upgrade_chosen)
 	game_over_screen.restart_requested.connect(_back_to_title)
 	EventBus.wave_cleared.connect(_on_wave_cleared)
@@ -52,6 +58,11 @@ func _ready() -> void:
 		for a in args:
 			if a.begins_with("--wave="):
 				wave = int(a.trim_prefix("--wave="))
+		if "--destroyer" in args:
+			print("[smoke] niveau spécial : le Destructeur d'univers")
+			_smoke_left = SMOKE_DURATION_DESTROYER
+			_begin_destroyer()
+			return
 		print("[smoke] départ vague %d" % wave)
 		_begin_game(wave)
 
@@ -102,6 +113,18 @@ func _auto_pick_upgrade() -> void:
 	_on_upgrade_chosen(choices[0]["id"])
 
 func _begin_game(start_wave: int) -> void:
+	_prepare_run(start_wave)
+	GameState.reset(start_wave)
+	arena.waves.start_wave(start_wave)
+
+## Niveau spécial : on arrive face au Destructeur d'univers avec les pouvoirs
+## et le tier d'une partie menée jusqu'à la vague finale.
+func _begin_destroyer() -> void:
+	_prepare_run(GameState.FINAL_WAVE)
+	GameState.reset(GameState.FINAL_WAVE, true)
+	arena.waves.start_destroyer()
+
+func _prepare_run(start_wave: int) -> void:
 	start_screen.visible = false
 	game_over_screen.visible = false
 	UpgradeManager.reset()
@@ -111,8 +134,6 @@ func _begin_game(start_wave: int) -> void:
 	arena.player.position = arena.level.start_position()
 	arena.snap_camera()
 	_apply_starting_scaling(start_wave)
-	GameState.reset(start_wave)
-	arena.waves.start_wave(start_wave)
 
 ## Démarrer plus loin qu'à la vague 1 accorde les pouvoirs qu'on aurait eus.
 func _apply_starting_scaling(start_wave: int) -> void:
@@ -136,6 +157,14 @@ func _on_upgrade_chosen(id: String) -> void:
 	UpgradeManager.apply(id, arena.player)
 	arena.clear_transients()
 	arena.waves.start_wave(GameState.wave + 1)
+
+func _on_golden_gem() -> void:
+	GameState.running = false
+	AudioManager.stop_music()
+	if GameState.smoke_test:
+		print("[smoke] gemme dorée ramassée — jeu réussi")
+		_smoke_left = 0.0
+	game_over_screen.show_golden_gem()
 
 func _on_player_died() -> void:
 	GameState.running = false

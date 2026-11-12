@@ -7,6 +7,9 @@ const BOSS_EVERY: int = 5
 var wave: int = 0
 var running: bool = false
 var smoke_test: bool = false
+## Niveau spécial « Le Destructeur d'univers » : un seul boss, pas de vagues,
+## et la partie se gagne en ramassant la gemme dorée qu'il lâche.
+var special_level: bool = false
 
 ## Difficulté : identique à la v1 (`tier = floor((wave-1)/2)`).
 func tier() -> int:
@@ -22,6 +25,7 @@ func enemy_count(n: int) -> int:
 func spawn_interval(n: int) -> float:
 	return clampf(50.0 - n * 1.5, 14.0, 50.0) / 60.0
 
-func reset(start_wave: int) -> void:
+func reset(start_wave: int, special: bool = false) -> void:
 	wave = start_wave
+	special_level = special
 	running = true

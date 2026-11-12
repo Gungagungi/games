@@ -1,8 +1,13 @@
 class_name StartScreen
 extends CanvasLayer
-## Écran d'accueil : titre et sélecteur de vague de départ (1-20).
+## Écran d'accueil : titre, sélecteur de vague de départ (1-20) et accès au
+## niveau spécial du Destructeur d'univers.
+##
+## Le bouton du niveau spécial est **sous** LANCER : ajouté au-dessus, il
+## décalerait les coordonnées de clic de `tools/scenarios/ms2-gameplay.js`.
 
 signal start_requested(wave: int)
+signal destroyer_requested()
 
 var _wave_select := OptionButton.new()
 
@@ -48,6 +53,16 @@ func _ready() -> void:
 		AudioManager.sfx("ui_click")
 		start_requested.emit(_wave_select.get_item_id(_wave_select.selected)))
 	panel.add_child(play)
+
+	var destroyer := Button.new()
+	destroyer.text = "NIVEAU SPÉCIAL : LE DESTRUCTEUR D'UNIVERS"
+	destroyer.custom_minimum_size = Vector2(0, 46)
+	destroyer.add_theme_color_override("font_color", Color(1.0, 0.86, 0.12))
+	destroyer.add_theme_color_override("font_hover_color", Color(1.0, 0.95, 0.6))
+	destroyer.pressed.connect(func() -> void:
+		AudioManager.sfx("ui_click")
+		destroyer_requested.emit())
+	panel.add_child(destroyer)
 
 	var version := Label.new()
 	version.text = GameVersion.read()
