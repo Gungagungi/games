@@ -34,6 +34,7 @@ const SHEETS := {
 	"boss_sewer_monster": {"hframes": 8, "anims": {"idle": [0, 4], "attack": [4, 4]}},
 	"boss_zombie_titan": {"hframes": 8, "anims": {"idle": [0, 4], "attack": [4, 4]}},
 	"boss_galaxy_boss": {"hframes": 8, "anims": {"idle": [0, 4], "attack": [4, 4]}},
+	"boss_destroyer": {"hframes": 8, "anims": {"idle": [0, 4], "attack": [4, 4]}},
 	"titan": {"hframes": 14, "fps": 10.0,
 		"anims": {"idle": [0, 4], "scythe": [4, 6], "charge": [10, 4]}},
 	"proj_fireball": {"hframes": 4, "fps": 12.0, "anims": {"idle": [0, 4]}},
@@ -55,7 +56,7 @@ const SHEETS := {
 @export var fps: float = 8.0
 @export var radius: float = 16.0
 @export var shape_color: Color = Color.WHITE
-@export var shape: String = "circle" ## circle | diamond | square
+@export var shape: String = "circle" ## circle | diamond | square | none (l'entité se dessine elle-même)
 
 var _sprite: Sprite2D = null
 var _time: float = 0.0
@@ -169,6 +170,8 @@ func _draw() -> void:
 	var pulse := 1.0 + 0.04 * sin(_time * 6.0)
 	var r := radius * pulse
 	match shape:
+		"none":
+			pass
 		"diamond":
 			var pts := PackedVector2Array([
 				Vector2(0, -r), Vector2(r, 0), Vector2(0, r), Vector2(-r, 0)])

@@ -1,6 +1,7 @@
 class_name GameOverScreen
 extends CanvasLayer
-## Fin de partie — défaite ou victoire après le Boss Galaxie.
+## Fin de partie — défaite, victoire après le Boss Galaxie, ou gemme dorée
+## ramassée sur le Destructeur d'univers (le jeu est alors réussi).
 
 signal restart_requested()
 
@@ -41,5 +42,12 @@ func show_result(victory: bool, wave: int) -> void:
 	else:
 		_title.text = "MECH DÉTRUIT"
 		_title.add_theme_color_override("font_color", Color(1.0, 0.4, 0.35))
-		_detail.text = "Vague atteinte : %d" % wave
+		_detail.text = "Le Destructeur d'univers l'emporte." if GameState.special_level \
+			else "Vague atteinte : %d" % wave
+	visible = true
+
+func show_golden_gem() -> void:
+	_title.text = "JEU RÉUSSI"
+	_title.add_theme_color_override("font_color", Color(1.0, 0.86, 0.25))
+	_detail.text = "Le Destructeur d'univers est tombé.\nLa gemme dorée est à toi."
 	visible = true

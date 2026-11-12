@@ -38,6 +38,7 @@ et là qu'il faudrait le changer si une planche livrée s'organisait autrement.
 | `boss_sewer_monster.png` | 96×96 | 8 | `idle` 0-3, `attack` 4-7 |
 | `boss_zombie_titan.png` | 96×96 | 8 | `idle` 0-3, `attack` 4-7 |
 | `boss_galaxy_boss.png` | 128×128 | 8 | `idle` 0-3, `attack` 4-7 |
+| `boss_destroyer.png` | 128×128 | 8 | `idle` 0-3, `attack` 4-7 — niveau spécial ; dessiné en code tant qu'absent, visière et symbole du torse doivent tomber à `VISOR` / `CORE` de `destroyer_boss.gd` (origine des lasers) |
 | `boss_gravedigger.png` | 96×96 | 8 | `idle` 0-3, `attack` 4-7 |
 | `boss_bone_colossus.png` | 96×96 | 8 | `idle` 0-3, `attack` 4-7 |
 | `boss_plague.png` | 96×96 | 8 | `idle` 0-3, `attack` 4-7 |

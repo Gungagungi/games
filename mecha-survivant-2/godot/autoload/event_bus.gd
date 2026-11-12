@@ -20,3 +20,6 @@ signal float_text_requested(position: Vector2, text: String, color: Color)
 signal titan_decoy_defeated()
 signal dialogue_requested(speaker: String, text: String)
 signal dialogue_finished()
+
+## Gemme lâchée par le Destructeur d'univers : la ramasser termine le jeu.
+signal golden_gem_collected()
