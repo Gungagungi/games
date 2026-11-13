@@ -126,42 +126,38 @@ de la v3 : relancé, il aurait écrasé ces planches.
 
 ## Effets sonores — `assets/sfx/`
 
-**Format** : `.wav` mono 44,1 kHz 16 bits, moins de 2 s. `.ogg` accepté aussi.
-Produits par `scripts/gen-audio.py` (ElevenLabs Sound Effects) ; les prompts
-vivent dans `scripts/audio-prompts.json`.
+**v3 : banques libres CC0 d'OpenGameArt**, déposées par
+`scripts/import-audio.py` (table `SFX` : quelle clé vient de quel fichier de
+quel pack). Crédits dans `assets/AUDIO-CREDITS.md`. Format `.ogg`, tous sous
+2 s (mesuré dans les en-têtes Ogg) ; ni rognés ni normalisés, faute de
+décodeur sans dépendance — les volumes relatifs se jugent à l'oreille.
 
-**Les 21 bruitages sont là.** La liste ci-dessous est recoupée par
-`gen-audio.py` avec les appels réels du code : ajouter une clé ici sans
-l'appeler nulle part, ou l'inverse, fait échouer la génération avant de dépenser
-quoi que ce soit.
+Les 21 clés, celles que le code passe à `AudioManager.sfx()` :
 
 `shoot`, `hit_enemy`, `enemy_death`, `enemy_groan`, `player_hurt`, `dash`,
 `shockwave`, `upgrade_pick`, `ui_click`, `wave_start`, `boss_spawn`,
 `boss_hurt`, `boss_death`, `shade_phase`, `flameling_cast`, `fireball_impact`,
 `bone_sweep`, `laser_charge`, `titan_charge`, `titan_ultimate`, `game_over`.
 
-Le nom du fichier est la clé passée à `AudioManager.sfx()` : `shoot.wav` et rien
-d'autre. Chaque son est joué avec ±8 % de variation de hauteur, inutile donc de
-livrer des variantes.
+Le nom du fichier est la clé : `shoot.ogg` et rien d'autre. `AudioManager`
+essaie `.ogg`, puis `.wav`, puis `.mp3` — une seule version par clé, sans quoi
+la suivante pèse dans l'export sans jamais jouer. Chaque son est joué avec
+±8 % de variation de hauteur.
 
 ## Musique — `assets/music/`
 
-**Format** : `.mp3` 44,1 kHz 128 kbps, boucle de 60 à 90 s (le budget total du
-`.pck` visé est de 8 Mo ; les quatre pistes en pèsent environ 5). Godot 4 lit le
-mp3 nativement (`AudioStreamMP3`) — inutile de passer par du Vorbis, et
-`AudioManager` accepte de toute façon `.ogg`, `.wav` ou `.mp3`.
+| Fichier | Moment | Piste (CC0) |
+| --- | --- | --- |
+| `menu.ogg` | écran-titre | Ambient Horror Track 01 — CleytonKauffman |
+| `dungeon.mp3` | vagues ordinaires | Battle Theme — Wolfgang_ |
+| `boss.mp3` | boss des vagues 5, 10, 15, 20 | Boss Battle Loop — Pro Sensory |
+| `titan.ogg` | faux Titan (vague 1) et Destructeur | Heavy Boss Battle 2 — MintoDog |
 
-| Fichier | Moment |
-| --- | --- |
-| `menu.mp3` | écran-titre |
-| `dungeon.mp3` | vagues ordinaires |
-| `boss.mp3` | vagues de boss (5, 10, 15) |
-| `titan.mp3` | combat final (vague 20) |
-
-**Les quatre musiques sont là.** Elles sortent de `scripts/gen-audio.py --kind
-music` (Eleven Music, endpoint réservé aux comptes payants là où les bruitages
-passent en gratuit) et pèsent 4,96 Mo à elles quatre, pour un `.pck` de 5,56 Mo.
+Elles pèsent **13 Mo** à elles quatre (5 en v2) : des pistes complètes, pas
+réencodables ici sans `ffmpeg`. C'est le gros du `.pck`, donc du temps de
+chargement web ; une piste plus courte se substitue en changeant `MUSIC` dans
+le script.
 
 Une piste ne boucle pas toute seule : il faut `loop=true` dans son `.import`
-(créé par `scripts/build.sh`). `scripts/gen-audio.py --loops` le pose sur les
-quatre, à relancer après le premier build qui voit les fichiers.
+(créé par `scripts/build.sh`). `scripts/import-audio.py --loops` le pose, puis
+un second build le prend en compte.
