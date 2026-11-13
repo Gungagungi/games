@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Non-régression sans écran : joue cinq parties en accéléré (leurre Titan de
+# la Mort en vague 1, boss de vague 5, Zombie Titan en vague 15, Boss Galaxie
+# en vague 20, niveau spécial du Destructeur d'univers). Toute erreur GDScript
+# apparaît dans la sortie.
+set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/godot-env.sh"
+ensure_import
+
+run() { echo "--- $* ---"; "$GODOT" --headless --path "$ROOT/godot" -- --smoke "$@" 2>&1 | grep -Ev '^Godot Engine|^$'; }
+run --wave=1
+run --wave=5
+run --wave=15
+run --wave=20
+run --destroyer

@@ -1,0 +1,128 @@
+{
+  "_": [
+    "Prompts de génération audio, tenus hors du code pour être retouchés sans y",
+    "toucher. `style` est ajouté à chaque prompt de bruitage ; `sfx_style` d'une",
+    "entrée le remplace pour ce son-là.",
+    "",
+    "`seconds` est ce qu'on demande à l'API, `max_seconds` ce qu'on garde après",
+    "rognage — le générateur arrondit sa durée vers le haut et remplit de silence.",
+    "",
+    "Décrire un bruitage par sa MATIÈRE et son ENVELOPPE (« metal », « wet »,",
+    "« short punchy », « rising ») donne un résultat bien plus stable que par sa",
+    "cause narrative seule (« le mech tire »)."
+  ],
+  "style": "retro pixel art video game sound effect, dry and punchy, close-miked, mono, no music, no speech, minimal reverb tail",
+  "defaults": {
+    "prompt_influence": 0.45,
+    "target_db": -1.0,
+    "max_seconds": 2.0
+  },
+  "sfx": {
+    "shoot": {
+      "prompt": "short punchy mech cannon shot, tight energy blast with a metallic click at the front",
+      "seconds": 0.5
+    },
+    "hit_enemy": {
+      "prompt": "bullet impact into undead flesh, wet dull thud, very short",
+      "seconds": 0.5
+    },
+    "enemy_death": {
+      "prompt": "undead creature collapsing, brittle bones and wet flesh crumbling to the ground",
+      "seconds": 0.8
+    },
+    "enemy_groan": {
+      "prompt": "low guttural zombie groan, hoarse and breathy, no words",
+      "seconds": 1.0,
+      "prompt_influence": 0.6
+    },
+    "player_hurt": {
+      "prompt": "armored mech taking a hit, heavy metal clang with a brief electrical spark",
+      "seconds": 0.6
+    },
+    "dash": {
+      "prompt": "quick air whoosh with a short thruster burst, fast and clean",
+      "seconds": 0.5
+    },
+    "shockwave": {
+      "prompt": "expanding energy shockwave, deep low boom with a bright outward sweep",
+      "seconds": 1.2
+    },
+    "upgrade_pick": {
+      "prompt": "bright ascending power-up pickup chime, magical and rewarding",
+      "seconds": 0.8
+    },
+    "ui_click": {
+      "prompt": "short crisp interface button click, dry wooden tick, no reverb",
+      "seconds": 0.5,
+      "max_seconds": 0.4
+    },
+    "wave_start": {
+      "prompt": "ominous single war drum hit with a distant horn swell, announcing an incoming horde",
+      "seconds": 1.5
+    },
+    "boss_spawn": {
+      "prompt": "monstrous undead roar over a deep ground-shaking impact, dread and menace",
+      "seconds": 2.0
+    },
+    "boss_hurt": {
+      "prompt": "heavy armored monster taking damage, dull massive thud with bone crack",
+      "seconds": 0.6
+    },
+    "boss_death": {
+      "prompt": "huge monster dying, roar breaking apart and collapsing into falling rubble",
+      "seconds": 2.0
+    },
+    "shade_phase": {
+      "prompt": "ghostly spectral phase shift, airy reversed whoosh with a cold shimmer",
+      "seconds": 0.8
+    },
+    "flameling_cast": {
+      "prompt": "fire spell being cast, sharp ignition whoosh with crackling flame",
+      "seconds": 0.6
+    },
+    "fireball_impact": {
+      "prompt": "fireball bursting on impact, short fiery explosion with an ember tail",
+      "seconds": 0.8
+    },
+    "bone_sweep": {
+      "prompt": "giant bone scythe sweeping through the air, heavy low whoosh with a dry rattle",
+      "seconds": 1.0
+    },
+    "laser_charge": {
+      "prompt": "energy weapon charging up, rising electric whine building to a peak",
+      "seconds": 1.5
+    },
+    "titan_charge": {
+      "prompt": "colossal machine winding up, deep rising rumble with grinding metal and building pressure",
+      "seconds": 2.0
+    },
+    "titan_ultimate": {
+      "prompt": "apocalyptic energy sphere launched, immense devastating boom with a searing beam release",
+      "seconds": 2.0,
+      "prompt_influence": 0.6
+    },
+    "game_over": {
+      "prompt": "defeat sting, dark descending tones with a hollow final impact",
+      "seconds": 2.0,
+      "max_seconds": 2.5
+    }
+  },
+  "music": {
+    "menu": {
+      "prompt": "Dark fantasy dungeon menu theme, slow and brooding instrumental loop. Sparse minor-key synth pad, distant choir, a lone plucked string melody, subtle low drum pulse. Restrained and atmospheric, waiting rather than fighting. No vocals, no lyrics.",
+      "seconds": 75
+    },
+    "dungeon": {
+      "prompt": "Driving dark synth action loop for a wave-based dungeon shooter, mid tempo around 130 BPM. Pulsing analog bass arpeggio, gritty industrial percussion, occasional gothic organ stab. Tense and relentless but not overwhelming, built to loop for minutes. Instrumental only, no vocals.",
+      "seconds": 80
+    },
+    "boss": {
+      "prompt": "Heavy boss battle theme, aggressive instrumental loop around 150 BPM. Pounding war drums, distorted low brass, ominous choir swells, driving minor-key ostinato. Epic and threatening, orchestral hybrid with industrial synth. No vocals, no lyrics.",
+      "seconds": 80
+    },
+    "titan": {
+      "prompt": "Final boss theme against a colossal titan, apocalyptic instrumental loop around 160 BPM. Massive taiko and orchestral percussion, screaming distorted synth lead, full brass section, dissonant choir, relentless driving intensity. The largest and most desperate track of the game. No vocals, no lyrics.",
+      "seconds": 90
+    }
+  }
+}

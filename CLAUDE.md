@@ -25,7 +25,7 @@ La sortie remonte aussi les erreurs de console de la page. Pour un effet qui ne 
 
 C'est de l'outillage de développement : les jeux n'en dépendent pas et restent sans dépendance.
 
-Les deux jeux Godot ont en plus leur propre `scripts/check.sh`, qui joue plusieurs parties
+Les trois jeux Godot ont en plus leur propre `scripts/check.sh`, qui joue plusieurs parties
 accélérées sans écran (mode smoke). Il n'assert rien : c'est la sortie qui se lit. Voir
 leur `CLAUDE.md`.
 
@@ -36,7 +36,7 @@ n'est implémenté** : ne pas le lire comme une description de l'existant.
 ## Publication
 
 `.github/workflows/deploy-pages.yml` publie le dépôt sur GitHub Pages à chaque push sur
-`main`. Les jeux purs partent tels quels ; les deux projets Godot sont **exportés dans le
+`main`. Les jeux purs partent tels quels ; les trois projets Godot sont **exportés dans le
 workflow** plutôt que versionnés (39 Mo de wasm par build). La variable `GODOT_VERSION` du
 workflow doit rester alignée sur la version fixée dans
 `mecha-survivant-2/scripts/install-godot.sh` — sinon la CI construit avec un moteur autre
@@ -52,7 +52,8 @@ nouveau jeu doit aussi y être ajouté.
 
 ## Architecture
 
-- Exception assumée : `mecha-survivant-2/` et `hells-survivant-2/` ne sont pas du HTML/JS pur mais des projets **Godot 4** exportés en WebAssembly. Ils ont une étape de build (`scripts/build.sh`), leur jeu jouable n'est pas versionné (la CI le construit), et ils ne s'ouvrent pas en `file://` — voir leur `CLAUDE.md`. Ce sont les deux seuls jeux du dépôt dans ce cas ; ils partagent la même version de Godot, installée par `mecha-survivant-2/scripts/install-godot.sh`.
+- Exception assumée : `mecha-survivant-2/`, `mecha-survivant-3/` et `hells-survivant-2/` ne sont pas du HTML/JS pur mais des projets **Godot 4** exportés en WebAssembly. Ils ont une étape de build (`scripts/build.sh`), leur jeu jouable n'est pas versionné (la CI le construit), et ils ne s'ouvrent pas en `file://` — voir leur `CLAUDE.md`. Ce sont les trois seuls jeux du dépôt dans ce cas ; ils partagent la même version de Godot, installée par `mecha-survivant-2/scripts/install-godot.sh`.
+- `mecha-survivant-3/` est parti d'une copie de `mecha-survivant-2/` (même code, mêmes mécaniques) pour une refonte visuelle du mech et des monstres. Les deux évoluent désormais séparément : un correctif de gameplay de la v2 n'atteint pas la v3 tout seul. Son `scripts/install-godot.sh` est une copie : garder sa version alignée elle aussi.
 - Exception assumée : `mecha-survivant/` tient dans un unique `index.html` monolithique (CSS, HTML et JS inline) ; les itérations antérieures dorment dans `mecha-survivant/archives/`. Voir son propre `CLAUDE.md` ; ne pas l'éclater en `style.css` + `game.js` sans demande explicite.
 - Chaque nouveau jeu doit suivre la même convention que `pong/` : son propre dossier avec `index.html`, `style.css`, `game.js` (ou équivalent), sans dépendance sur d'autres jeux du dépôt.
 - `hells-survivant/` suit cette convention standard (roguelite avec progression persistante en `localStorage`). Sa refonte visuelle `hells-survivant-2/` (Godot) le laisse intact et jouable : ce n'est pas un remplacement.

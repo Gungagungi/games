@@ -1,7 +1,7 @@
 name: Déploiement GitHub Pages
 
 # Les jeux sont du HTML/CSS/JS statique et se publient tels quels — à deux
-# exceptions près : mecha-survivant-2 et hells-survivant-2 sont des projets
+# exceptions près : mecha-survivant-2, mecha-survivant-3 et hells-survivant-2 sont des projets
 # Godot, dont l'export web est construit ici plutôt que versionné (39 Mo de
 # wasm à chaque rebuild).
 
@@ -21,7 +21,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # Doit rester aligné sur la version fixée dans mecha-survivant-2/scripts/install-godot.sh.
+  # Doit rester aligné sur la version fixée dans mecha-survivant-2/scripts/install-godot.sh
+  # (et sa copie mecha-survivant-3/scripts/install-godot.sh).
   GODOT_VERSION: "4.7.2"
 
 jobs:
@@ -57,6 +58,13 @@ jobs:
           # Le jeu doit être servi depuis /mecha-survivant-2/, comme les autres.
           mv mecha-survivant-2/export/* mecha-survivant-2/
           rmdir mecha-survivant-2/export
+
+      - name: Exporter Mecha Survivant 3
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          mecha-survivant-3/scripts/build.sh
+          mv mecha-survivant-3/export/* mecha-survivant-3/
+          rmdir mecha-survivant-3/export
 
       - name: Exporter Hell's Survivant 2
         run: |
