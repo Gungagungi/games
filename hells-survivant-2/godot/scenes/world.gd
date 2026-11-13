@@ -21,11 +21,6 @@ const RUSH_RING := Vector2(330, 175)
 ## Bande du haut réservée au HUD (barre du Conclave) : un boss n'y monte pas,
 ## sinon son nom et sa barre de vie passeraient dessous.
 const RUSH_HUD_TOP := 60.0
-## Ruée des boss du Conclave : la charge de la v1 n'avance que de quelques
-## pixels, ce qui suffit à un boss seul mais pas à neuf boss tenus à distance
-## les uns des autres. Ici, elle traverse l'anneau et blesse au passage.
-const RUSH_DASH_FRAMES := 26
-const RUSH_DASH_SPEED := 9.0
 
 var player: Player
 var enemies: Array[Enemy] = []
@@ -533,9 +528,6 @@ func _tick_enemies() -> void:
 			if e.charging:
 				if e.charge_telegraph > 0:
 					e.charge_telegraph -= 1
-				elif Game.boss_rush:
-					if _tick_dash(e, lifesteal, burn):
-						return
 				else:
 					var to_p := player.position - e.position
 					var len_p := to_p.length() if to_p.length() > 0.0 else 1.0
@@ -573,55 +565,19 @@ func _tick_enemies() -> void:
 					Audio.sfx("throw", 0.8)
 			continue
 
-		if dist > _reach(e) + player.radius:
+		if dist > e.radius + player.radius:
 			e.position += to / dist * e.speed
 		elif e.attack_cooldown <= 0:
-			_melee_hit(e, lifesteal, burn)
+			hit_player(e.dmg)
+			e.attack_cooldown = 50
+			if lifesteal > 0.0:
+				e.hp = minf(e.max_hp, e.hp + e.dmg * lifesteal)
+			if burn:
+				player.burn_timer = 120
 		if e.attack_cooldown > 0:
 			e.attack_cooldown -= 1
 		if Game.state != "playing":
 			return
-
-func _melee_hit(e: Enemy, lifesteal: float, burn: bool) -> void:
-	hit_player(e.dmg)
-	e.attack_cooldown = 50
-	if lifesteal > 0.0:
-		e.hp = minf(e.max_hp, e.hp + e.dmg * lifesteal)
-	if burn:
-		player.burn_timer = 120
-
-## Allonge de mêlée. Dans le Conclave, un boss frappe dès que son sprite touche
-## le héros : la séparation le tient à distance de ses voisins, et avec la
-## hitbox de la v1, deux boss seulement trouvaient place au contact.
-func _reach(e: Enemy) -> float:
-	if Game.boss_rush and e.is_boss:
-		return maxf(e.radius, e.top())
-	return e.radius
-
-## Un pas de ruée d'un boss du Conclave, en ligne droite dans la direction
-## prise au départ ; s'arrête au premier coup porté, au bord de l'arène ou au
-## bout de `RUSH_DASH_FRAMES`. Vrai si le coup a mis fin à la partie.
-func _tick_dash(e: Enemy, lifesteal: float, burn: bool) -> bool:
-	if e.dash_timer == 0:
-		var to_p := player.position - e.position
-		e.dash_dir = to_p.normalized() if to_p != Vector2.ZERO else Vector2.DOWN
-		e.dash_timer = RUSH_DASH_FRAMES
-		shake(3.0)
-	e.dash_timer -= 1
-	e.position += e.dash_dir * RUSH_DASH_SPEED
-	var lo := Vector2(e.top(), e.top() + RUSH_HUD_TOP)
-	var hi := Data.ARENA - Vector2.ONE * e.top()
-	var clamped := e.position.clamp(lo, hi)
-	var stop := e.dash_timer == 0 or clamped != e.position
-	e.position = clamped
-	if e.position.distance_to(player.position) <= _reach(e) + player.radius:
-		_melee_hit(e, lifesteal, burn)
-		stop = true
-	if stop:
-		e.dash_timer = 0
-		e.charging = false
-		e.charge_timer = 180.0 + randf() * 60.0
-	return Game.state != "playing"
 
 func _update_projectiles() -> void:
 	for i in range(projectiles.size() - 1, -1, -1):
@@ -713,8 +669,7 @@ func _wander_bosses() -> void:
 func _separate_bosses() -> void:
 	var bosses: Array[Enemy] = []
 	for e in enemies:
-		# En pleine ruée, un boss traverse l'anneau : le repousser l'arrêterait.
-		if _is_bulky(e) and e.dash_timer == 0:
+		if _is_bulky(e):
 			bosses.append(e)
 	for _pass in 4:
 		for i in bosses.size():
@@ -736,17 +691,16 @@ func _separate_bosses() -> void:
 
 ## Pire chevauchement entre deux sprites de boss, en pixels ; négatif, c'est
 ## l'écart entre les deux boss les plus proches (−RUSH_GAP quand ils se
-## touchent à la limite). Mesuré par le mode smoke pour vérifier la séparation ;
-## un boss en pleine ruée n'est pas séparé, donc pas compté.
+## touchent à la limite). Mesuré par le mode smoke pour vérifier la séparation.
 func boss_overlap() -> float:
 	var worst := -INF
 	for i in enemies.size():
 		var a := enemies[i]
-		if not _is_bulky(a) or a.dash_timer > 0:
+		if not _is_bulky(a):
 			continue
 		for j in range(i + 1, enemies.size()):
 			var b := enemies[j]
-			if _is_bulky(b) and b.dash_timer == 0:
+			if _is_bulky(b):
 				worst = maxf(worst, a.top() + b.top() - a.position.distance_to(b.position))
 	return worst
 

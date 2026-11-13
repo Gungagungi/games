@@ -189,15 +189,6 @@ d'élément, le Nécromancien Putréfié et la Créature cauchemardesque
   les sprites se chevauchent. La distance minimale suit la taille du sprite
   (`Enemy.top()`), pas la hitbox de la v1 : c'est la lisibilité qui est visée,
   l'équilibrage des coups ne change pas.
-- **Portée des coups** : la séparation tient les boss à distance les uns des
-  autres, si bien qu'avec la hitbox de la v1 deux seulement trouvaient place
-  au contact du héros ; les autres piétinaient derrière sans jamais frapper.
-  Dans le Conclave, un boss frappe donc dès que son **sprite** touche le héros
-  (`World._reach`), et sa charge devient une vraie **ruée** (`_tick_dash` :
-  26 frames à 9 px, direction figée au départ) qui blesse au contact, avec
-  brûlure et vol de vie. Un boss en ruée échappe à la séparation (et à la
-  mesure de chevauchement du smoke) : il traverse l'anneau. Hors Conclave, la
-  charge reste le petit bond de la v1.
 - La **Créature cauchemardesque** garde son jeu d'attaques (`Nightmare`) et ne
   se promène pas : elle bouge déjà par ses sauts et ruées. Ses doubles sont
   séparés comme des boss (`_is_bulky`) ; sa mort emporte doubles et
