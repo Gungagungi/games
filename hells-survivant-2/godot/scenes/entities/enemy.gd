@@ -28,6 +28,10 @@ var face_left := false
 var is_clone := false
 ## Mini-créature invoquée par la Créature : monstre de mêlée ordinaire.
 var is_mini := false
+## Conclave : place du boss sur l'anneau, autour de laquelle il rôde tant que
+## le héros ne l'approche pas (`World._update_rush_awake`).
+var home := Vector2.INF
+var rush_awake := false
 
 # État des attaques de la Créature cauchemardesque, piloté par `Nightmare`.
 ## Attaque en cours ("" : elle marche sur le héros) et frames restantes.

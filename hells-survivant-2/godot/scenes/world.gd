@@ -12,6 +12,11 @@ const LAVA_POOLS := 4
 ## Conclave des boss : boss figés pendant l'annonce, écart minimal entre deux
 ## sprites de boss.
 const RUSH_INTRO := 120
+## Un boss du Conclave se réveille quand le héros arrive à moins de
+## `RUSH_WAKE` px du bord de son sprite, et se rendort au-delà de `RUSH_SLEEP` :
+## l'écart évite qu'il clignote entre les deux à la limite.
+const RUSH_WAKE := 110.0
+const RUSH_SLEEP := 170.0
 const RUSH_GAP := 6.0
 ## Anneau d'apparition : centre un peu sous celui de l'arène et demi-axes,
 ## pour qu'aucun boss ne naisse sous la barre du HUD.
@@ -236,6 +241,7 @@ func _tick() -> void:
 	if rush_intro == 0:
 		_update_enemies()
 		if Game.boss_rush and Game.state == "playing":
+			_update_rush_awake()
 			_wander_bosses()
 			_separate_bosses()
 	_update_potion()
@@ -506,6 +512,9 @@ func _update_enemies() -> void:
 func _tick_enemies() -> void:
 	var shoot_mult: float = Game.diff()["shoot_mult"]
 	for e in enemies:
+		if Game.boss_rush and _rush_resting(e):
+			_rest(e)
+			continue
 		if Nightmare.handles(e):
 			if e.hit_flash > 0:
 				e.hit_flash -= 1
@@ -546,7 +555,11 @@ func _tick_enemies() -> void:
 
 		if ranged:
 			const PREFERRED := 230.0
-			if dist > PREFERRED + 30.0:
+			# Conclave : le tireur réveillé reste à sa place, sinon son recul le
+			# sortirait aussitôt du rayon où on l'observe.
+			if Game.boss_rush:
+				pass
+			elif dist > PREFERRED + 30.0:
 				e.position += to / dist * e.speed
 			elif dist < PREFERRED - 30.0:
 				# Écart assumé avec la v1 : le recul s'arrête au bord de l'arène,
@@ -626,6 +639,7 @@ func start_boss_rush() -> void:
 		# Décalage d'un demi-pas : aucun boss pile en haut, sous la barre du HUD.
 		var a := -PI / 2.0 + TAU * (i + 0.5) / roster.size()
 		e.position = RUSH_RING_CENTER + Vector2(cos(a), sin(a)) * RUSH_RING
+		e.home = e.position
 		# Charges étalées : sinon les neuf boss chargeraient presque ensemble.
 		e.charge_timer = 120.0 + randf() * 240.0
 		Fx.puff(fx_layer, e.position, e.glow, e.sprite_scale)
@@ -645,13 +659,56 @@ func _update_boss_rush() -> void:
 		return
 	rush_ticks += 1
 
+## Réveille les boss que le héros approche, endort ceux qu'il a quittés. Un boss
+## endormi n'attaque pas : il rôde près de sa place (`_rest`). En s'endormant,
+## un boss abandonne sa charge ; la Créature finit d'abord son attaque en cours.
+func _update_rush_awake() -> void:
+	for e in enemies:
+		if not _is_bulky(e):
+			continue
+		if e.home == Vector2.INF:
+			e.home = e.position
+		var gap := e.position.distance_to(player.position) - e.top()
+		if e.rush_awake and gap > RUSH_SLEEP:
+			e.rush_awake = false
+			if not Nightmare.handles(e):
+				e.charging = false
+				e.charge_telegraph = 0
+		elif not e.rush_awake and gap < RUSH_WAKE:
+			e.rush_awake = true
+			# Une démonstration rapide : première attaque peu après le réveil.
+			e.charge_timer = minf(e.charge_timer, 60.0 + randf() * 60.0)
+			e.shoot_cooldown = mini(e.shoot_cooldown, 20)
+			e.nm_cooldown = mini(e.nm_cooldown, 30)
+
+func _rush_resting(e: Enemy) -> bool:
+	if not _is_bulky(e) or e.rush_awake:
+		return false
+	return e.nm_attack == "" if Nightmare.handles(e) else not e.charging
+
+## Boss endormi du Conclave : il revient vers sa place et y décrit une petite
+## boucle, propre à chacun, sans rien tenter contre le héros.
+func _rest(e: Enemy) -> void:
+	if e.hit_flash > 0:
+		e.hit_flash -= 1
+	if e.attack_cooldown > 0:
+		e.attack_cooldown -= 1
+	var phase := float(e.get_instance_id() % 628) * 0.01
+	var t := rush_ticks * 0.012 + phase
+	var target := e.home + Vector2(cos(t), sin(t * 1.3)) * 22.0
+	var to := target - e.position
+	var step := minf(e.speed * 0.6, to.length())
+	if step > 0.01:
+		e.position += to.normalized() * step
+		e.face_left = to.x < 0.0
+
 ## Pas de côté autour du héros, dont le sens s'inverse lentement et diffère
-## d'un boss à l'autre : les boss rôdent au lieu de converger en tas.
+## d'un boss à l'autre : les boss réveillés rôdent au lieu de converger en tas.
 func _wander_bosses() -> void:
 	for e in enemies:
 		# La Créature cauchemardesque se déplace par ses propres attaques
 		# (saut, ruée, laser) : un pas de côté les fausserait.
-		if not e.is_boss or e.charging or Nightmare.handles(e):
+		if not e.is_boss or not e.rush_awake or e.charging or Nightmare.handles(e):
 			continue
 		var to := player.position - e.position
 		if to == Vector2.ZERO:
@@ -659,6 +716,20 @@ func _wander_bosses() -> void:
 		var phase := float(e.get_instance_id() % 628) * 0.01
 		var side := sin(rush_ticks * 0.008 + phase)
 		e.position += to.normalized().orthogonal() * side * e.speed * 0.8
+
+## Boss dont l'infobulle s'affiche : le plus proche des boss réveillés.
+func inspected_boss() -> Enemy:
+	if not Game.boss_rush or Game.state != "playing":
+		return null
+	var best: Enemy = null
+	var best_d := INF
+	for e in enemies:
+		if e.is_boss and e.rush_awake:
+			var d := e.position.distance_to(player.position) - e.top()
+			if d < best_d:
+				best_d = d
+				best = e
+	return best
 
 ## Écarte deux boss dont les sprites se chevauchent. La distance minimale suit
 ## la taille du sprite (`top()`), pas la hitbox de la v1, bien plus petite :
