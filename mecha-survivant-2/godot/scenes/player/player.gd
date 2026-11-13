@@ -15,6 +15,8 @@ const AOE_COOLDOWN := 5.0          # v1 : 300 frames
 const AOE_RADIUS := 140.0
 const AOE_DAMAGE := 60.0
 const HIT_INVULN := 0.5
+## Visée automatique en tactile : au-delà, l'ennemi est hors de l'écran.
+const TOUCH_AIM_RANGE := 520.0
 
 var max_hp := 100.0
 var hp := 100.0
@@ -39,6 +41,9 @@ var since_damage := 0.0
 var alive := true
 
 var _dash_dir := Vector2.ZERO
+## Dernière direction de marche : cible du tir tactile quand aucun ennemi
+## n'est à portée, et du dash tactile lancé joystick au repos.
+var _last_dir := Vector2.RIGHT
 var _visual: SpriteOrShape
 
 @onready var arena: Node2D = get_parent() as Node2D
@@ -106,13 +111,20 @@ func _tick_timers(delta: float) -> void:
 
 func _move(delta: float) -> void:
 	var dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	if dir != Vector2.ZERO:
+		_last_dir = dir.normalized()
+	# Au clavier, un dash sans direction ne part pas ; au doigt, le pouce est
+	# souvent sur le bouton DASH et pas sur le joystick : on garde le cap.
+	var dash_dir := dir
+	if dash_dir == Vector2.ZERO and GameState.touch_mode:
+		dash_dir = _last_dir
 	if dash_time > 0.0:
 		dash_time -= delta
 		velocity = _dash_dir * DASH_SPEED
 	else:
 		if Input.is_action_pressed("dash") and dash_cd <= 0.0 \
-				and stamina >= DASH_COST and dir != Vector2.ZERO:
-			_dash_dir = dir.normalized()
+				and stamina >= DASH_COST and dash_dir != Vector2.ZERO:
+			_dash_dir = dash_dir.normalized()
 			dash_time = DASH_DURATION
 			dash_cd = DASH_COOLDOWN
 			invuln = maxf(invuln, DASH_INVULN)
@@ -141,7 +153,11 @@ func _clamp_to_arena() -> void:
 	position.y = clampf(position.y, 20.0, rect.size.y - 20.0)
 
 func _handle_shoot(delta: float) -> void:
-	if not Input.is_action_pressed("shoot"):
+	# En tactile, le clic gauche émulé par chaque toucher (joystick compris)
+	# ne doit pas faire tirer : seul le bouton TIR compte.
+	var firing := GameState.touch_fire if GameState.touch_mode \
+		else Input.is_action_pressed("shoot")
+	if not firing:
 		return
 	if fire_cd > 0.0:
 		return
@@ -156,7 +172,8 @@ func _handle_shoot(delta: float) -> void:
 	AudioManager.sfx("shoot")
 
 func _fire_salvo() -> void:
-	var aim := (get_global_mouse_position() - global_position).normalized()
+	var aim := _touch_aim() if GameState.touch_mode \
+		else (get_global_mouse_position() - global_position).normalized()
 	if aim == Vector2.ZERO:
 		aim = Vector2.RIGHT
 	var spread := deg_to_rad(9.0)
@@ -165,6 +182,28 @@ func _fire_salvo() -> void:
 		var b := Bullet.new()
 		b.setup(global_position, aim.rotated(offset), bullet_damage)
 		arena.add_child(b)
+
+## Sans pointeur, on vise l'ennemi touchable le plus proche, sinon droit devant.
+func _touch_aim() -> Vector2:
+	var target := nearest_target(TOUCH_AIM_RANGE)
+	if target == null:
+		return _last_dir
+	return (target.global_position - global_position).normalized()
+
+## Ennemi vivant et touchable le plus proche, dans `max_dist` (null sinon).
+## Sert à la visée tactile et au pilote automatique du mode smoke.
+func nearest_target(max_dist: float = INF) -> EnemyBase:
+	var nearest: EnemyBase = null
+	var best := max_dist
+	for e in get_tree().get_nodes_in_group("enemies"):
+		var enemy := e as EnemyBase
+		if enemy == null or not enemy.alive or enemy.is_damage_immune():
+			continue
+		var d := enemy.global_position.distance_to(global_position)
+		if d < best:
+			best = d
+			nearest = enemy
+	return nearest
 
 func _handle_shockwave() -> void:
 	if not aoe_unlocked or aoe_cd > 0.0:

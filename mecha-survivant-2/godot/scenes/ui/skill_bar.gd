@@ -41,18 +41,23 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	if player == null:
 		return
+	# En tactile, les boutons de `TouchControls` montrent eux-mêmes leur
+	# recharge, et la barre serait sous le joystick.
+	visible = not GameState.touch_mode
+	if not visible:
+		return
 	var x := 0.0
 	for i in _slots.size():
 		var slot := _slots[i]
 		var skill: Dictionary = SKILLS[i]
-		slot.visible = _available(str(skill["id"]))
+		slot.visible = available(player, str(skill["id"]))
 		if not slot.visible:
 			continue
 		slot.position = Vector2(x, -SLOT)
 		x += SLOT + GAP
 		var id := str(skill["id"])
-		slot.set_meta("cooldown", _cooldown(id))
-		slot.set_meta("ready", _ready_to_use(id))
+		slot.set_meta("cooldown", cooldown_ratio(player, id))
+		slot.set_meta("ready", ready_to_use(player, id))
 		(slot.get_node("Overlay") as Control).queue_redraw()
 		var left := _seconds_left(id)
 		var timer := slot.get_node("Timer") as Label
@@ -60,20 +65,27 @@ func _process(_delta: float) -> void:
 
 ## Une compétence toujours disponible (le dash) contre une compétence à
 ## débloquer (l'onde de choc).
-func _available(id: String) -> bool:
-	return id != "shockwave" or player.aoe_unlocked
+static func available(p: Player, id: String) -> bool:
+	return id != "shockwave" or p.aoe_unlocked
 
 ## Part de recharge restante, de 1 (à peine lancée) à 0 (prête).
-func _cooldown(id: String) -> float:
+static func cooldown_ratio(p: Player, id: String) -> float:
 	if id == "dash":
-		return player.dash_cd / Player.DASH_COOLDOWN
-	return player.aoe_cd / Player.AOE_COOLDOWN
+		return p.dash_cd / Player.DASH_COOLDOWN
+	return p.aoe_cd / Player.AOE_COOLDOWN
 
 ## Le dash coûte de l'endurance : recharge finie ne veut pas dire utilisable.
-func _ready_to_use(id: String) -> bool:
+static func ready_to_use(p: Player, id: String) -> bool:
 	if id == "dash":
-		return player.dash_cd <= 0.0 and player.stamina >= Player.DASH_COST
-	return player.aoe_cd <= 0.0
+		return p.dash_cd <= 0.0 and p.stamina >= Player.DASH_COST
+	return p.aoe_cd <= 0.0
+
+## Id du pouvoir dont la case sert d'icône à une compétence.
+static func icon_id(id: String) -> String:
+	for skill in SKILLS:
+		if skill["id"] == id:
+			return str(skill["icon"])
+	return id
 
 func _make_slot(skill: Dictionary) -> Control:
 	var slot := Control.new()
@@ -84,7 +96,7 @@ func _make_slot(skill: Dictionary) -> Control:
 	slot.set_meta("ready", true)
 	slot.draw.connect(_draw_background.bind(slot))
 
-	var icon := _icon_for(str(skill["icon"]))
+	var icon := icon_for(str(skill["icon"]))
 	if icon != null:
 		var tex := TextureRect.new()
 		tex.texture = icon
@@ -146,7 +158,7 @@ func _draw_overlay(overlay: Control, slot: Control) -> void:
 func _seconds_left(id: String) -> float:
 	return player.dash_cd if id == "dash" else player.aoe_cd
 
-func _icon_for(id: String) -> AtlasTexture:
+static func icon_for(id: String) -> AtlasTexture:
 	var sheet := SpriteOrShape.sheet_texture(ICON_SHEET)
 	if sheet == null:
 		return null

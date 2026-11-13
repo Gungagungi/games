@@ -20,6 +20,7 @@ var start_screen: StartScreen
 var upgrade_screen: UpgradeScreen
 var game_over_screen: GameOverScreen
 var dialogue_box: DialogueBox
+var touch_controls: TouchControls
 
 var _smoke_left := SMOKE_DURATION
 
@@ -30,6 +31,9 @@ func _ready() -> void:
 	hud = Hud.new()
 	hud.player = arena.player
 	add_child(hud)
+	touch_controls = TouchControls.new()
+	touch_controls.player = arena.player
+	add_child(touch_controls)
 	start_screen = StartScreen.new()
 	add_child(start_screen)
 	upgrade_screen = UpgradeScreen.new()
@@ -38,6 +42,7 @@ func _ready() -> void:
 	add_child(game_over_screen)
 	dialogue_box = DialogueBox.new()
 	add_child(dialogue_box)
+	touch_controls.menus = [start_screen, upgrade_screen, game_over_screen, dialogue_box]
 
 	start_screen.start_requested.connect(_begin_game)
 	start_screen.destroyer_requested.connect(_begin_destroyer)
@@ -84,16 +89,7 @@ func _drive_smoke_player(delta: float) -> void:
 		return
 	p.hp = p.max_hp
 	p.invuln = maxf(p.invuln, 0.05)
-	var nearest: Node2D = null
-	var best := INF
-	for e in get_tree().get_nodes_in_group("enemies"):
-		var enemy := e as EnemyBase
-		if enemy == null or not enemy.alive or enemy.is_damage_immune():
-			continue
-		var d := enemy.global_position.distance_to(p.global_position)
-		if d < best:
-			best = d
-			nearest = enemy
+	var nearest := p.nearest_target()
 	if nearest == null:
 		return
 	p.fire_cd -= delta
