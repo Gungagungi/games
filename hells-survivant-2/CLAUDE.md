@@ -189,18 +189,21 @@ d'élément, le Nécromancien Putréfié et la Créature cauchemardesque
   les sprites se chevauchent. La distance minimale suit la taille du sprite
   (`Enemy.top()`), pas la hitbox de la v1 : c'est la lisibilité qui est visée,
   l'équilibrage des coups ne change pas.
+- **Boss inoffensifs** : ils lancent leurs attaques (charges, tirs, laser,
+  fouet, champ de force…) mais ne blessent jamais le héros — ni dégâts, ni
+  brûlure, ni vol de vie, ni projection. Tout passe par `World.harms_player()`,
+  faux dans le Conclave, que consultent `hit_player`, `knock_player` et
+  `Nightmare._hit`. Seul le héros porte des coups ; la partie ne peut pas être
+  perdue.
 - La **Créature cauchemardesque** garde son jeu d'attaques (`Nightmare`) et ne
   se promène pas : elle bouge déjà par ses sauts et ruées. Ses doubles sont
   séparés comme des boss (`_is_bulky`) ; sa mort emporte doubles et
   mini-créatures, mais ne gagne pas la partie tant qu'un autre boss vit.
 - Un boss ne monte pas dans la bande du haut réservée au HUD (`RUSH_HUD_TOP`).
-- Pas de vagues : une fiole tombe toutes les 20 s (`RUSH_POTION_EVERY`), la
-  victoire arrive à la mort du dernier boss, boss finals compris, et l'écran de
+- Pas de vagues ni de fiole (le héros n'y perd pas de PV) : la victoire arrive à la mort du dernier boss, boss finals compris, et l'écran de
   fin donne le temps. Nom et barre de vie de chaque boss sont dessinés par
   `scenes/boss_tags.gd` ; le HUD affiche les boss restants et la vie cumulée.
 - `Game.boss_rush` est remis à faux par `World.start_run`.
-- C'est un mode de **fin de jeu** : sans équipement, le héros tombe en
-  quelques secondes, même en Facile.
 
 ### Écarts assumés avec la v1
 

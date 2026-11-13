@@ -9,10 +9,9 @@ const MAX_TICKS_PER_FRAME := 16
 ## Tuiles de 32 px dessinées en 64 : même texel que les créatures.
 const TILE := 64
 const LAVA_POOLS := 4
-## Conclave des boss : boss figés pendant l'annonce, fiole périodique (pas de
-## vagues pour en faire tomber), écart minimal entre deux sprites de boss.
+## Conclave des boss : boss figés pendant l'annonce, écart minimal entre deux
+## sprites de boss.
 const RUSH_INTRO := 120
-const RUSH_POTION_EVERY := 1200
 const RUSH_GAP := 6.0
 ## Anneau d'apparition : centre un peu sous celui de l'arène et demi-axes,
 ## pour qu'aucun boss ne naisse sous la barre du HUD.
@@ -38,7 +37,6 @@ var rush_intro := 0
 var rush_ticks := 0
 var rush_total := 0
 var rush_max_hp := 0.0
-var _rush_potion_timer := 0
 ## Créatures nées pendant le parcours de `enemies` (doubles et mini-créatures
 ## de la Créature cauchemardesque), ajoutées à la fin du tick.
 var _spawn_queue: Array[Enemy] = []
@@ -303,15 +301,21 @@ func do_attack() -> void:
 ## Projette le héros jusqu'à `to` en `frames` frames, en ralentissant à
 ## l'arrivée (champ de force de la Créature cauchemardesque).
 func knock_player(to: Vector2, frames: int) -> void:
-	if Game.state != "playing":
+	if Game.state != "playing" or not harms_player():
 		return
 	player.knock_from = player.position
 	player.knock_to = to.clamp(Vector2.ONE * player.radius, Data.ARENA - Vector2.ONE * player.radius)
 	player.knock_time = maxi(frames, 1)
 	player.knock_timer = player.knock_time
 
+## Faux dans le Conclave des boss : les boss y montrent leurs attaques sans
+## jamais blesser le héros (ni dégâts, ni brûlure, ni vol de vie, ni
+## projection). Seul le héros porte des coups.
+static func harms_player() -> bool:
+	return not Game.boss_rush
+
 func hit_player(raw_dmg: float) -> void:
-	if Game.state != "playing":
+	if Game.state != "playing" or not harms_player():
 		return
 	var def: float = Save.armor()["def"]
 	var dmg := raw_dmg * (1.0 - def)
@@ -567,7 +571,7 @@ func _tick_enemies() -> void:
 
 		if dist > e.radius + player.radius:
 			e.position += to / dist * e.speed
-		elif e.attack_cooldown <= 0:
+		elif e.attack_cooldown <= 0 and harms_player():
 			hit_player(e.dmg)
 			e.attack_cooldown = 50
 			if lifesteal > 0.0:
@@ -612,7 +616,6 @@ func start_boss_rush() -> void:
 	wave_intermission = 0
 	rush_intro = RUSH_INTRO
 	rush_ticks = 0
-	_rush_potion_timer = 0
 	rush_max_hp = 0.0
 	var roster := Data.BOSS_RUSH_ROSTER
 	var names: Array[String] = []
@@ -639,13 +642,8 @@ func _update_boss_rush() -> void:
 		if rush_intro == 0:
 			Audio.sfx("boss_warning")
 			shake(6.0)
-			_drop_potion()
 		return
 	rush_ticks += 1
-	_rush_potion_timer += 1
-	if _rush_potion_timer >= RUSH_POTION_EVERY:
-		_rush_potion_timer = 0
-		_drop_potion()
 
 ## Pas de côté autour du héros, dont le sens s'inverse lentement et diffère
 ## d'un boss à l'autre : les boss rôdent au lieu de converger en tas.
