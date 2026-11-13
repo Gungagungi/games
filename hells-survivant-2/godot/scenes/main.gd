@@ -6,7 +6,9 @@ extends Node
 ## [--difficulty=X] [--wave=N] [--duration=S] [--boss-rush]` joue une partie
 ## accélérée sans rendu puis quitte, avec un code de sortie non nul en cas
 ## d'échec. Le héros y est immortel, équipé au maximum, et combat tout seul.
-## `--boss-rush` lance le Conclave des boss, qui doit finir en victoire.
+## `--boss-rush` lance le Conclave des boss : le pilote fait le tour des boss,
+## qui doivent rester intacts (invulnérables) et figés tant que leur infobulle
+## s'affiche ; la partie ne se gagne pas, elle doit être encore en cours à la fin.
 
 const SMOKE_TIME_SCALE := 8.0
 
@@ -25,6 +27,16 @@ var _smoke_done := false
 ## au-delà de la tolérance, la séparation est cassée.
 const SMOKE_MAX_OVERLAP := 8.0
 var _smoke_overlap := -INF
+## Conclave : boss inspectés (infobulle affichée), et plus grand déplacement
+## d'un boss inspecté d'une frame à l'autre — il doit rester figé.
+const SMOKE_MIN_INSPECTED := 3
+const SMOKE_MAX_DRIFT := 0.5
+## Frames de jeu passées auprès de chaque boss lors de la visite du Conclave.
+const SMOKE_VISIT := 240
+var _smoke_inspected := {}
+var _smoke_last_inspected: Enemy = null
+var _smoke_last_pos := Vector2.ZERO
+var _smoke_drift := 0.0
 
 func _ready() -> void:
 	randomize()
@@ -153,7 +165,7 @@ func _start_smoke_if_asked() -> void:
 	Save.sword_tier = Data.SWORDS.size() - 1
 	Save.armor_tier = Data.ARMORS.size() - 1
 	var rush := "--boss-rush" in args
-	_smoke_expect_victory = rush or Data.is_final_boss_wave(Game.element, _smoke_start_wave)
+	_smoke_expect_victory = Data.is_final_boss_wave(Game.element, _smoke_start_wave) and not rush
 	if rush:
 		print("[smoke] %s / %s" % [Data.BOSS_RUSH["name"], Game.difficulty])
 	else:
@@ -171,25 +183,53 @@ func _process(delta: float) -> void:
 	_drive_smoke_player()
 	if Game.boss_rush:
 		_smoke_overlap = maxf(_smoke_overlap, world.boss_overlap())
+		_track_inspected()
 	_smoke_left -= delta / Engine.time_scale
 	if Game.state != "victory" and _smoke_left > 0.0:
 		return
 	_smoke_done = true
 	var ok := Game.state == "victory" if _smoke_expect_victory else Game.wave > _smoke_start_wave
 	if Game.boss_rush:
+		var bosses := 0
+		var wounded := 0
+		for e in world.enemies:
+			if e.is_boss:
+				bosses += 1
+				if e.hp < e.max_hp:
+					wounded += 1
 		print("[smoke] chevauchement max entre boss : %.1f px (tolérance %.0f)" % [
 			_smoke_overlap, SMOKE_MAX_OVERLAP])
-		ok = ok and _smoke_overlap <= SMOKE_MAX_OVERLAP
+		print("[smoke] boss : %d vivants, %d blessés ; %d inspectés (min %d), déplacement max pendant l'infobulle : %.2f px (tolérance %.1f)" % [
+			bosses, wounded, _smoke_inspected.size(), SMOKE_MIN_INSPECTED, _smoke_drift, SMOKE_MAX_DRIFT])
+		ok = (Game.state == "playing" and bosses == world.rush_total and wounded == 0
+			and _smoke_overlap <= SMOKE_MAX_OVERLAP
+			and _smoke_inspected.size() >= SMOKE_MIN_INSPECTED
+			and _smoke_drift <= SMOKE_MAX_DRIFT)
 	print("[smoke] %s — état : %s, vague atteinte : %d, ennemis vivants : %d, or gagné : %d" % [
 		"OK" if ok else "ÉCHEC", Game.state, Game.wave, world.enemies.size(), Game.run_gold])
 	get_tree().quit(0 if ok else 1)
 
-## Pilote automatique : marche sur l'ennemi le plus proche et frappe.
+## Conclave : boss de l'infobulle d'une frame à l'autre. Tant que c'est le
+## même, il ne doit pas avoir bougé.
+func _track_inspected() -> void:
+	var e := world.inspected_boss()
+	if e != null:
+		_smoke_inspected[e.get_instance_id()] = true
+		if e == _smoke_last_inspected:
+			_smoke_drift = maxf(_smoke_drift, e.position.distance_to(_smoke_last_pos))
+		_smoke_last_pos = e.position
+	_smoke_last_inspected = e
+
+## Pilote automatique : marche sur l'ennemi le plus proche et frappe. Dans le
+## Conclave, il fait plutôt le tour des boss, un toutes les `SMOKE_VISIT` frames.
 func _drive_smoke_player() -> void:
 	var p := world.player
 	p.hp = p.max_hp
 	world.smoke_dir = Vector2.ZERO
 	if Game.state != "playing":
+		return
+	if Game.boss_rush:
+		_visit_boss(p)
 		return
 	var nearest: Enemy = null
 	var best := INF
@@ -202,6 +242,22 @@ func _drive_smoke_player() -> void:
 		return
 	var to := nearest.position - p.position
 	if to.length() > float(Save.sword()["range"]) * 0.7:
+		world.smoke_dir = to.normalized()
+	if to != Vector2.ZERO:
+		p.facing = to.normalized()
+	world.do_attack()
+
+func _visit_boss(p: Player) -> void:
+	var bosses: Array[Enemy] = []
+	for e in world.enemies:
+		if e.is_boss:
+			bosses.append(e)
+	if bosses.is_empty():
+		return
+	var target := bosses[(world.rush_ticks / SMOKE_VISIT) % bosses.size()]
+	var to := target.position - p.position
+	# S'arrête au bord de son sprite, dans le rayon de réveil, et frappe.
+	if to.length() > target.top() + 50.0:
 		world.smoke_dir = to.normalized()
 	if to != Vector2.ZERO:
 		p.facing = to.normalized()

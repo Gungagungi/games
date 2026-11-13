@@ -17,6 +17,10 @@ const RUSH_INTRO := 120
 ## l'écart évite qu'il clignote entre les deux à la limite.
 const RUSH_WAKE := 110.0
 const RUSH_SLEEP := 170.0
+## L'infobulle ne passe à un autre boss réveillé que s'il est plus proche d'au
+## moins cette marge : sans elle, entre deux boss à égale distance, elle
+## sauterait de l'un à l'autre à chaque frame.
+const RUSH_INSPECT_SWITCH := 40.0
 const RUSH_GAP := 6.0
 ## Anneau d'apparition : centre un peu sous celui de l'arène et demi-axes,
 ## pour qu'aucun boss ne naisse sous la barre du HUD.
@@ -42,6 +46,8 @@ var rush_intro := 0
 var rush_ticks := 0
 var rush_total := 0
 var rush_max_hp := 0.0
+## Conclave : boss dont l'infobulle s'affiche (voir `_update_inspected`).
+var _inspected: Enemy = null
 ## Créatures nées pendant le parcours de `enemies` (doubles et mini-créatures
 ## de la Créature cauchemardesque), ajoutées à la fin du tick.
 var _spawn_queue: Array[Enemy] = []
@@ -219,6 +225,7 @@ func start_run(start_wave := 1) -> void:
 	Game.run_gold = 0
 	Game.boss_rush = false
 	rush_intro = 0
+	_inspected = null
 	Game.boss_queue.clear()
 	if Game.is_chaos():
 		for id: String in Data.MOB_ELEMENTS:
@@ -239,11 +246,20 @@ func _tick() -> void:
 		_update_waves()
 	# Pendant l'annonce du Conclave, les boss restent figés en anneau.
 	if rush_intro == 0:
+		# Conclave : le boss dont l'infobulle s'affiche ne bouge plus, sinon il
+		# s'éloignerait et l'infobulle disparaîtrait avec lui. Ses attaques
+		# continuent, sur place (charge, ruée et saut compris).
+		if Game.boss_rush:
+			_update_inspected()
+		var frozen: Enemy = inspected_boss()
+		var hold := frozen.position if frozen != null else Vector2.ZERO
 		_update_enemies()
 		if Game.boss_rush and Game.state == "playing":
 			_update_rush_awake()
 			_wander_bosses()
-			_separate_bosses()
+			if frozen != null:
+				frozen.position = hold
+			_separate_bosses(frozen)
 	_update_potion()
 	if Game.state == "playing":
 		_update_projectiles()
@@ -463,6 +479,10 @@ func damage_enemy(e: Enemy, amount: float) -> void:
 	# Déjà retiré : un double emporté par la mort du boss pendant le même coup.
 	if not enemies.has(e):
 		return
+	# Conclave : on y observe les boss, on ne les combat pas.
+	if Game.boss_rush and _is_bulky(e):
+		Fx.float_text(fx_layer, e.position + Vector2(0, -e.top() - 12), "Invulnérable", Color("#b8b0c8"))
+		return
 	e.hp -= amount
 	e.hit_flash = 8
 	Fx.float_text(fx_layer, e.position + Vector2(0, -e.top() - 12), "-%d" % roundi(amount), Color.WHITE)
@@ -619,10 +639,10 @@ func _update_projectiles() -> void:
 # ---------------------------------------------------------------------------
 
 ## Niveau spécial : tous les boss en même temps, disposés en anneau autour du
-## héros. Chacun garde son comportement (mêlée, tir, charge, brûlure, vol de
-## vie) ; s'y ajoutent une promenade autour du héros et une séparation qui
-## empêche deux boss de se superposer. Pas de vagues : la partie est gagnée
-## quand le dernier boss tombe.
+## héros, à observer plutôt qu'à combattre. Chacun rôde à sa place, se réveille
+## quand le héros l'approche et montre alors ses attaques, sans le blesser ; le
+## héros ne peut pas les blesser non plus. Pas de vagues ni de victoire : on en
+## sort par P.
 func start_boss_rush() -> void:
 	start_run(Data.BOSS_RUSH["wave"])
 	Game.boss_rush = true
@@ -668,7 +688,7 @@ func _update_rush_awake() -> void:
 			continue
 		if e.home == Vector2.INF:
 			e.home = e.position
-		var gap := e.position.distance_to(player.position) - e.top()
+		var gap := _rush_gap(e)
 		if e.rush_awake and gap > RUSH_SLEEP:
 			e.rush_awake = false
 			if not Nightmare.handles(e):
@@ -717,25 +737,38 @@ func _wander_bosses() -> void:
 		var side := sin(rush_ticks * 0.008 + phase)
 		e.position += to.normalized().orthogonal() * side * e.speed * 0.8
 
-## Boss dont l'infobulle s'affiche : le plus proche des boss réveillés.
+## Boss dont l'infobulle s'affiche, figé le temps qu'on la lise.
 func inspected_boss() -> Enemy:
 	if not Game.boss_rush or Game.state != "playing":
 		return null
+	return _inspected
+
+## Choisit le boss de l'infobulle, une fois par tick : le plus proche des boss
+## réveillés, mais celui qu'on regarde déjà le reste tant qu'il est éveillé et
+## qu'aucun autre n'est plus proche de `RUSH_INSPECT_SWITCH`.
+func _update_inspected() -> void:
+	if _inspected != null and not (enemies.has(_inspected) and _inspected.rush_awake):
+		_inspected = null
 	var best: Enemy = null
 	var best_d := INF
 	for e in enemies:
 		if e.is_boss and e.rush_awake:
-			var d := e.position.distance_to(player.position) - e.top()
+			var d := _rush_gap(e)
 			if d < best_d:
 				best_d = d
 				best = e
-	return best
+	if _inspected == null or (best != _inspected and best_d + RUSH_INSPECT_SWITCH < _rush_gap(_inspected)):
+		_inspected = best
+
+## Distance du héros au bord du sprite d'un boss.
+func _rush_gap(e: Enemy) -> float:
+	return e.position.distance_to(player.position) - e.top()
 
 ## Écarte deux boss dont les sprites se chevauchent. La distance minimale suit
 ## la taille du sprite (`top()`), pas la hitbox de la v1, bien plus petite :
 ## c'est ce qui garde chaque boss lisible. Quelques passes suffisent à résorber
 ## les chevauchements en chaîne autour du héros.
-func _separate_bosses() -> void:
+func _separate_bosses(frozen: Enemy = null) -> void:
 	var bosses: Array[Enemy] = []
 	for e in enemies:
 		if _is_bulky(e):
@@ -752,9 +785,17 @@ func _separate_bosses() -> void:
 					continue
 				var n := d / len if len > 0.01 else Vector2.RIGHT.rotated(randf() * TAU)
 				var push := (min_d - len) / 2.0
-				a.position -= n * push
-				b.position += n * push
+				# Le boss figé ne cède pas : l'autre recule de tout l'écart.
+				if a == frozen:
+					b.position += n * push * 2.0
+				elif b == frozen:
+					a.position -= n * push * 2.0
+				else:
+					a.position -= n * push
+					b.position += n * push
 		for e in bosses:
+			if e == frozen:
+				continue
 			var lo := Vector2(e.top(), e.top() + RUSH_HUD_TOP)
 			e.position = e.position.clamp(lo, Data.ARENA - Vector2.ONE * e.top())
 
