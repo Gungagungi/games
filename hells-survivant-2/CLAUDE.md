@@ -61,15 +61,18 @@ vague 10), et boss final jusqu'à la **victoire** (Ombre, vague 30), puis trois
 parties Chaos : vagues mélangées (vague 1), dernier boss de la file (vague 35)
 et Créature cauchemardesque jusqu'à la victoire (vague 40, sur 60 s au lieu de
 20 : elle saute, charge et se dédouble, le pilote automatique met plus
-longtemps à la finir), enfin le Conclave des boss jusqu'à la victoire (60 s
-aussi). Chaque apparition de boss est écrite dans la sortie
+longtemps à la finir), enfin le Conclave des boss (60 s aussi), où le pilote
+fait le tour des boss, un toutes les 4 s de jeu. Chaque apparition de boss est écrite dans la sortie
 (`[smoke] vague N : <boss>`). Le héros y est immortel, équipé au maximum (en
 mémoire, `Save.write()` ne fait rien en smoke) et combat tout seul. Une partie
 échoue si elle ne progresse pas, si une vague de boss final ne se conclut pas
-en victoire, ou sur toute erreur GDScript. Le Conclave échoue en plus si deux
-sprites de boss (doubles de la Créature compris) se recouvrent de plus de
-8 px : la sortie donne le pire écart (`chevauchement max`, −6 px quand ils se
-touchent à la limite).
+en victoire, ou sur toute erreur GDScript. Le Conclave, lui, échoue s'il ne
+finit pas **en cours** (ni victoire ni défaite), si un boss manque ou a perdu
+des PV, si moins de 3 boss ont eu leur infobulle, si le boss de l'infobulle a
+bougé de plus de 0,5 px d'une frame à l'autre, ou si deux sprites de boss
+(doubles de la Créature compris) se recouvrent de plus de 8 px : la sortie
+donne le pire écart (`chevauchement max`, −6 px quand ils se touchent à la
+limite).
 
 Deux points à connaître :
 
@@ -206,20 +209,32 @@ d'élément, le Nécromancien Putréfié et la Créature cauchemardesque
   dans `Data.BOSS_ATTACKS` (clé `final_<élément>` pour un boss final), icônes
   dans `assets/sprites/attacks/<id>.png`. **Une attaque ajoutée à un boss doit
   aussi l'être là**, sinon l'infobulle ment.
-- **Boss inoffensifs** : ils lancent leurs attaques (charges, tirs, laser,
-  fouet, champ de force…) mais ne blessent jamais le héros — ni dégâts, ni
-  brûlure, ni vol de vie, ni projection. Tout passe par `World.harms_player()`,
-  faux dans le Conclave, que consultent `hit_player`, `knock_player` et
-  `Nightmare._hit`. Seul le héros porte des coups ; la partie ne peut pas être
-  perdue.
-- La **Créature cauchemardesque** garde son jeu d'attaques (`Nightmare`) et ne
-  se promène pas : elle bouge déjà par ses sauts et ruées. Ses doubles sont
-  séparés comme des boss (`_is_bulky`) ; sa mort emporte doubles et
-  mini-créatures, mais ne gagne pas la partie tant qu'un autre boss vit.
+- **Boss figé pendant l'infobulle** : le boss inspecté ne bouge plus, sinon il
+  s'éloignerait et l'infobulle avec lui. `World._tick` remet sa position après
+  la mise à jour des ennemis : ses attaques continuent sur place (charge, ruée,
+  saut compris), et la séparation fait reculer l'autre boss de tout l'écart.
+  Le choix du boss inspecté (`_update_inspected`, une fois par tick) est
+  **collant** : il le reste tant qu'il est éveillé, sauf si un autre est plus
+  proche d'au moins `RUSH_INSPECT_SWITCH` (40 px). Sans cette marge, entre
+  deux boss à égale distance, l'infobulle alternait à chaque frame et le boss
+  non figé dérivait.
+- **Personne ne blesse personne** : on observe les boss, on ne les combat
+  pas. Ils lancent leurs attaques (charges, tirs, laser, fouet, champ de
+  force…) mais ne blessent jamais le héros — ni dégâts, ni brûlure, ni vol de
+  vie, ni projection. Tout passe par `World.harms_player()`, faux dans le
+  Conclave, que consultent `hit_player`, `knock_player` et `Nightmare._hit`.
+  En retour, un coup du héros sur un boss (ou un double) n'affiche
+  qu'« Invulnérable » (`World.damage_enemy`) ; les mini-créatures, elles,
+  meurent normalement. La partie ne se perd ni ne se gagne : **on en sort par
+  P**, et le dédoublement de la Créature ne se déclenche jamais.
+- La **Créature cauchemardesque**, réveillée, garde son jeu d'attaques
+  (`Nightmare`) et ne se promène pas : elle bouge déjà par ses sauts et ruées.
+  Ses doubles seraient séparés comme des boss (`_is_bulky`), mais elle ne se
+  dédouble plus, faute de PV perdus.
 - Un boss ne monte pas dans la bande du haut réservée au HUD (`RUSH_HUD_TOP`).
-- Pas de vagues ni de fiole (le héros n'y perd pas de PV) : la victoire arrive
-  à la mort du dernier boss, boss finals compris, et l'écran de fin donne le
-  temps. Nom et barre de vie de chaque boss sont dessinés par
+- Pas de vagues ni de fiole (le héros n'y perd pas de PV). La victoire du
+  Conclave (mort du dernier boss, écran de fin avec le temps) reste dans le
+  code mais n'est plus atteignable. Nom et barre de vie de chaque boss sont dessinés par
   `scenes/boss_tags.gd` ; le HUD affiche les boss restants et la vie cumulée.
 - `Game.boss_rush` est remis à faux par `World.start_run`.
 
