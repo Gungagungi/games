@@ -233,6 +233,33 @@ et le tier d'une partie menée à la vague 20, puis
   le tirage des pouvoirs faisant varier la durée du combat du simple au
   triple.
 
+### Commandes tactiles (mobile, Safari iOS)
+
+`scenes/ui/touch_controls.gd` : joystick flottant dans la moitié gauche, bouton
+TIR en bas à droite (toute la moitié droite tire), boutons DASH et ONDE à côté
+avec leur recharge — la `SkillBar` se masque alors, elle serait sous le
+joystick. Le mode s'allume si l'appareil est tactile ou au premier toucher
+(`GameState.touch_mode`), s'éteint à la première touche de clavier.
+
+- Déplacement, dash et onde passent par `Input.action_press()` : `Player` ne
+  sait pas d'où vient l'action. **Le tir, non** : le web convertit chaque
+  toucher en clic gauche (émulation souris, indispensable aux boutons des
+  menus), et ce clic est lié à `shoot` — le pouce sur le joystick ferait
+  tirer. En tactile, `Player` lit `GameState.touch_fire` et vise seul
+  (`nearest_target()`, partagé avec le pilote du mode smoke), sinon droit
+  devant.
+- Les contrôles se coupent sous tout écran de `main.gd` (`menus`) : le jeu
+  tourne encore pendant le choix d'un pouvoir.
+- Un `Control` plein écran avale le clic émulé : c'est pourquoi `DialogueBox`
+  écoute `_input` et non `_unhandled_input`. Tout nouvel écran à fermer « au
+  toucher » doit faire de même.
+- `html/head_include` (`export_presets.cfg`) coupe loupe, sélection et rebond
+  de page de Safari iOS sur un appui long.
+
+Pour le vérifier sans écran : un scénario `tools/capture.js` qui fait
+`page.setViewport({width: 844, height: 390, hasTouch: true, isMobile: true})`
+puis envoie des touchers multipoints par CDP (`Input.dispatchTouchEvent`).
+
 ## Le niveau
 
 L'arène n'est plus l'écran : c'est un village en ruine de 112×64 cases de

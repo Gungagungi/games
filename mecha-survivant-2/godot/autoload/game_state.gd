@@ -10,6 +10,11 @@ var smoke_test: bool = false
 ## Niveau spécial « Le Destructeur d'univers » : un seul boss, pas de vagues,
 ## et la partie se gagne en ramassant la gemme dorée qu'il lâche.
 var special_level: bool = false
+## Commandes tactiles (`TouchControls`) : allumé au premier toucher, éteint à
+## la première touche de clavier. Le tir vient alors de `touch_fire` et vise
+## seul, faute de pointeur.
+var touch_mode: bool = false
+var touch_fire: bool = false
 
 ## Difficulté : identique à la v1 (`tier = floor((wave-1)/2)`).
 func tier() -> int:

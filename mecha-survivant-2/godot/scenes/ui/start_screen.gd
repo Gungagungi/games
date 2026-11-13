@@ -34,7 +34,12 @@ func _ready() -> void:
 	panel.add_child(title)
 
 	var help := Label.new()
-	help.text = "ZQSD / flèches : bouger — souris ou espace : tirer\nMaj : dash — F : onde de choc"
+	# Deux lignes dans les deux cas : une ligne de plus décalerait LANCER, que
+	# `tools/scenarios/ms2-gameplay.js` clique par coordonnées.
+	if GameState.touch_mode:
+		help.text = "Joystick à gauche : bouger — moitié droite : tirer (visée auto)\nDASH et ONDE : boutons à côté du tir"
+	else:
+		help.text = "ZQSD / flèches : bouger — souris ou espace : tirer\nMaj : dash — F : onde de choc"
 	help.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(help)
 	var spacer := Control.new()
