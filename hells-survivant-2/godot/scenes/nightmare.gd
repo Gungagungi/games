@@ -247,6 +247,8 @@ static func _end(e: Enemy) -> void:
 	e.nm_cooldown = base + randi() % 50
 
 static func _hit(w: World, e: Enemy, mult: float, contact: bool) -> void:
+	if not World.harms_player():
+		return
 	w.hit_player(e.dmg * mult)
 	if contact:
 		var elem: Dictionary = Data.ELEMENTS[e.element]
