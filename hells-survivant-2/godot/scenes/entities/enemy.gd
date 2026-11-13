@@ -21,6 +21,9 @@ var hit_flash := 0
 var charge_timer := 0.0
 var charging := false
 var charge_telegraph := 0
+## Conclave des boss : frames de ruée restantes et direction figée au départ.
+var dash_timer := 0
+var dash_dir := Vector2.ZERO
 var gold_value := 0
 var face_left := false
 ## Double de la Créature cauchemardesque (voir `Nightmare`) : mêmes attaques,
