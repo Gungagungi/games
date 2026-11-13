@@ -182,13 +182,30 @@ d'élément, le Nécromancien Putréfié et la Créature cauchemardesque
 
 - **Annonce** : 2 s (`RUSH_INTRO`) pendant lesquelles les boss restent figés en
   anneau autour du héros, pour qu'on les voie tous.
-- **Comportement** : chacun garde son IA de boss (mêlée, tir, charge, brûlure,
-  vol de vie). S'y ajoutent une **promenade** (`_wander_bosses` : pas de côté
-  autour du héros, dont le sens s'inverse lentement et diffère d'un boss à
-  l'autre) et une **séparation** (`_separate_bosses`) qui écarte deux boss dont
-  les sprites se chevauchent. La distance minimale suit la taille du sprite
+- **Réveil à l'approche** (`_update_rush_awake`) : un boss **endormi** rôde en
+  petite boucle autour de sa place sur l'anneau (`Enemy.home`, `_rest`) et
+  n'attaque pas. Il se réveille quand le héros arrive à moins de `RUSH_WAKE`
+  (110 px) du bord de son sprite, et se rendort au-delà de `RUSH_SLEEP`
+  (170 px). Au réveil, sa première attaque arrive vite (compteurs de charge,
+  de tir et d'attaque de la Créature raccourcis) ; en s'endormant, il abandonne
+  sa charge, mais la Créature finit d'abord son attaque en cours.
+- **Comportement d'un boss réveillé** : chacun garde son IA de boss (mêlée,
+  tir, charge, brûlure, vol de vie), sauf qu'un tireur reste à sa place au lieu
+  de garder ses distances, ce qui le ferait sortir du rayon d'observation.
+  S'y ajoutent une **promenade** (`_wander_bosses` : pas de côté autour du
+  héros, dont le sens s'inverse lentement et diffère d'un boss à l'autre) et
+  une **séparation** (`_separate_bosses`), endormis compris, qui écarte deux
+  boss dont les sprites se chevauchent. La distance minimale suit la taille du sprite
   (`Enemy.top()`), pas la hitbox de la v1 : c'est la lisibilité qui est visée,
   l'équilibrage des coups ne change pas.
+- **Infobulle des attaques** (`scenes/boss_tags.gd`) : au-dessus, en dessous
+  ou à côté du boss réveillé le plus proche (`World.inspected_boss`), de
+  préférence à l'opposé du héros pour ne pas le cacher, et jamais sur le boss
+  lui-même. Une ligne par attaque, icône et description, sur deux colonnes
+  au-delà de 6 (la Créature en a 11). Textes dans `Data.ATTACKS`, liste par boss
+  dans `Data.BOSS_ATTACKS` (clé `final_<élément>` pour un boss final), icônes
+  dans `assets/sprites/attacks/<id>.png`. **Une attaque ajoutée à un boss doit
+  aussi l'être là**, sinon l'infobulle ment.
 - **Boss inoffensifs** : ils lancent leurs attaques (charges, tirs, laser,
   fouet, champ de force…) mais ne blessent jamais le héros — ni dégâts, ni
   brûlure, ni vol de vie, ni projection. Tout passe par `World.harms_player()`,
@@ -200,8 +217,9 @@ d'élément, le Nécromancien Putréfié et la Créature cauchemardesque
   séparés comme des boss (`_is_bulky`) ; sa mort emporte doubles et
   mini-créatures, mais ne gagne pas la partie tant qu'un autre boss vit.
 - Un boss ne monte pas dans la bande du haut réservée au HUD (`RUSH_HUD_TOP`).
-- Pas de vagues ni de fiole (le héros n'y perd pas de PV) : la victoire arrive à la mort du dernier boss, boss finals compris, et l'écran de
-  fin donne le temps. Nom et barre de vie de chaque boss sont dessinés par
+- Pas de vagues ni de fiole (le héros n'y perd pas de PV) : la victoire arrive
+  à la mort du dernier boss, boss finals compris, et l'écran de fin donne le
+  temps. Nom et barre de vie de chaque boss sont dessinés par
   `scenes/boss_tags.gd` ; le HUD affiche les boss restants et la vie cumulée.
 - `Game.boss_rush` est remis à faux par `World.start_run`.
 
@@ -253,6 +271,8 @@ fente de l'attaque, flash, dissolution, particules, halos). Fichiers renommés
 | Héros | `player/base`, `body_N`, `legs_N`, `boots_N`, `head_N`, `cloak_N`, `sword_N` | `player/…` (calques paperdoll, N = niveau d'armure ou d'épée) |
 | Arène | `dungeon/floor_0..6`, `lava_0..3` | `dungeon/floor/volcanic_floor_*`, `lava_*` |
 | Projectiles, or, fiole | `fx/brick`, `fx/bolt`, `fx/gold`, `fx/potion` | `effect/rock_0_new`, `effect/magic_bolt_1`, `item/gold/gold_pile_5`, `item/potion/ruby` |
+| Icônes d'attaque (Conclave) | `attacks/melee`, `heavy`, `fast`, `tough`, `charge`, `lifesteal`, `burn`, `bricks`, `bolts`, `giant` | `gui/spells/` : `components/sword`, `enchantment/berserker_rage_new`, `air/swiftness_new`, `earth/stoneskin_new`, `enchantment/haste_new`, `necromancy/vampiric_draining_new`, `fire/sticky_flame_new`, `components/stones`, `conjuration/magic_dart`, `necromancy/deaths_door_new` |
+| Icônes d'attaque de la Créature | `attacks/laser`, `whip`, `sweep`, `rush`, `leap`, `summon`, `field`, `split` | `gui/spells/` : `conjuration/searing_ray`, `summoning/summon_horrible_things`, `air/tornado`, `translocation/blink`, `earth/shatter_new`, `summoning/summon_shadow_creatures_new`, `translocation/gravitas`, `necromancy/simulacrum_new` |
 | Difficultés (menu) | `ui/difficulty_facile`, `_intermediaire`, `_difficile` | `monster/animals/rat`, `monster/orc`, `monster/ogre` |
 
 Les trois icônes de difficulté suivent la même convention que les éléments, mais

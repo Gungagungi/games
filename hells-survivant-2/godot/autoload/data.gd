@@ -101,6 +101,47 @@ const BOSS_RUSH_ROSTER := [
 	["ombre", false],
 ]
 
+## Conclave : attaques décrites dans l'infobulle d'un boss qu'on approche.
+## L'icône est `assets/sprites/attacks/<id>.png` (sorts du pack Dungeon Crawl).
+const ATTACKS := {
+	"melee": "Frappe au contact",
+	"heavy": "Coups d'une violence redoutable",
+	"fast": "Rapide, mais fragile",
+	"tough": "Très résistant, mais lent",
+	"charge": "Charge : il luit, puis bondit sur vous",
+	"lifesteal": "Vol de vie : se soigne en frappant",
+	"burn": "Brûlure : vous enflamme au contact",
+	"bricks": "Lance des briques à distance",
+	"bolts": "Tirs d'ombre à distance",
+	"giant": "Boss final : énorme réserve de vie",
+	"laser": "Laser de l'œil, qui balaie vers vous",
+	"whip": "Fouet : trois tentacules à longue portée",
+	"sweep": "Balayage circulaire quand on est proche",
+	"rush": "Ruée en ligne droite",
+	"leap": "Saut, puis onde de choc en anneau",
+	"summon": "Invoque des mini-créatures",
+	"field": "Champ de force : vous projette au loin",
+	"split": "Se dédouble à 75, 50 et 25 % de vie",
+}
+
+## Attaques de chaque boss du Conclave, dans l'ordre de l'infobulle. Clé :
+## l'élément, préfixé de `final_` pour un boss final (voir `boss_attacks`).
+const BOSS_ATTACKS := {
+	"cendres": ["fast", "melee", "charge"],
+	"sang": ["melee", "lifesteal", "charge"],
+	"violence": ["heavy", "melee", "charge"],
+	"terre": ["tough", "melee", "charge"],
+	"feu": ["melee", "burn", "charge"],
+	"destruction": ["bricks", "charge"],
+	"ombre": ["bolts", "charge"],
+	"final_ombre": ["giant", "bolts", "charge"],
+	"final_chaos": ["giant", "burn", "lifesteal", "laser", "whip", "sweep", "rush",
+		"leap", "summon", "field", "split"],
+}
+
+func boss_attacks(element: String, is_final: bool) -> Array:
+	return BOSS_ATTACKS.get(("final_" if is_final else "") + element, [])
+
 ## Pas de temps de la v1 : tous ses compteurs décomptaient une frame à 60 fps.
 const V1_FPS := 60.0
 

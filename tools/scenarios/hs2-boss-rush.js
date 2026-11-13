@@ -6,9 +6,9 @@
 // Écrit trois images : <sortie>-menu.png (écran-titre), <sortie>-intro.png
 // (boss en anneau, pendant l'annonce) et <sortie> (en plein combat, après
 // HS2_PLAY_MS ms). Le Conclave se lance au clavier (Q : Facile, puis B), sans
-// coordonnée de clic. Le héros reste au centre et frappe : les boss
-// convergent sur lui, ce qui montre leur séparation. Sans équipement, il ne
-// tient que quelques secondes, d'où la courte durée par défaut.
+// coordonnée de clic. Le héros reste au centre et frappe ; les boss rôdent à
+// leur place sur l'anneau tant qu'il ne les approche pas (ils ne le blessent
+// jamais, et l'infobulle d'attaques n'apparaît qu'à l'approche).
 
 const BOOT_MS = 15000;
 const PLAY_MS = parseInt(process.env.HS2_PLAY_MS || "2500", 10);
