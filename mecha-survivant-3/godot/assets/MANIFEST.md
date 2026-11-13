@@ -53,11 +53,11 @@ et là qu'il faudrait le changer si une planche livrée s'organisait autrement.
 | `fx_shockwave.png` | 64×64 | 6 | onde de choc, déroulée une fois sur 0,35 s |
 | `fx_hit.png` | 64×64 | 5 | impact, déroulé une fois à chaque coup encaissé |
 | `fx_telegraph.png` | 64×64 | 1 | cercle d'annonce, opacité pilotée par le code |
-| `tiles_floor.png` | 32×32 | 4 | pavés des rues et de la place, variante tirée au hachage des coordonnées |
-| `tiles_ground.png` | 16×16 | 7 | herbe ×2, herbe caillouteuse, terre ×2, pierre, pavés (Kenney) |
-| `tiles_indoor.png` | 16×16 | 5 | sols intérieurs : brique brune, brique grise, parquet ×3 (Kenney) |
-| `tiles_wall.png` | 16×16 | 8 | faces de mur : lisse, fissurées ×5 ; pans écroulés ×2 (Kenney) |
-| `tiles_props.png` | 16×16 | 19 | arbres morts ×3, tombes ×5, rochers ×4, tonneaux ×2, mobilier ×5 (Kenney) |
+| `tiles_floor.png` | 32×32 | 4 | dalles des rues et de la place, variante tirée au hachage des coordonnées (DCSS) |
+| `tiles_ground.png` | 32×32 | 7 | herbe ×2, « herbe caillouteuse » (3e herbe), terre ×2, pierre, pavés (DCSS) |
+| `tiles_indoor.png` | 32×32 | 5 | sols intérieurs : dalles de calcaire ×5 (DCSS) |
+| `tiles_wall.png` | 32×32 | 8 | faces de mur : pierre de catacombe ×6 ; pans écroulés ×2 (colonnes brisées) (DCSS) |
+| `tiles_props.png` | 32×32 | 19 | arbres ×3, tombes ×5 (stèle, statues), rochers ×4, tonneaux ×2 (caisse, coffre), mobilier ×5 (coffre, sarcophage, piédestal, autels) (DCSS) |
 | `hazard_poison.png` | 48×48 | 4 | flaque de poison, en boucle |
 | `ui_upgrades.png` | 32×32 | 8 | cadence, dégâts, coque, vitesse, salve, bouclier, onde, endurance — **cet ordre exactement**, c'est celui de `UpgradeManager.ALL` |
 | `icon.png` | 64×64 | 1 | icône du jeu (placeholder généré, à remplacer) |
@@ -106,23 +106,17 @@ scripts/preview-sheet.py titan                 # relire la planche, case par cas
 Une planche produite à la main ou par un autre outil reste parfaitement
 valable : le jeu ne connaît que le fichier, jamais son origine.
 
-**Décor du niveau (Kenney, CC0)** — les quatre planches `tiles_ground`,
-`tiles_indoor`, `tiles_wall` et `tiles_props` ne sont pas générées : elles sont
-découpées dans deux packs de Kenney, [Roguelike/RPG
-pack](https://opengameart.org/content/roguelikerpg-pack-1700-tiles) et
-[Roguelike Indoor pack](https://opengameart.org/content/roguelike-indoor-pack),
-domaine public (licence dans `KENNEY-LICENSE.txt`, crédit non obligatoire mais
-donné ici). Les packs eux-mêmes ne sont pas versionnés : seules les tuiles
-employées le sont, désaturées et assombries à l'import.
+**Décor du niveau (v3 : Dungeon Crawl Stone Soup, CC0)** — les cinq planches
+`tiles_*` sont composées par `scripts/import-dcss.py` (table `TUILES`), comme
+les sprites, depuis le même zip. Elles remplacent case pour case les planches
+Kenney de la v2, en 32 px au lieu de 16 : `level.gd` déduit la taille d'une
+case de la largeur de la planche. Sol, intérieurs et rues sont étalonnés à
+l'import (assombris, désaturés) pour la palette froide du jeu.
 
-```sh
-scripts/import-kenney.py --rpg "Roguelike pack.zip" --indoor "Roguelike Indoor pack.zip"
-```
-
-Les cases sont en 16 px, affichées à 32 (une case de niveau). Leur ordre est un
-contrat avec les constantes `GROUND_*`, `WALL_*` et `PROP_*` de
-`scenes/level.gd` : changer une tuile se fait dans `PLANCHES` du script,
-réordonner oblige à suivre dans `level.gd`.
+Leur ordre est un contrat avec les constantes `GROUND_*`, `WALL_*` et
+`PROP_*` de `scenes/level.gd` : changer une tuile se fait dans `TUILES`,
+réordonner oblige à suivre dans `level.gd`. `import-kenney.py` a été retiré
+de la v3 : relancé, il aurait écrasé ces planches.
 
 ## Polices — `assets/fonts/`
 

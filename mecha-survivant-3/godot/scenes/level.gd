@@ -6,7 +6,7 @@ extends Node2D
 ## `is_solid_at()`, `move_circle()`, `flow_dir()`, `view_rect()`.
 ##
 ## La carte est une grille de cases de 32 px. Les tuiles viennent des packs
-## Kenney (CC0, 16 px affichés ×2, voir `scripts/import-kenney.py`), les pavés
+## Dungeon Crawl Stone Soup (CC0, 32 px, voir `scripts/import-dcss.py`), les dalles
 ## des rues de `tiles_floor.png`. Sans planche, chaque case retombe sur un aplat.
 ##
 ## Collisions :
@@ -26,7 +26,7 @@ const COLS := 112
 const ROWS := 64
 const WALL_LAYER := 16
 
-const TINT := Color.WHITE        ## l'étalonnage est fait à l'import (import-kenney.py)
+const TINT := Color.WHITE        ## l'étalonnage est fait à l'import (import-dcss.py)
 const STREET_TINT := Color(0.62, 0.62, 0.68)
 
 ## Contenu d'une case.
@@ -34,7 +34,7 @@ enum { GROUND, STREET, FLOOR, WALL, BLOCK }
 ## BLOCK : case pleine autre qu'un mur (tombe, arbre mort, rocher, tonneau,
 ## pan de mur écroulé). Son dessin est dans `_prop`.
 
-# Cases des planches (ordre fixé par scripts/import-kenney.py).
+# Cases des planches (ordre fixé par TUILES dans scripts/import-dcss.py).
 const GROUND_GRASS := [0, 1]
 const GROUND_STONY := 2
 const GROUND_DIRT := [3, 4]
@@ -598,7 +598,7 @@ func _draw_street(rect: Rect2, c: Vector2i) -> void:
 		Rect2(v * w, 0.0, w, _tex_street.get_height()), STREET_TINT)
 
 ## Vue de trois quarts à peu de frais : une case de mur dont la voisine du
-## dessous n'est pas un mur montre sa face (tuile Kenney) ; les autres montrent
+## dessous n'est pas un mur montre sa face (tuile de décor) ; les autres montrent
 ## le dessus, un aplat cerné là où le mur s'arrête.
 func _draw_wall(rect: Rect2, c: Vector2i, i: int) -> void:
 	if not _is_wall(c + Vector2i(0, 1)):

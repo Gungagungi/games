@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Fabrique les planches du mech, des ennemis et des boss depuis le pack
-Dungeon Crawl Stone Soup (CC0), pour la refonte visuelle de la v3.
+"""Fabrique les planches du mech, des ennemis, des boss et du décor depuis le
+pack Dungeon Crawl Stone Soup (CC0), pour la refonte visuelle de la v3.
 
   scripts/import-dcss.py "Dungeon Crawl Stone Soup Full.zip"
 
@@ -13,6 +13,13 @@ cette image par des transformations au pixel près, faites sur la source de
 32 px **avant** l'agrandissement, pour rester sur la grille du pixel art :
 balancement (décalage vertical), inclinaison (cisaillement qui garde les pieds
 en place), enfoncement et fondu pour la mort, éclaircissement pour l'attaque.
+
+Le décor (`TUILES`) remplace les planches Kenney de la v2 case pour case :
+même nombre de cases, même rôle à chaque rang, lu par les constantes
+`GROUND_*`, `WALL_*`, `PROP_*` de `scenes/level.gd`. Les tuiles passent de
+16 à 32 px sans toucher au code : `level.gd` déduit la taille d'une case de
+la largeur de la planche. **Ne plus lancer `import-kenney.py` sur la v3**, il
+écraserait ces planches.
 
 L'ordre et le nombre des cases sont le contrat avec `SHEETS` et le tableau de
 `godot/assets/MANIFEST.md` : ne pas les changer sans les suivre.
@@ -149,6 +156,62 @@ PLANCHES = {
 }
 
 
+# -- décor --------------------------------------------------------------------
+
+def grade(src: Image, bright: float, sat: float) -> Image:
+    """Étalonnage : luminosité multipliée par `bright`, saturation par `sat`.
+    L'herbe du pack est d'un vert vif qui jure avec la palette froide du jeu."""
+    out = Image(SRC, SRC, bytearray(src.pixels))
+    for i in range(0, len(out.pixels), 4):
+        r, g, b = out.pixels[i:i + 3]
+        lum = 0.3 * r + 0.59 * g + 0.11 * b
+        c = [min(255, max(0, round((lum + (v - lum) * sat) * bright))) for v in (r, g, b)]
+        out.pixels[i:i + 3] = bytes(c)
+    return out
+
+
+D = "dungeon/"
+GROUND_GRADE = (0.72, 0.6)
+# planche -> (liste de tuiles, étalonnage ou None). L'ordre est lu par level.gd.
+TUILES = {
+    # herbe ×2, « herbe caillouteuse » (une 3e herbe : le mélange herbe-terre
+    # du pack ressortait en carrés criards), terre ×2, pierre, pavés
+    "tiles_ground": ([D + "floor/grass/grass_0_new.png", D + "floor/grass/grass_2_new.png",
+                      D + "floor/grass/grass_1_new.png", D + "floor/dirt_0_new.png",
+                      D + "floor/dirt_1_new.png", D + "floor/grey_dirt_0_new.png",
+                      D + "floor/pebble_brown_0_new.png"], GROUND_GRADE),
+    # sols intérieurs : dalles de calcaire ×5
+    "tiles_indoor": ([D + f"floor/limestone_{k}.png" for k in range(5)], (0.62, 0.6)),
+    # faces de mur : lisse, fissurées ×5 ; pans écroulés ×2
+    "tiles_wall": ([D + f"wall/catacombs_{k}.png" for k in range(6)]
+                   + [D + "statues/crumbled_column.png", D + "statues/crumbled_column_1.png"], None),
+    # arbres ×3, tombes ×5, rochers ×4, tonneaux ×2, mobilier ×5
+    "tiles_props": ([D + "trees/tree_1_red.png", D + "trees/mangrove_1.png", D + "trees/mangrove_2.png",
+                     D + "altars/altar_base.png", D + "statues/statue_wraith.png",
+                     D + "statues/statue_angel.png", D + "statues/statue_ancient_evil.png",
+                     D + "statues/granite_stump_new.png",
+                     D + "boulder.png", D + "statues/granite_stump_old.png",
+                     D + "statues/crumbled_column_4.png", D + "statues/crumbled_column_5.png",
+                     D + "large_box.png", D + "chest_2_closed.png",
+                     D + "chest.png", D + "vaults/sarcophagus_sealed.png", D + "statues/pedestal.png",
+                     D + "altars/altar_kikubaaqudgha.png", D + "altars/altar_lugonu.png"], None),
+    # pavés des rues et de la place
+    "tiles_floor": ([D + f"floor/rect_gray_{k}_new.png" for k in range(4)], (2.4, 0.7)),
+}
+
+
+def build_tiles(z: zipfile.ZipFile, out: Path) -> None:
+    for name, (paths, grading) in TUILES.items():
+        tiles = []
+        for path in paths:
+            t = Image.decode(z.read(BASE + path))
+            if (t.width, t.height) != (SRC, SRC):
+                raise SystemExit(f"{path} : {t.width}×{t.height}, {SRC}×{SRC} attendu")
+            tiles.append(grade(t, *grading) if grading else t)
+        (out / f"{name}.png").write_bytes(strip(tiles, SRC).encode())
+        print(f"{name:22} {len(tiles):2} cases de {SRC} px")
+
+
 def build(z: zipfile.ZipFile, out: Path) -> None:
     for name, (path, scale, recipe, retouch) in PLANCHES.items():
         src = Image.decode(z.read(BASE + path))
@@ -172,6 +235,7 @@ def main() -> None:
     args = ap.parse_args()
     with zipfile.ZipFile(args.zip) as z:
         build(z, args.out)
+        build_tiles(z, args.out)
         LICENSE.write_bytes(z.read(BASE + "LICENSE.txt"))
     print(LICENSE.relative_to(ROOT))
 

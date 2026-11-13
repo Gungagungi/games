@@ -74,6 +74,11 @@ n'est pas versionné ; seules les planches le sont. Trois choses à savoir :
 - **Beaucoup de PNG du pack sont en palette 4 bits** : `pngtool.py` a été
   étendu pour lire les profondeurs 1, 2 et 4 bits.
 
+Le **décor** du niveau vient du même pack (table `TUILES` du script) : sols,
+dalles, murs de catacombe, arbres, statues, coffres et autels remplacent les
+tuiles Kenney de la v2, case pour case et en 32 px au lieu de 16.
+`import-kenney.py` a été retiré de la v3 : relancé, il écraserait ce décor.
+
 Changer un monstre, c'est changer son chemin dans `PLANCHES` du script et
 relancer ; les tailles de case sont le contrat avec `assets/MANIFEST.md`.
 
@@ -103,8 +108,7 @@ scripts/check.sh           # non-régression sans écran (voir plus bas)
 scripts/gen-sprites.py     # génère les planches de sprites (voir « Assets »)
 scripts/gen-audio.py       # génère bruitages et musiques (voir « Audio »)
 scripts/preview-sheet.py   # agrandit une planche, case par case, pour la relire
-scripts/import-kenney.py   # découpe le décor dans les packs Kenney (voir « Le niveau »)
-scripts/import-dcss.py     # planches du mech, des ennemis et des boss (v3, voir « Refonte v3 »)
+scripts/import-dcss.py     # planches du mech, des ennemis, des boss et du décor (v3, voir « Refonte v3 »)
 scripts/gen-version.sh     # écrit godot/version.txt (branche@hash), voir « Version »
 ```
 
