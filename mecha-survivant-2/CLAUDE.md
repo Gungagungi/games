@@ -206,6 +206,16 @@ et le tier d'une partie menée à la vague 20, puis
   d'orbes. Les rayons sont des `LaserBeam` (`scenes/fx/laser_beam.gd`, que plus
   rien n'utilisait), généralisés : origine décalée (`offset`), durées,
   largeur, couleur, et `sweep` pour un rayon qui balaie en tirant.
+- **Trois attaques d'arsenal** s'y ajoutent : dès la phase 1 une lame sort
+  du poignet droit pendant qu'il fonce sur le mech, puis fauche un arc
+  (`scenes/fx/wrist_blade.gd`) ; dès la phase 2 une salve de missiles à tête
+  chercheuse part des épaulières (`scenes/fx/homing_missile.gd`, braquage
+  limité pour rester esquivable) ; dès la phase 3 il envoie des robots qui
+  lancent des boules de métal (`scenes/enemies/destroyer_robot.gd`, type
+  `robot`, plafonné à six). Le robot n'a **pas** d'entrée dans
+  `EnemyStats.DEFS` — y figurer le ferait apparaître dans les vagues
+  ordinaires : ses stats lui sont passées par le boss. À la mort du boss,
+  lames, missiles et robots sont retirés avec lui.
 - **Les lasers partent de la visière et du symbole du torse** : `VISOR` et
   `CORE` sont des décalages depuis le centre du boss, et le dessin de la
   classe interne `Figure` est calé dessus.

@@ -13,6 +13,14 @@ extends BossBase
 ##   4. balayage de visière et effondrement d'étoiles (zones annoncées) ;
 ##   5. cage de rayons tournante et spirale d'orbes depuis le symbole.
 ##
+## Trois attaques « d'arsenal » s'y ajoutent, hors lasers :
+##   - dès la phase 1, une lame jaillit de son poignet droit (`WRIST`) : il
+##     fonce sur le mech pendant qu'elle sort, puis fauche un arc ;
+##   - dès la phase 2, une salve de missiles à tête chercheuse part de ses
+##     épaulières (`homing_missile.gd`) ;
+##   - dès la phase 3, il envoie des robots qui lancent des boules de métal
+##     (`destroyer_robot.gd`), retirés avec lui à sa mort.
+##
 ## À sa mort il lâche la gemme dorée (`golden_gem.gd`) ; la ramasser termine
 ## le jeu. Sans planche `boss_destroyer.png`, il est dessiné en code par
 ## `Figure` ci-dessous — et c'est ce dessin qui fixe `VISOR` et `CORE`. Une
@@ -22,6 +30,9 @@ const PHASE_HP: Array[float] = [2800.0, 3400.0, 4000.0, 4800.0, 5800.0]
 
 const VISOR := Vector2(0.0, -62.0)
 const CORE := Vector2(0.0, -14.0)
+## Gantelet droit (lame) et épaulières (missiles), calés sur `Figure`.
+const WRIST := Vector2(43.0, 12.0)
+const SHOULDERS: Array[Vector2] = [Vector2(-43.0, -44.0), Vector2(43.0, -44.0)]
 const YELLOW := Color(1.0, 0.86, 0.12)
 const YELLOW_CORE := Color(1.0, 0.97, 0.6)
 
@@ -32,6 +43,12 @@ const SWEEP_INTERVAL := 7.5
 const COLLAPSE_INTERVAL := 5.5
 const CAGE_INTERVAL := 6.0
 const SPIRAL_INTERVAL := 3.2
+const BLADE_INTERVAL := 5.0
+const MISSILE_INTERVAL := 6.5
+const ROBOT_INTERVAL := 10.0
+const ROBOT_CAP := 6
+## Ruée pendant la sortie de la lame, en multiple de la vitesse de marche.
+const LUNGE_SPEED := 3.5
 
 var _visor_cd := 1.5
 var _fan_cd := FAN_INTERVAL
@@ -41,6 +58,10 @@ var _collapse_cd := COLLAPSE_INTERVAL
 var _cage_cd := 2.0
 var _spiral_cd := SPIRAL_INTERVAL
 var _spiral_angle := 0.0
+var _blade_cd := 3.5
+var _missile_cd := 2.0
+var _robot_cd := 1.5
+var _lunge := 0.0
 var _figure: Figure
 
 func configure_boss(tier: int) -> void:
@@ -70,14 +91,27 @@ func _pace() -> float:
 	return 1.0 - 0.1 * phase
 
 func _behaviour(delta: float) -> void:
-	_keep_range(delta, 240.0)
+	if _lunge > 0.0:
+		_lunge -= delta
+		if global_position.distance_to(player.global_position) > 90.0:
+			_chase(delta, speed_mul * LUNGE_SPEED)
+	else:
+		_keep_range(delta, 240.0)
 	if _figure != null:
 		_figure.phase = phase
 	_visor_cd -= delta
 	if _visor_cd <= 0.0:
 		_visor_cd = VISOR_INTERVAL * _pace()
 		_visor_shot()
+	_blade_cd -= delta
+	if _blade_cd <= 0.0:
+		_blade_cd = BLADE_INTERVAL * _pace()
+		_wrist_blade()
 	if phase >= 1:
+		_missile_cd -= delta
+		if _missile_cd <= 0.0:
+			_missile_cd = MISSILE_INTERVAL * _pace()
+			_missile_volley()
 		_fan_cd -= delta
 		if _fan_cd <= 0.0:
 			_fan_cd = FAN_INTERVAL * _pace()
@@ -87,6 +121,10 @@ func _behaviour(delta: float) -> void:
 		if _star_cd <= 0.0:
 			_star_cd = STAR_INTERVAL * _pace()
 			_core_star(8, 0.0)
+		_robot_cd -= delta
+		if _robot_cd <= 0.0:
+			_robot_cd = ROBOT_INTERVAL * _pace()
+			_send_robots()
 	if phase >= 3:
 		_sweep_cd -= delta
 		if _sweep_cd <= 0.0:
@@ -183,6 +221,55 @@ func _core_spiral() -> void:
 			200.0, hit_damage() * 0.3, 8.0, YELLOW, "proj_orb")
 		get_parent().add_child(p)
 
+## Phase 1+ : la lame sort du poignet pendant qu'il fonce, puis fauche.
+func _wrist_blade() -> void:
+	_play_attack()
+	var blade := WristBlade.new()
+	blade.source = self
+	blade.offset = WRIST
+	blade.damage = hit_damage() * 0.7
+	blade.windup = 0.55
+	blade.color = YELLOW
+	get_parent().add_child(blade)
+	_lunge = blade.windup
+
+## Phase 2+ : salve de missiles depuis les épaulières, lancés vers le haut et
+## vers l'extérieur pour qu'ils arrivent en courbe. Un de plus par phase.
+func _missile_volley() -> void:
+	_play_attack()
+	if _figure != null:
+		_figure.launch()
+	var per_side := 1 + phase / 2
+	for s in SHOULDERS.size():
+		var side := -1.0 if s == 0 else 1.0
+		for i in per_side:
+			var m := HomingMissile.new()
+			m.position = global_position + SHOULDERS[s]
+			m.direction = Vector2.UP.rotated(side * (0.5 + 0.35 * i))
+			m.damage = hit_damage() * 0.35
+			m.speed = 220.0 + 15.0 * phase
+			get_parent().add_child(m)
+
+## Phase 3+ : envoie des robots lanceurs de boules de métal, sans dépasser
+## `ROBOT_CAP` en jeu.
+func _send_robots() -> void:
+	var count := mini(2 + phase / 2, ROBOT_CAP - _count_of_type("robot"))
+	if count <= 0:
+		return
+	_play_attack()
+	EventBus.float_text_requested.emit(global_position + Vector2(0, -110), "ROBOTS !", YELLOW)
+	for i in count:
+		var robot := DestroyerRobot.new()
+		robot.configure({
+			"type": "robot", "max_hp": 70.0 + 15.0 * phase, "speed": 75.0,
+			"damage": hit_damage() * 0.2, "radius": 14.0,
+			"color": DestroyerRobot.METAL,
+		})
+		robot.ball_damage = hit_damage() * 0.18
+		robot.position = Level.current.nearest_free(
+			global_position + Vector2.RIGHT.rotated(TAU * i / count + randf() * 0.5) * 100.0)
+		get_parent().add_child(robot)
+
 func die() -> void:
 	if not alive:
 		return
@@ -191,7 +278,12 @@ func die() -> void:
 	# Les rayons et orbes encore en vol ne doivent pas tuer le mech après la
 	# victoire : on les retire avec le boss.
 	for n in get_parent().get_children():
-		if n is LaserBeam or n is EnemyProjectile or n is Telegraph:
+		if n is LaserBeam or n is EnemyProjectile or n is Telegraph \
+				or n is WristBlade or n is HomingMissile:
+			n.queue_free()
+		elif n is DestroyerRobot:
+			# Ses robots s'éteignent avec lui, sans lâcher d'XP.
+			n.alive = false
 			n.queue_free()
 	var gem := GoldenGem.new()
 	gem.position = drop
@@ -215,6 +307,10 @@ class Figure extends Node2D:
 	var _t := 0.0
 	var _visor_glow := 0.0
 	var _core_glow := 0.0
+	var _pods_glow := 0.0
+
+	func launch() -> void:
+		_pods_glow = 0.5
 
 	func charge(visor: bool, duration: float) -> void:
 		if visor:
@@ -226,6 +322,7 @@ class Figure extends Node2D:
 		_t += delta
 		_visor_glow = maxf(0.0, _visor_glow - delta)
 		_core_glow = maxf(0.0, _core_glow - delta)
+		_pods_glow = maxf(0.0, _pods_glow - delta)
 		queue_redraw()
 
 	func _box(x: float, y: float, w: float, h: float, c: Color) -> void:
@@ -265,6 +362,11 @@ class Figure extends Node2D:
 		_box(30, -50 + breathe, 26, 16, SUIT_HI)
 		draw_rect(Rect2(-54, -48 + breathe, 22, 2), TRIM)
 		draw_rect(Rect2(32, -48 + breathe, 22, 2), TRIM)
+		# Lance-missiles des épaulières : trois tubes, qui flambent au tir.
+		var pod_c: Color = TRIM.lerp(glow_col, clampf(_pods_glow * 2.0, 0.0, 1.0))
+		for k in 3:
+			draw_rect(Rect2(-51 + k * 6, -44 + breathe, 4, 4), pod_c)
+			draw_rect(Rect2(35 + k * 6, -44 + breathe, 4, 4), pod_c)
 		# Liserés technologiques du torse.
 		draw_rect(Rect2(-30, -38 + breathe, 2, 46), TRIM)
 		draw_rect(Rect2(28, -38 + breathe, 2, 46), TRIM)
