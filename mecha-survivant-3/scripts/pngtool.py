@@ -31,6 +31,22 @@ def _chunks(data: bytes):
         pos += 12 + length  # longueur + type + données + CRC
 
 
+def _unpack_bits(packed: bytes, width: int, height: int, depth: int) -> bytearray:
+    """Étale des pixels de 1, 2 ou 4 bits (bit de poids fort d'abord) à un
+    octet chacun. Chaque ligne commence sur un octet neuf."""
+    stride = (width * depth + 7) // 8
+    per_byte = 8 // depth
+    mask = (1 << depth) - 1
+    out = bytearray(width * height)
+    for y in range(height):
+        row = packed[y * stride:(y + 1) * stride]
+        for x in range(width):
+            byte = row[x // per_byte]
+            shift = 8 - depth * (x % per_byte + 1)
+            out[y * width + x] = (byte >> shift) & mask
+    return out
+
+
 def _unfilter(raw: bytes, width: int, height: int, bpp: int) -> bytearray:
     """Défiltre les scanlines PNG (filtres 0 à 4, cf. RFC 2083 §6)."""
     stride = width * bpp
@@ -89,8 +105,10 @@ class Image:
             if kind == b"IHDR":
                 width, height, depth, color, _comp, _filt, interlace = struct.unpack(
                     ">IIBBBBB", payload)
-                if depth != 8:
-                    raise PngError(f"profondeur {depth} bits non gérée (8 attendu)")
+                # Moins de 8 bits : palettes et gris compacts (le pack Dungeon
+                # Crawl en compte beaucoup, en palette 4 bits).
+                if depth not in (1, 2, 4, 8) or (depth < 8 and color not in (0, 3)):
+                    raise PngError(f"profondeur {depth} bits non gérée pour le type {color}")
                 if interlace:
                     raise PngError("PNG entrelacé non géré")
             elif kind == b"PLTE":
@@ -107,7 +125,14 @@ class Image:
         channels = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}.get(color)
         if channels is None:
             raise PngError(f"type de couleur {color} non géré")
-        raw = _unfilter(zlib.decompress(bytes(idat)), width, height, channels)
+        if depth == 8:
+            raw = _unfilter(zlib.decompress(bytes(idat)), width, height, channels)
+        else:
+            raw = _unpack_bits(_unfilter(zlib.decompress(bytes(idat)),
+                (width * depth + 7) // 8, height, 1), width, height, depth)
+            if color == 0:  # gris compact : on étale sur 0-255
+                scale = 255 // ((1 << depth) - 1)
+                raw = bytearray(v * scale for v in raw)
 
         img = cls(width, height)
         px = img.pixels

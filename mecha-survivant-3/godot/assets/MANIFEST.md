@@ -27,7 +27,7 @@ et là qu'il faudrait le changer si une planche livrée s'organisait autrement.
 
 | Fichier | Tuile | Cases | Découpage |
 | --- | --- | --- | --- |
-| `player_mech.png` | 48×48 | 13 | `idle` 0-3, `walk` 4-9, `dash` 10-12 |
+| `player_mech.png` | 64×64 | 13 | `idle` 0-3, `walk` 4-9, `dash` 10-12 |
 | `enemy_zombie.png` | 32×32 | 8 | `walk` 0-3, `death` 4-7 |
 | `enemy_skeleton.png` | 32×32 | 8 | `walk` 0-3, `death` 4-7 |
 | `enemy_risen.png` | 32×32 | 8 | `walk` 0-3, `death` 4-7 |
@@ -76,7 +76,16 @@ ils sont dessinés, quelle que soit leur direction de déplacement. Conséquence
 accepter ou à corriger un jour dans le code : la flèche de squelette pointera
 toujours du même côté.
 
-**Direction artistique** — donjon de morts-vivants, palette froide et
+**v3 : mech, ennemis et boss viennent de Dungeon Crawl Stone Soup** (CC0,
+licence dans `assets/DCSS-LICENSE.txt`), produits par `scripts/import-dcss.py`
+depuis le zip d'OpenGameArt. Le pack ne fournit qu'une image de 32 px par
+monstre : les cases d'animation en sont dérivées par le script, et les tailles
+de case ci-dessus sont des multiples entiers de 32 (mech ×2, boss ×3 à ×5)
+pour garder le pixel art net. C'est pourquoi le mech passe de 48 à 64 px.
+Le Destructeur d'univers reste dessiné en code ; les boss retirés, les
+projectiles, les effets et le décor sont ceux de la v2.
+
+**Direction artistique** (v2) — donjon de morts-vivants, palette froide et
 désaturée (bleus-gris, verts putrides), le mech du joueur en cyan lumineux
 tranchant sur le fond, les boss en rouge/violet.
 

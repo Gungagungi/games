@@ -49,12 +49,33 @@ capture (`--no-step`), où une erreur de shader remonterait en console.
 
 ### Sprites du mech et des monstres
 
-**Pas encore refaits** : les planches sont celles de la v2. La piste des packs
-libres CC0 a été explorée sans succès pour le mech — rien de publié n'est vu
-de dessus et animé — et les packs de monstres trouvés sont en vue de face
-JRPG, sans animation de mort, ou de styles disparates. Le contrat avec le
-moteur reste `SHEETS` et `assets/MANIFEST.md` : une nouvelle planche déposée
-au bon nom et au bon découpage se branche sans toucher au code.
+Ils viennent de **Dungeon Crawl Stone Soup** (CC0, 32×32, plus de 6 000
+tuiles, [OpenGameArt](https://opengameart.org/content/dungeon-crawl-32x32-tiles)),
+choisi parce qu'il couvre tout le casting dans un style unique — aucun autre
+pack libre ne le faisait, et aucun n'avait de mech vu de dessus. Le mech
+devient le golem gardien (teinté cyan), le squelette de feu est le squelette
+ordinaire passé au dégradé du feu, le faux Titan est la faucheuse.
+
+`scripts/import-dcss.py <zip>` produit les douze planches. Le zip (5,7 Mo)
+n'est pas versionné ; seules les planches le sont. Trois choses à savoir :
+
+- **Une image par monstre, pas d'animation.** Le script dérive les cases
+  attendues par `SHEETS` de cette image unique — balancement, cisaillement qui
+  laisse les pieds en place, enfoncement et fondu pour la mort,
+  éclaircissement pour l'attaque —, au pixel près sur la source de 32 px
+  **avant** agrandissement. Le reste du mouvement vient du juice (écrasement,
+  recul, dissolution). Le compte de cases distinctes est donc plus bas que le
+  nombre de cases, par construction : 6 sur 8 pour un boss, 7 sur 8 pour un
+  ennemi.
+- **Agrandissement entier seulement** : mech ×2 (64 px, contre 48 en v2),
+  boss ×3 (96), Boss Galaxie ×4 (128), faux Titan ×5 (160). Les boss sont
+  donc plus « gros pixels » que les ennemis — limite assumée d'un pack en
+  32 px.
+- **Beaucoup de PNG du pack sont en palette 4 bits** : `pngtool.py` a été
+  étendu pour lire les profondeurs 1, 2 et 4 bits.
+
+Changer un monstre, c'est changer son chemin dans `PLANCHES` du script et
+relancer ; les tailles de case sont le contrat avec `assets/MANIFEST.md`.
 
 ## Écarts assumés avec la convention du dépôt
 
@@ -83,6 +104,7 @@ scripts/gen-sprites.py     # génère les planches de sprites (voir « Assets »
 scripts/gen-audio.py       # génère bruitages et musiques (voir « Audio »)
 scripts/preview-sheet.py   # agrandit une planche, case par case, pour la relire
 scripts/import-kenney.py   # découpe le décor dans les packs Kenney (voir « Le niveau »)
+scripts/import-dcss.py     # planches du mech, des ennemis et des boss (v3, voir « Refonte v3 »)
 scripts/gen-version.sh     # écrit godot/version.txt (branche@hash), voir « Version »
 ```
 
