@@ -14,7 +14,8 @@ extends RefCounted
 ##   projette ; brouillard sur toute l'arène, qui le rend invisible 5 s ;
 ## - Golem de sang : morsure à distance (des mâchoires se referment sur le
 ##   héros et le soignent), et éclaboussures qui laissent des flaques brûlantes ;
-## - Créature infernale : vague de feu qui déferle en ligne droite et enflamme ;
+## - Créature infernale : vague de feu qui déferle en ligne droite et enflamme,
+##   et plongeon : elle s'envole, puis pique sur le héros, épée ardente en avant ;
 ## - Mangeur de soldats : il bondit, saisit le héros, le croque trois fois puis
 ##   le projette à l'autre bout de l'arène ;
 ## - Soldat blessé : gerbe d'épées lancées, coup de bouclier qui repousse ;
@@ -35,7 +36,7 @@ const MOVES := {
 	"sang": ["bite", "splash"],
 	"violence": ["swords", "shield"],
 	"terre": ["roots", "treefall"],
-	"feu": ["firewave"],
+	"feu": ["firewave", "plunge"],
 	"destruction": ["devour"],
 	"ombre": ["headbutt"],
 	"final_ombre": ["staff", "raise", "souls"],
@@ -45,7 +46,7 @@ const REACH := {
 	"breath": 250.0, "bite": 420.0, "splash": 400.0, "firewave": 380.0,
 	"devour": 300.0, "swords": 420.0, "shield": 130.0, "roots": 380.0,
 	"treefall": 460.0, "headbutt": 300.0, "staff": 150.0, "raise": INF,
-	"tornado": 380.0, "fog": 450.0, "souls": 520.0,
+	"tornado": 380.0, "fog": 450.0, "souls": 520.0, "plunge": 440.0,
 }
 
 const BREATH_AIM := 36
@@ -105,6 +106,20 @@ const WAVE_SPEED := 7.0
 const WAVE_HALF_MIN := 40.0
 const WAVE_HALF_MAX := 170.0
 const WAVE_DEPTH := 18.0
+
+## Plongeon de la Créature infernale : elle se ramasse, déploie ses ailes et
+## s'élève, plane le temps que sa cible au sol suive le héros puis se fige,
+## et pique dessus.
+const PLUNGE_AIM := 24
+const PLUNGE_RISE := 22
+const PLUNGE_HOVER := 30
+## Dernières frames du vol plané : la cible ne bouge plus.
+const PLUNGE_LOCK := 14
+const PLUNGE_DIVE := 10
+## Épée plantée dans le sol, le temps que l'anneau de feu s'éteigne.
+const PLUNGE_STRIKE := 26
+const PLUNGE_HEIGHT := 240.0
+const PLUNGE_R := 66.0
 
 const DEVOUR_AIM := 40
 const DEVOUR_LUNGE := 20
@@ -272,6 +287,12 @@ static func _begin(w: World, e: Enemy, move: String) -> void:
 		"firewave":
 			_start(e, "firewave_aim", WAVE_AIM)
 			Audio.sfx("boss_charge", 0.9)
+		"plunge":
+			# Dans le Conclave, le boss de l'infobulle est figé : il retombe sur
+			# place au lieu de viser le héros.
+			e.sp_origin = e.position if w.inspected_boss() == e else _inside(p.position, e.radius)
+			_start(e, "plunge_aim", PLUNGE_AIM)
+			Audio.sfx("boss_charge", 0.8)
 		"devour":
 			_start(e, "devour_aim", DEVOUR_AIM)
 			Audio.sfx("boss_charge", 0.6)
@@ -443,6 +464,48 @@ static func tick(w: World, e: Enemy) -> void:
 					_hurt(w, e, 1.2)
 					if World.harms_player():
 						p.burn_timer = 120
+			if e.sp_timer <= 0:
+				_end(e)
+		"plunge_aim":
+			if e.sp_timer <= 0:
+				_start(e, "plunge_rise", PLUNGE_RISE)
+				Audio.sfx("throw", 0.5)
+				Fx.puff(w.fx_layer, e.position + Vector2(0, e.top() * 0.6), Color(0.35, 0.3, 0.28), 1.6)
+		"plunge_rise", "plunge_hover":
+			if e.sp_attack == "plunge_rise":
+				var f := 1.0 - float(e.sp_timer) / PLUNGE_RISE
+				e.nm_height = PLUNGE_HEIGHT * (1.0 - (1.0 - f) * (1.0 - f))
+			else:
+				e.nm_height = PLUNGE_HEIGHT + sin(e.sp_age * 0.3) * 6.0
+			if w.inspected_boss() == e:
+				e.sp_origin = e.position
+			elif e.sp_attack == "plunge_rise" or e.sp_timer > PLUNGE_LOCK:
+				e.sp_origin = e.sp_origin.lerp(_inside(p.position, e.radius), 0.14)
+			if e.sp_timer <= 0:
+				if e.sp_attack == "plunge_rise":
+					_start(e, "plunge_hover", PLUNGE_HOVER)
+				else:
+					e.sp_points.assign([e.position])
+					_start(e, "plunge_dive", PLUNGE_DIVE)
+					Audio.sfx("boss_charge", 1.5)
+		"plunge_dive":
+			var f := 1.0 - float(e.sp_timer) / PLUNGE_DIVE
+			e.position = e.sp_points[0].lerp(e.sp_origin, f * f)
+			e.nm_height = PLUNGE_HEIGHT * (1.0 - f * f)
+			if e.sp_timer <= 0:
+				e.position = e.sp_origin
+				e.nm_height = 0.0
+				_start(e, "plunge_strike", PLUNGE_STRIKE)
+				w.shake(9.0)
+				Audio.sfx("hit_enemy", 0.4)
+				Audio.sfx("attack", 0.5)
+				Fx.puff(w.fx_layer, e.position, Color(1, 0.45, 0.05), 2.6)
+				Fx.sparks(w.fx_layer, e.position, Color(1, 0.75, 0.2))
+				if p.position.distance_to(e.position) < PLUNGE_R + p.radius * 0.5:
+					_hurt(w, e, 1.6)
+					if World.harms_player():
+						p.burn_timer = 120
+		"plunge_strike":
 			if e.sp_timer <= 0:
 				_end(e)
 		"devour_aim":
@@ -667,6 +730,7 @@ static func _start(e: Enemy, attack: String, frames: int) -> void:
 
 static func _end(e: Enemy) -> void:
 	e.sp_attack = ""
+	e.nm_height = 0.0
 	e.sp_cooldown = (130 if e.is_final else 170) + randi() % 90
 
 static func _hurt(w: World, e: Enemy, mult: float) -> void:
@@ -774,6 +838,27 @@ class Visual extends Node2D:
 					_chevron(c, e.sp_dir, 16.0, Color(1, 0.6, 0.1, 0.6))
 			"firewave":
 				_wedge(e.sp_origin, e.sp_dir, BossMoves.wave_dist(e), BossMoves.WAVE_HALF_MIN, BossMoves.wave_half(e), Color(1, 0.3, 0.02, 0.1))
+			"plunge_aim", "plunge_rise", "plunge_hover", "plunge_dive":
+				# Cible au sol : elle suit le héros, puis se fige et clignote.
+				var locked := e.sp_attack == "plunge_dive" or (e.sp_attack == "plunge_hover" and k <= BossMoves.PLUNGE_LOCK)
+				var r := BossMoves.PLUNGE_R
+				var grow := 1.0 if e.sp_attack != "plunge_aim" else 1.0 - k / BossMoves.PLUNGE_AIM
+				var fire := Color(1, 0.4, 0.05)
+				draw_circle(e.sp_origin, r * grow, Color(fire, 0.1 + (0.18 * blink if locked else 0.05)))
+				draw_arc(e.sp_origin, r, 0.0, TAU, 48, Color(1, 0.6, 0.15, 0.9 if locked else 0.45), 3.0 if locked else 2.0)
+				for i in 4:
+					var a := TAU * i / 4.0 + (0.0 if locked else _t * 2.0)
+					var d := Vector2.from_angle(a)
+					draw_line(e.sp_origin + d * r * 0.35, e.sp_origin + d * r * 0.75, Color(1, 0.6, 0.15, 0.7), 2.5)
+			"plunge_strike":
+				var f := 1.0 - k / BossMoves.PLUNGE_STRIKE
+				var fade := 1.0 - f
+				draw_circle(e.position, BossMoves.PLUNGE_R * 0.8, Color(0.08, 0.03, 0.02, 0.55 * fade))
+				for j in 7:
+					var a := TAU * j / 7.0 + 0.4
+					var d := Vector2.from_angle(a)
+					draw_polyline(PackedVector2Array([e.position + d * 10.0, e.position + d * 30.0 + d.orthogonal() * 6.0, e.position + d * BossMoves.PLUNGE_R * 0.9]), Color(1, 0.45, 0.05, 0.8 * fade), 2.5)
+				draw_arc(e.position, BossMoves.PLUNGE_R * (0.6 + 1.4 * f), 0.0, TAU, 56, Color(1, 0.5, 0.1, 0.7 * fade), 10.0 * fade + 2.0)
 			"devour_aim":
 				_band(e.position, e.sp_dir, BossMoves.DEVOUR_SPEED * BossMoves.DEVOUR_LUNGE + e.radius, e.radius, Color(col, 0.12 + 0.12 * blink))
 			"shield_aim":
@@ -868,6 +953,21 @@ class Visual extends Node2D:
 					draw_circle(pos + Vector2(-2, -2), 3.0, Color(1, 0.4, 0.4))
 			"firewave":
 				_flames(e)
+			"plunge_dive":
+				# Traînée de feu derrière la Créature infernale qui pique.
+				var body := e.position + Vector2(0, -e.nm_height)
+				var from: Vector2 = e.sp_points[0] + Vector2(0, -BossMoves.PLUNGE_HEIGHT) if not e.sp_points.is_empty() else body
+				draw_line(from.lerp(body, 0.4), body, Color(1, 0.4, 0.05, 0.35), 34.0)
+				draw_line(from.lerp(body, 0.7), body, Color(1, 0.8, 0.3, 0.6), 12.0)
+			"plunge_strike":
+				var f := 1.0 - k / BossMoves.PLUNGE_STRIKE
+				var r := BossMoves.PLUNGE_R * (0.6 + 1.4 * f)
+				for i in 16:
+					var d := Vector2.from_angle(TAU * i / 16.0)
+					var base := e.position + Vector2(d.x, d.y * 0.6) * r
+					var h := (24.0 + 10.0 * sin(_t * 20.0 + i)) * (1.0 - f)
+					draw_colored_polygon(PackedVector2Array([base + Vector2(-8, 0), base + Vector2(8, 0), base + Vector2(0, -h)]), Color(1, 0.45, 0.05, 0.85 * (1.0 - f)))
+					draw_colored_polygon(PackedVector2Array([base + Vector2(-4, 0), base + Vector2(4, 0), base + Vector2(0, -h * 0.55)]), Color(1, 0.9, 0.35, 0.9 * (1.0 - f)))
 			"devour_hold":
 				var phase := float(e.sp_age % BossMoves.DEVOUR_BITE) / BossMoves.DEVOUR_BITE
 				_jaws(e.position + BossMoves.mouth(e), 26.0 * absf(cos(phase * PI)), 30.0, 1.0)

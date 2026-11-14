@@ -48,7 +48,8 @@ var nm_dir := Vector2.RIGHT
 var nm_lash: Array[Vector2] = []
 var nm_from := Vector2.ZERO
 var nm_target := Vector2.ZERO
-## Hauteur du saut : décale le sprite, pas la position au sol.
+## Hauteur du saut (ou du plongeon de la Créature infernale) : décale le
+## sprite, pas la position au sol.
 var nm_height := 0.0
 var nm_splits := 0
 var nm_slide := Vector2.ZERO
@@ -105,6 +106,10 @@ func _ready() -> void:
 	if is_boss or is_clone or is_soul or element in ["feu", "ombre", "destruction"]:
 		_light = Fx.light(glow, 0.7 * sprite_scale, 0.8)
 		add_child(_light)
+	var balrog := is_boss and element == "feu" and not is_final
+	if balrog:
+		# Ailes et crinière derrière le sprite, épée devant.
+		_add_balrog_fx(false)
 	_sprite = Sprite2D.new()
 	_sprite.texture = load("res://assets/sprites/monsters/%s.png" % key)
 	_sprite.material = _mat
@@ -115,6 +120,8 @@ func _ready() -> void:
 		_sprite.modulate = Color(0.8, 0.75, 1.0, 0.78)
 	elif is_soul:
 		_sprite.modulate = Color(1, 1, 1, 0.85)
+	if balrog:
+		_add_balrog_fx(true)
 	_aura = Fx.element_aura(element, sprite_scale)
 	add_child(_aura)
 	if Nightmare.handles(self):
@@ -129,6 +136,13 @@ func _ready() -> void:
 		beam.material = Fx.additive()
 		beam.z_index = 6
 		add_child(beam)
+
+func _add_balrog_fx(front: bool) -> void:
+	var fx := BalrogFx.new()
+	fx.enemy = self
+	fx.front = front
+	fx.material = Fx.unshaded()
+	add_child(fx)
 
 func top() -> float:
 	return 14.0 * sprite_scale
@@ -149,6 +163,7 @@ func tentacle_root() -> Vector2:
 func die() -> void:
 	_dying = 0.001
 	nm_attack = ""
+	nm_height = 0.0
 	sp_attack = ""
 	puddles.clear()
 	# Le brouillard tombe avec lui : on le voit se dissoudre.
@@ -203,6 +218,11 @@ func _process(delta: float) -> void:
 		if sp_attack == "splash_aim":
 			swell += 0.15 * (1.0 - float(sp_timer) / BossMoves.SPLASH_AIM)
 		_sprite.scale = Vector2.ONE * sprite_scale * swell
+		if sp_attack == "plunge_aim":
+			# La Créature infernale se ramasse avant de s'envoler.
+			var f := 1.0 - float(sp_timer) / BossMoves.PLUNGE_AIM
+			_sprite.scale = Vector2(1.0 + 0.1 * f, 1.0 - 0.14 * f) * sprite_scale
+			_sprite.position.y += 0.14 * f * 16.0 * sprite_scale
 		if _light:
 			_light.energy = 1.4
 	else:
@@ -387,3 +407,131 @@ class NightmareFx extends Node2D:
 		var n := int(a.distance_to(b) / 18.0)
 		for i in range(0, n, 2):
 			draw_line(a.lerp(b, float(i) / n), a.lerp(b, float(i + 1) / n), col, width)
+
+## Créature infernale (boss Feu), dessinée en balrog : ailes de ténèbres
+## bordées de feu et crinière de flammes derrière le sprite, épée ardente devant. Le sprite du pack est une
+## image fixe : tout le reste est dessiné ici et suit son balancement, sa
+## hauteur de vol (`nm_height`) et son plongeon (`BossMoves`). En texels du
+## sprite 32×32, multipliés par `sprite_scale`.
+class BalrogFx extends Node2D:
+	const SWORD := preload("res://assets/sprites/fx/fire_sword.png")
+	## Poignée de l'épée sur l'icône : la lame part vers le haut à gauche.
+	const GRIP := Vector2(23, 23)
+	const SWORD_SCALE := 2.6
+	const MEMBRANE := Color(0.09, 0.02, 0.02, 0.94)
+	const BONE := Color(0.32, 0.07, 0.03)
+	const FIRE := Color(1.0, 0.38, 0.05)
+	const FLARE := Color(1.0, 0.85, 0.3)
+	## Aile droite repliée : épaule, coude, pointe, puis le bord festonné.
+	const WING := [Vector2(3, -6), Vector2(13, -17), Vector2(25, -13), Vector2(21, -7),
+		Vector2(23, -1), Vector2(18, -3), Vector2(17, 3), Vector2(13, -1), Vector2(10, 2), Vector2(6, -1)]
+	## Doigts de l'aile, du coude vers le bord.
+	const FINGERS := [2, 4, 6, 8]
+	var enemy: Enemy
+	var front := false
+	var _t := 0.0
+
+	func _process(delta: float) -> void:
+		_t += delta
+		queue_redraw()
+
+	func _draw() -> void:
+		var e := enemy
+		var alpha := 1.0 - clampf(e._dying / Enemy.DISSOLVE_TIME, 0.0, 1.0)
+		if alpha <= 0.0:
+			return
+		modulate.a = alpha
+		if front:
+			_draw_sword(e)
+		else:
+			_draw_wings(e)
+			_draw_mane(e)
+
+	## Battement : lent au repos, ample en vol.
+	func _flap(e: Enemy) -> float:
+		match e.sp_attack:
+			"plunge_aim":
+				return -0.35 * (1.0 - float(e.sp_timer) / BossMoves.PLUNGE_AIM)
+			"plunge_rise", "plunge_hover":
+				return sin(_t * 11.0) * 0.4
+			"plunge_dive":
+				return 0.45
+		return sin(_t * 2.6) * 0.1
+
+	func _spread(e: Enemy) -> float:
+		return 1.25 if e.sp_attack.begins_with("plunge") and e.sp_attack != "plunge_strike" else 1.1
+
+	func _draw_wings(e: Enemy) -> void:
+		var k := e.sprite_scale
+		var base := e._sprite.position
+		var flap := _flap(e)
+		var spread := _spread(e)
+		for s: float in [-1.0, 1.0]:
+			var shoulder := base + Vector2(s * WING[0].x, WING[0].y) * k
+			var pts := PackedVector2Array()
+			for v: Vector2 in WING:
+				var rel := (Vector2(s * v.x, v.y) - Vector2(s * WING[0].x, WING[0].y)) * k * spread
+				pts.append(shoulder + rel.rotated(s * flap))
+			draw_colored_polygon(pts, MEMBRANE)
+			for i: int in FINGERS:
+				draw_line(pts[1], pts[i], BONE, 2.5)
+			draw_line(pts[0], pts[1], BONE, 4.0)
+			draw_line(pts[1], pts[2], BONE, 3.0)
+			var rim := pts.duplicate()
+			rim.append(pts[0])
+			var pulse := 0.6 + 0.4 * sin(_t * 9.0 + s)
+			draw_polyline(rim, Color(FIRE, 0.75 * pulse), 2.5)
+			# Langues de feu le long du bord d'attaque.
+			for j in 7:
+				var f := (j + 0.5) / 7.0
+				var at := pts[0].lerp(pts[1], f * 2.0) if f < 0.5 else pts[1].lerp(pts[2], f * 2.0 - 1.0)
+				var h := (7.0 + 5.0 * sin(_t * 17.0 + j * 2.1 + s * 3.0)) * k * 0.45
+				_tongue(at, h, 4.0 * k * 0.4, 0.8)
+
+	## Crinière de flammes qui monte derrière la tête et les cornes.
+	func _draw_mane(e: Enemy) -> void:
+		var k := e.sprite_scale
+		var head := e._sprite.position + Vector2(0, -11) * k
+		for j in 9:
+			var x := (j - 4.0) * 1.6 * k
+			var h := (9.0 + 4.0 * sin(_t * 13.0 + j * 1.3) + 3.0 * sin(_t * 7.0 + j)) * k * (1.0 - absf(j - 4.0) * 0.1)
+			_tongue(head + Vector2(x, absf(j - 4.0) * 1.2 * k), h, 2.2 * k, 0.9)
+
+	func _tongue(at: Vector2, h: float, w: float, a: float) -> void:
+		var sway := sin(_t * 6.0 + at.x * 0.05) * w * 0.6
+		draw_colored_polygon(PackedVector2Array([at + Vector2(-w, 0), at + Vector2(w, 0), at + Vector2(sway, -h)]), Color(FIRE, 0.85 * a))
+		draw_colored_polygon(PackedVector2Array([at + Vector2(-w * 0.5, 0), at + Vector2(w * 0.5, 0), at + Vector2(sway * 0.6, -h * 0.55)]), Color(FLARE, 0.9 * a))
+
+	## Épée ardente : levée au repos, brandie au-dessus de la tête avant le
+	## plongeon, pointe en bas pendant la chute, plantée dans le sol à l'impact.
+	func _draw_sword(e: Enemy) -> void:
+		var k := e.sprite_scale
+		var side := -1.0 if e.face_left else 1.0
+		var hand := e._sprite.position + Vector2(side * 10.0, 5.0) * k
+		var dir := Vector2.from_angle(-PI / 2.0 + side * (0.55 + sin(_t * 2.2) * 0.08))
+		match e.sp_attack:
+			"plunge_aim", "plunge_rise", "plunge_hover":
+				hand = e._sprite.position + Vector2(side * 6.0, -6.0) * k
+				dir = Vector2.from_angle(-PI / 2.0 + side * (0.15 + sin(_t * 8.0) * 0.06))
+			"plunge_dive":
+				hand = e._sprite.position + Vector2(side * 3.0, 6.0) * k
+				dir = Vector2.DOWN
+			"plunge_strike":
+				# Lame enfoncée dans le sol devant lui, garde à hauteur de main.
+				hand = e._sprite.position + Vector2(side * 9.0, 2.0) * k
+				dir = Vector2.DOWN.rotated(-side * 0.12)
+		var glow := 0.55 + 0.25 * sin(_t * 14.0)
+		var blade := SWORD.get_size().length() * 0.62 * SWORD_SCALE
+		for i in 5:
+			var pos := hand + dir * blade * (0.25 + 0.17 * i)
+			draw_circle(pos, (11.0 - i) * 1.4, Color(FIRE, 0.18 * glow))
+		draw_set_transform(hand, dir.angle() + 3.0 * PI / 4.0, Vector2.ONE * SWORD_SCALE)
+		draw_texture(SWORD, -GRIP)
+		draw_set_transform(Vector2.ZERO)
+		for i in 3:
+			var f := fposmod(_t * 2.5 + i / 3.0, 1.0)
+			var pos := hand + dir * blade * lerpf(0.3, 1.0, _hash(i + floorf(_t * 2.5 + i / 3.0)))
+			_tongue(pos + Vector2(0, -f * 10.0), 10.0 * (1.0 - f) + 4.0, 3.0, 1.0 - f)
+
+	static func _hash(x: float) -> float:
+		return fposmod(sin(x * 12.9898) * 43758.5453, 1.0)
