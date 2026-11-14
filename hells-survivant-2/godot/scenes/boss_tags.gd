@@ -43,7 +43,8 @@ func _draw() -> void:
 	if world == null or not Game.boss_rush:
 		return
 	for e in world.enemies:
-		if not e.is_boss:
+		# Dans son brouillard, le Chevalier de cendres perd aussi nom et barre.
+		if not e.is_boss or e.fog_timer > 0:
 			continue
 		var label := World.boss_name(e)
 		var w := 30.0 * e.sprite_scale
