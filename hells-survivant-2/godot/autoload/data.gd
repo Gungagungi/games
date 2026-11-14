@@ -78,7 +78,7 @@ const BOSS_NAMES := {
 	"sang": "Golem de sang",
 	"violence": "Soldat blessé",
 	"terre": "Voix Putréfiée",
-	"feu": "Balrog des abîmes",
+	"feu": "Créature infernale",
 	"destruction": "Mangeur de soldats",
 	"ombre": "Sbire de l'ombre",
 }

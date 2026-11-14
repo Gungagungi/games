@@ -191,7 +191,7 @@ garde les siennes, dans `Nightmare`.
 | --- | --- |
 | Chevalier de cendres | **souffle** de cendres en cône, qui suit lentement le héros |
 | Golem de sang | **morsure** à distance (des mâchoires se referment sur la position du héros, figée un instant avant, et le soignent) ; **éclaboussures** : cinq gerbes autour du héros, qui laissent des flaques brûlantes 4 s |
-| Balrog des abîmes | **vague de feu** en ligne droite, qui s'élargit en avançant et enflamme ; **plongeon** : il s'envole (`Enemy.nm_height`), une cible au sol suit le héros puis se fige, et il pique dessus épée ardente en avant (dégâts ×1,6 et brûlure dans `PLUNGE_R`). Dans le Conclave, le boss de l'infobulle retombe sur place |
+| Créature infernale | **vague de feu** en ligne droite, qui s'élargit en avançant et enflamme ; **plongeon** : elle s'envole (`Enemy.nm_height`), une cible au sol suit le héros puis se fige, et elle pique dessus épée ardente en avant (dégâts ×1,6 et brûlure dans `PLUNGE_R`). Dans le Conclave, le boss de l'infobulle retombe sur place |
 | Mangeur de soldats | **dévoreur** : il bondit, saisit le héros (`Player.held_by`), le croque trois fois, puis le projette à l'autre bout de l'arène (même point d'arrivée que le champ de force, `Nightmare.knock_target`) |
 | Soldat blessé | **gerbe d'épées** (cinq projectiles `Projectile.sword`) ; **coup de bouclier** au contact, qui repousse |
 | Voix Putréfiée | **arbres** qui jaillissent du sol en ligne jusqu'au héros, puis le fouettent de leurs branches ; **arbre abattu** : il pousse près du héros et s'abat sur lui |
@@ -208,7 +208,7 @@ garde les siennes, dans `Nightmare`.
   bande, trapèze, ombre de l'arbre), le temps de s'écarter.
 - **Un coup par attaque** : une ligne d'arbres ne blesse qu'une fois au
   jaillissement et une fois aux branches (`sp_hit`, `sp_hit2`).
-- **Balrog des abîmes** (boss Feu) : le sprite `balrug` reste, mais
+- **Créature infernale en balrog** (boss Feu) : le sprite `balrug` reste, mais
   `Enemy.BalrogFx` dessine par-dessus en code ses ailes de ténèbres bordées de
   feu (qui battent, et s'ouvrent en vol), une crinière de flammes derrière la
   tête et une épée ardente (`fx/fire_sword`) qui suit l'attaque : levée,

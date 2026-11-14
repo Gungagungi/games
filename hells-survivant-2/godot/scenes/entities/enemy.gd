@@ -44,8 +44,8 @@ var nm_dir := Vector2.RIGHT
 var nm_lash: Array[Vector2] = []
 var nm_from := Vector2.ZERO
 var nm_target := Vector2.ZERO
-## Hauteur du saut (ou du plongeon du Balrog) : décale le sprite, pas la
-## position au sol.
+## Hauteur du saut (ou du plongeon de la Créature infernale) : décale le
+## sprite, pas la position au sol.
 var nm_height := 0.0
 var nm_splits := 0
 var nm_slide := Vector2.ZERO
@@ -189,7 +189,7 @@ func _process(delta: float) -> void:
 			swell += 0.15 * (1.0 - float(sp_timer) / BossMoves.SPLASH_AIM)
 		_sprite.scale = Vector2.ONE * sprite_scale * swell
 		if sp_attack == "plunge_aim":
-			# Le Balrog se ramasse avant de s'envoler.
+			# La Créature infernale se ramasse avant de s'envoler.
 			var f := 1.0 - float(sp_timer) / BossMoves.PLUNGE_AIM
 			_sprite.scale = Vector2(1.0 + 0.1 * f, 1.0 - 0.14 * f) * sprite_scale
 			_sprite.position.y += 0.14 * f * 16.0 * sprite_scale
@@ -330,8 +330,8 @@ class NightmareFx extends Node2D:
 		for i in range(0, n, 2):
 			draw_line(a.lerp(b, float(i) / n), a.lerp(b, float(i + 1) / n), col, width)
 
-## Balrog des abîmes (boss Feu) : ailes de ténèbres bordées de feu et crinière
-## de flammes derrière le sprite, épée ardente devant. Le sprite du pack est une
+## Créature infernale (boss Feu), dessinée en balrog : ailes de ténèbres
+## bordées de feu et crinière de flammes derrière le sprite, épée ardente devant. Le sprite du pack est une
 ## image fixe : tout le reste est dessiné ici et suit son balancement, sa
 ## hauteur de vol (`nm_height`) et son plongeon (`BossMoves`). En texels du
 ## sprite 32×32, multipliés par `sprite_scale`.

@@ -12,8 +12,8 @@ extends RefCounted
 ## - Chevalier de cendres : souffle de cendres en cône, qui suit lentement le héros ;
 ## - Golem de sang : morsure à distance (des mâchoires se referment sur le
 ##   héros et le soignent), et éclaboussures qui laissent des flaques brûlantes ;
-## - Balrog des abîmes : vague de feu qui déferle en ligne droite et enflamme,
-##   et plongeon : il s'envole, puis pique sur le héros, épée ardente en avant ;
+## - Créature infernale : vague de feu qui déferle en ligne droite et enflamme,
+##   et plongeon : elle s'envole, puis pique sur le héros, épée ardente en avant ;
 ## - Mangeur de soldats : il bondit, saisit le héros, le croque trois fois puis
 ##   le projette à l'autre bout de l'arène ;
 ## - Soldat blessé : gerbe d'épées lancées, coup de bouclier qui repousse ;
@@ -78,8 +78,9 @@ const WAVE_HALF_MIN := 40.0
 const WAVE_HALF_MAX := 170.0
 const WAVE_DEPTH := 18.0
 
-## Plongeon du Balrog : il se ramasse, déploie ses ailes et s'élève, plane le
-## temps que sa cible au sol suive le héros puis se fige, et pique dessus.
+## Plongeon de la Créature infernale : elle se ramasse, déploie ses ailes et
+## s'élève, plane le temps que sa cible au sol suive le héros puis se fige,
+## et pique dessus.
 const PLUNGE_AIM := 24
 const PLUNGE_RISE := 22
 const PLUNGE_HOVER := 30
@@ -761,7 +762,7 @@ class Visual extends Node2D:
 			"firewave":
 				_flames(e)
 			"plunge_dive":
-				# Traînée de feu derrière le Balrog qui pique.
+				# Traînée de feu derrière la Créature infernale qui pique.
 				var body := e.position + Vector2(0, -e.nm_height)
 				var from: Vector2 = e.sp_points[0] + Vector2(0, -BossMoves.PLUNGE_HEIGHT) if not e.sp_points.is_empty() else body
 				draw_line(from.lerp(body, 0.4), body, Color(1, 0.4, 0.05, 0.35), 34.0)
