@@ -31,6 +31,8 @@ extends BossBase
 ## planche déposée plus tard devra placer visière et symbole aux mêmes hauteurs.
 
 const PHASE_HP: Array[float] = [2800.0, 3400.0, 4000.0, 4800.0, 5800.0]
+## Raccourci « PHASE 5 » de l'écran-titre : part de la barre restante.
+const FINAL_PHASE_HP_RATIO := 0.01
 
 const VISOR := Vector2(0.0, -62.0)
 const CORE := Vector2(0.0, -14.0)
@@ -73,6 +75,7 @@ var _robot_cd := 1.5
 var _lunge := 0.0
 var _potion_cd := POTION_INTERVAL
 var _figure: Figure
+var _final_shortcut := false
 
 func configure_boss(tier: int) -> void:
 	super(tier)
@@ -84,6 +87,28 @@ func configure_boss(tier: int) -> void:
 	max_hp = phase_hp[0]
 	hp = max_hp
 
+## Raccourci de test, appelé **avant** l'entrée dans l'arbre : dernière phase
+## d'emblée, avec les multiplicateurs qu'auraient laissés les quatre passages
+## de phase (`advance_phase()`), et 1 % de la barre. Pour voir les attaques
+## finales sans livrer tout le combat, et l'achever en deux ou trois tirs.
+func skip_to_final_phase() -> void:
+	_final_shortcut = true
+	var skipped := phase_count() - 1 - phase
+	phase = phase_count() - 1
+	speed_mul += 0.15 * skipped
+	damage_mul += 0.2 * skipped
+	max_hp = phase_hp[phase]
+	hp = max_hp * FINAL_PHASE_HP_RATIO
+
+## `BossBase._ready()` affiche une barre pleine : le raccourci la corrige.
+func _ready() -> void:
+	super()
+	if _final_shortcut:
+		EventBus.boss_hp_changed.emit(hp / max_hp)
+		if GameState.smoke_test:
+			print("[smoke] %s : raccourci phase %d/%d, %.0f PV"
+				% [display_name, phase + 1, phase_count(), hp])
+
 ## Sans planche, pas de disque de secours : la silhouette est dessinée par
 ## `Figure`, enfant du visuel pour hériter de son flash d'impact.
 func _shape_kind() -> String:
@@ -93,8 +118,12 @@ func _on_spawn() -> void:
 	if SpriteOrShape.sheet_texture(_sprite_name()) == null:
 		_figure = Figure.new()
 		_visual.add_child(_figure)
-	EventBus.dialogue_requested.emit(display_name,
-		"Vingt vagues pour arriver jusqu'ici... Je vais éteindre ton univers, une étoile après l'autre.")
+	if _final_shortcut:
+		EventBus.dialogue_requested.emit(display_name,
+			"Tu me trouves déjà à genoux... Peu importe : je t'emporte avec moi dans l'ANNIHILATION.")
+	else:
+		EventBus.dialogue_requested.emit(display_name,
+			"Vingt vagues pour arriver jusqu'ici... Je vais éteindre ton univers, une étoile après l'autre.")
 
 ## Les cadences se resserrent de 10 % par phase passée.
 func _pace() -> float:

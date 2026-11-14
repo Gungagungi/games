@@ -19,6 +19,8 @@ const BOSS_BY_WAVE := {
 }
 ## Boss du niveau spécial, hors de la boucle des vagues.
 const DESTROYER := "res://scenes/bosses/destroyer_boss.gd"
+## Mini-boss d'entraînement, proposé une fois la gemme dorée ramassée.
+const CRYSTAL := "res://scenes/bosses/crystal_boss.gd"
 const BOSS_OFFSET := 140.0
 const BOSS_MARGIN := 80.0
 
@@ -59,14 +61,28 @@ func start_wave(n: int) -> void:
 ## Niveau spécial : le Destructeur d'univers seul, sans renforts. La vague ne
 ## se conclut jamais ici — c'est la gemme dorée qu'il lâche qui termine la
 ## partie (`EventBus.golden_gem_collected`, écouté par `main.gd`).
-func start_destroyer() -> void:
+func start_destroyer(final_phase: bool = false) -> void:
 	wave_active = true
 	_boss_alive = false
 	remaining_to_spawn = 0
 	AudioManager.sfx("wave_start")
 	EventBus.wave_started.emit(GameState.wave)
-	_spawn_boss_script(DESTROYER)
+	var boss := _spawn_boss_script(DESTROYER) as DestroyerBoss
+	if final_phase:
+		# L'ajout est différé : le boss n'est pas encore entré dans l'arbre.
+		boss.skip_to_final_phase()
 	AudioManager.play_music("titan")
+
+## Entraînement contre le Cristal : même cadre que le Destructeur, la fin du
+## combat passe par `EventBus.crystal_destroyed` (écouté par `main.gd`).
+func start_crystal() -> void:
+	wave_active = true
+	_boss_alive = false
+	remaining_to_spawn = 0
+	AudioManager.sfx("wave_start")
+	EventBus.wave_started.emit(GameState.wave)
+	_spawn_boss_script(CRYSTAL)
+	AudioManager.play_music("boss")
 
 func _process(delta: float) -> void:
 	if not wave_active or not GameState.running:
@@ -107,7 +123,7 @@ func _edge_position() -> Vector2:
 func _spawn_boss(n: int) -> void:
 	_spawn_boss_script(BOSS_BY_WAVE.get(n, "res://scenes/bosses/giant_knight.gd"))
 
-func _spawn_boss_script(path: String) -> void:
+func _spawn_boss_script(path: String) -> EnemyBase:
 	var boss: EnemyBase = load(path).new()
 	boss.configure_boss(GameState.tier())
 	# Au-dessus du joueur, en haut de l'écran comme avant ; le boss traverse
@@ -121,6 +137,7 @@ func _spawn_boss_script(path: String) -> void:
 	# moteur (« flushing queries ») ; différer l'ajout au prochain tour de
 	# boucle l'évite.
 	arena.call_deferred("add_child", boss)
+	return boss
 	_boss_alive = true
 	AudioManager.sfx("boss_spawn")
 

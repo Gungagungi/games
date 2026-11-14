@@ -10,6 +10,9 @@ var smoke_test: bool = false
 ## Niveau spécial « Le Destructeur d'univers » : un seul boss, pas de vagues,
 ## et la partie se gagne en ramassant la gemme dorée qu'il lâche.
 var special_level: bool = false
+## Combat d'entraînement contre le Cristal, après la gemme dorée : se joue
+## dans le niveau spécial (`special_level` reste vrai, aucune vague ne tourne).
+var crystal_training: bool = false
 ## Commandes tactiles (`TouchControls`) : allumé au premier toucher, éteint à
 ## la première touche de clavier. Le tir vient alors de `touch_fire` et vise
 ## seul, faute de pointeur.
@@ -33,4 +36,5 @@ func spawn_interval(n: int) -> float:
 func reset(start_wave: int, special: bool = false) -> void:
 	wave = start_wave
 	special_level = special
+	crystal_training = false
 	running = true

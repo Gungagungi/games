@@ -277,6 +277,17 @@ func take_ultimate_damage() -> void:
 	hp = 0.0
 	die()
 
+## Relève le mech pour un nouveau combat d'entraînement contre le Cristal,
+## **sans** toucher à ses pouvoirs — là où `reset_stats()` les effacerait.
+func revive() -> void:
+	alive = true
+	hp = max_hp
+	shield = shield_max
+	stamina = max_stamina
+	burn_time = 0.0
+	invuln = 1.0
+	EventBus.player_stats_changed.emit()
+
 func die() -> void:
 	if not alive:
 		return

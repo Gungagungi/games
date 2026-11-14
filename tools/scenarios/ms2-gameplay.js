@@ -9,7 +9,8 @@
 // le leurre du Titan de la Mort (mort en un coup) puis sa réplique, qui met
 // le jeu en pause en attendant un clic avant de faire entrer le Boss Galaxie.
 // MS2_DESTROYER=1 lance à la place le niveau spécial du Destructeur d'univers
-// (MS2_PLAY_MS règle la durée de jeu avant la capture).
+// (MS2_PLAY_MS règle la durée de jeu avant la capture) ; MS2_DESTROYER=final
+// clique à côté, sur PHASE 5 : le Destructeur en dernière phase, à 1 % de vie.
 
 const BOOT_MS = 15000;
 const PLAY_MS = parseInt(process.env.MS2_PLAY_MS || "6000", 10);
@@ -28,8 +29,10 @@ module.exports = async ({ page, out }) => {
   const SELECT_Y = 336;
   const PLAY_Y = 377;
   const DESTROYER_Y = 440;
+  const FINAL_PHASE_X = 705;                   // PHASE 5, même ligne
   if (process.env.MS2_DESTROYER) {
-    await page.mouse.click(cx, DESTROYER_Y);   // NIVEAU SPÉCIAL
+    const final = process.env.MS2_DESTROYER === "final";
+    await page.mouse.click(final ? FINAL_PHASE_X : cx, DESTROYER_Y);
     await sleep(1500);
     await page.mouse.click(cx, 600);           // referme la réplique d'entrée
   } else if (wave > 1) {

@@ -8,6 +8,8 @@ extends CanvasLayer
 
 signal start_requested(wave: int)
 signal destroyer_requested()
+## Raccourci de test : le Destructeur directement en dernière phase, à 1 %.
+signal destroyer_final_requested()
 
 var _wave_select := OptionButton.new()
 
@@ -59,6 +61,12 @@ func _ready() -> void:
 		start_requested.emit(_wave_select.get_item_id(_wave_select.selected)))
 	panel.add_child(play)
 
+	# Même ligne que le niveau spécial : une ligne de plus décalerait la mise en
+	# page, et le bouton principal reste sous le centre que clique le scénario.
+	var special_row := HBoxContainer.new()
+	special_row.add_theme_constant_override("separation", 8)
+	panel.add_child(special_row)
+
 	var destroyer := Button.new()
 	destroyer.text = "NIVEAU SPÉCIAL : LE DESTRUCTEUR D'UNIVERS"
 	destroyer.custom_minimum_size = Vector2(0, 46)
@@ -67,7 +75,19 @@ func _ready() -> void:
 	destroyer.pressed.connect(func() -> void:
 		AudioManager.sfx("ui_click")
 		destroyer_requested.emit())
-	panel.add_child(destroyer)
+	destroyer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	special_row.add_child(destroyer)
+
+	var final_phase := Button.new()
+	final_phase.text = "PHASE 5"
+	final_phase.tooltip_text = "Le Destructeur en dernière phase, à 1 % de vie"
+	final_phase.custom_minimum_size = Vector2(0, 46)
+	final_phase.add_theme_color_override("font_color", Color(1.0, 0.55, 0.3))
+	final_phase.add_theme_color_override("font_hover_color", Color(1.0, 0.8, 0.6))
+	final_phase.pressed.connect(func() -> void:
+		AudioManager.sfx("ui_click")
+		destroyer_final_requested.emit())
+	special_row.add_child(final_phase)
 
 	var version := Label.new()
 	version.text = GameVersion.read()

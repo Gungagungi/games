@@ -23,3 +23,5 @@ signal dialogue_finished()
 
 ## Gemme lâchée par le Destructeur d'univers : la ramasser termine le jeu.
 signal golden_gem_collected()
+## Le Cristal, mini-boss d'entraînement proposé après la gemme, est détruit.
+signal crystal_destroyed()

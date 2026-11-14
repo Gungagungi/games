@@ -5,6 +5,10 @@ extends Node
 
 const ARENA := Vector2(900, 600)
 
+## PV des monstres et boss en plus par niveau d'épée (0 = poings nus) :
+## ×1 aux poings nus, ×2,5 avec Excalibur déchue.
+const HP_PER_SWORD_TIER := 0.3
+
 ## `corrupt` : « Corrompu » accordé au nom, une fois l'objet enchanté par l'Œil
 ## corrompu (voir `Save.item_name`).
 const SWORDS := [

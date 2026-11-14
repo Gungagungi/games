@@ -105,7 +105,10 @@ func _powers_summary() -> String:
 	return " · ".join(parts)
 
 func _on_wave_started(n: int) -> void:
-	_wave_label.text = "NIVEAU SPÉCIAL" if GameState.special_level else "VAGUE %d" % n
+	if GameState.crystal_training:
+		_wave_label.text = "ENTRAÎNEMENT"
+	else:
+		_wave_label.text = "NIVEAU SPÉCIAL" if GameState.special_level else "VAGUE %d" % n
 	visible = true
 
 func _on_boss_spawned(_boss: Node, display_name: String, _max_hp: float) -> void:
