@@ -85,7 +85,7 @@ rendent cela tenable :
 
 ## Vérification
 
-`scripts/check.sh` joue cinq parties en accéléré, sans rendu, via le mode
+`scripts/check.sh` joue six parties en accéléré, sans rendu, via le mode
 smoke de `scenes/main.gd` (`--headless -- --smoke [--wave=N | --destroyer]`) : le mech
 y est immortel et tire tout seul, sinon rien n'irait plus loin que la première
 vague. Toute erreur GDScript apparaît dans la sortie. C'est le test de
@@ -111,7 +111,8 @@ Deux points à connaître :
   la mise en page de `start_screen.gd` oblige à réajuster ces constantes.
 
 `MS2_DESTROYER=1` fait cliquer au scénario le bouton du niveau spécial (sous
-LANCER, vers `y = 440`) au lieu de LANCER ; `MS2_PLAY_MS` règle la durée de jeu
+LANCER, vers `y = 440`) au lieu de LANCER, `MS2_DESTROYER=final` le bouton
+PHASE 5 à sa droite ; `MS2_PLAY_MS` règle la durée de jeu
 avant la capture.
 
 Pour juger la génération du niveau d'un coup d'œil, `index.html?apercu-carte`
@@ -199,6 +200,15 @@ et le tier d'une partie menée à la vague 20, puis
 `WaveManager.start_destroyer()`, qui fait entrer
 `scenes/bosses/destroyer_boss.gd` seul. Aucune vague ne tourne ;
 `GameState.special_level` coupe la conclusion de vague de `WaveManager`.
+
+À côté, sur la même ligne, un bouton **PHASE 5** sert à voir les attaques
+finales sans livrer tout le combat : `_begin_destroyer(true)` →
+`start_destroyer(true)` → `DestroyerBoss.skip_to_final_phase()`, appelé
+**avant** l'entrée du boss dans l'arbre (l'ajout est différé). Il le met en
+dernière phase, avec les multiplicateurs de quatre passages de phase, à 1 % de
+la barre (58 PV) ; son `_ready()` corrige la barre que `BossBase` affiche
+pleine. En smoke : `--destroyer --destroyer-final` (sixième partie de
+`check.sh`) ; en capture : `MS2_DESTROYER=final`.
 
 - **Cinq phases**, chacune ajoute une attaque et resserre les cadences de
   10 % : rayon de visière, éventail du symbole, étoile de huit rayons + double
