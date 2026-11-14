@@ -85,8 +85,12 @@ rendent cela tenable :
 
 ## Vérification
 
-`scripts/check.sh` joue six parties en accéléré, sans rendu, via le mode
+`scripts/check.sh` joue sept parties en accéléré, sans rendu, via le mode
+<<<<<<< HEAD
+smoke de `scenes/main.gd` (`--headless -- --smoke [--wave=N | --destroyer | --crystal]`) : le mech
+=======
 smoke de `scenes/main.gd` (`--headless -- --smoke [--wave=N | --destroyer]`) : le mech
+>>>>>>> origin/main
 y est immortel et tire tout seul, sinon rien n'irait plus loin que la première
 vague. Toute erreur GDScript apparaît dans la sortie. C'est le test de
 non-régression du jeu — le lancer après chaque changement.
@@ -253,6 +257,17 @@ pleine. En smoke : `--destroyer --destroyer-final` (sixième partie de
   partie s'arrête là ; le Destructeur a droit à 60 s de smoke au lieu de 25,
   le tirage des pouvoirs faisant varier la durée du combat du simple au
   triple.
+- **Le Cristal, entraînement d'après-jeu** (`scenes/bosses/crystal_boss.gd`,
+  dessiné en code) : l'écran « JEU RÉUSSI » propose AFFRONTER LE CRISTAL.
+  Deux phases, une seule arme : des rafales de `LaserBeam` visés, tirés vite
+  et à répétition ; en phase 2 il devient rouge, chaque tir devient un
+  éventail de trois rayons et la charge raccourcit. Pas de dégâts de contact.
+  `main._begin_crystal()` relève le mech (`Player.revive()`, pouvoirs
+  conservés) et pose `GameState.crystal_training` ; sa mort émet
+  `EventBus.crystal_destroyed` → « Bravo, tu as détruit le cristal ! » avec
+  RECOMBATTRE ou QUITTER L'ARÈNE (retour à l'écran-titre). Mourir face à lui
+  propose les mêmes boutons. Smoke : `--crystal`, septième partie de
+  `check.sh`.
 
 ### Commandes tactiles (mobile, Safari iOS)
 
