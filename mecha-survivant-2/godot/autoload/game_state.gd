@@ -13,11 +13,34 @@ var special_level: bool = false
 ## Combat d'entraînement contre le Cristal, après la gemme dorée : se joue
 ## dans le niveau spécial (`special_level` reste vrai, aucune vague ne tourne).
 var crystal_training: bool = false
+## Le Cristal se débloque en ramassant la gemme dorée, une fois pour toutes :
+## l'écran-titre propose alors de l'affronter. Seule donnée gardée d'une
+## partie à l'autre, dans `PROGRESS_PATH` (IndexedDB sur le web).
+var crystal_unlocked: bool = false
+const PROGRESS_PATH := "user://progression.cfg"
 ## Commandes tactiles (`TouchControls`) : allumé au premier toucher, éteint à
 ## la première touche de clavier. Le tir vient alors de `touch_fire` et vise
 ## seul, faute de pointeur.
 var touch_mode: bool = false
 var touch_fire: bool = false
+
+func _ready() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(PROGRESS_PATH) == OK:
+		crystal_unlocked = bool(cfg.get_value("progression", "cristal", false))
+
+## Débloque le Cristal et l'enregistre. Le mode smoke ne touche pas au disque :
+## `check.sh` débloquerait sinon le Cristal sur le poste qui le lance.
+func unlock_crystal() -> void:
+	crystal_unlocked = true
+	if smoke_test:
+		return
+	var cfg := ConfigFile.new()
+	cfg.load(PROGRESS_PATH)
+	cfg.set_value("progression", "cristal", true)
+	var err := cfg.save(PROGRESS_PATH)
+	if err != OK:
+		push_warning("progression non enregistrée (%s)" % error_string(err))
 
 ## Difficulté : identique à la v1 (`tier = floor((wave-1)/2)`).
 func tier() -> int:
