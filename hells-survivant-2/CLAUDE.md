@@ -67,8 +67,11 @@ fait le tour des boss, un toutes les 4 s de jeu. Chaque apparition de boss est
 écrite dans la sortie (`[smoke] vague N : <boss>`), et en fin de partie le
 nombre de fois où chaque attaque spéciale a été lancée (`[smoke] attaques
 spéciales : breath×3, …`) : le Conclave doit les montrer toutes. Ce relevé
-n'est pas une assertion, il se lit. Le héros y est immortel, équipé au maximum (en
-mémoire, `Save.write()` ne fait rien en smoke) et combat tout seul. Une partie
+n'est pas une assertion, il se lit. Le héros y est immortel, équipé au maximum,
+épée et armure corrompues (en mémoire, `Save.write()` ne fait rien en smoke ;
+la sortie compte les coups esquivés), et combat tout seul. Contre la Créature,
+la sortie signale sa rage et sa mort ; le pilote va ensuite ramasser l'Œil
+corrompu, sans quoi la partie échoue. Une partie
 échoue si elle ne progresse pas, si une vague de boss final ne se conclut pas
 en victoire, ou sur toute erreur GDScript. Le Conclave, lui, échoue s'il ne
 finit pas **en cours** (ni victoire ni défaite), si un boss manque ou a perdu
@@ -174,11 +177,34 @@ l'un des 7 `Data.MOB_ELEMENTS` à l'apparition.
     l'arène** (`World.knock_player`) : il glisse, sans contrôle, vers le point
     du bord le plus éloigné d'elle, devant lui (`Nightmare.knock_target`) ;
   - **dédoublement** à 75, 50 et 25 % de PV : le double (`is_clone`) reprend ses
-    attaques sauf laser, invocation, champ de force et dédoublement.
+    attaques sauf laser, invocation, champ de force et dédoublement ;
+  - **rage** à 25 % de PV, juste après le dernier dédoublement : en une seconde,
+    elle grandit ×1,4 (`sprite_scale` depuis `Enemy.base_scale`, et `radius` :
+    la hitbox suit, pour une fois) et ses dégâts passent ×1,5 (`nm_enraged`,
+    teinte rouge). Ses doubles n'enragent pas.
 
   Toutes les attaques sont télégraphiées. Les créatures nées pendant le tick
   passent par `World.queue_spawn`. Sa mort emporte doubles et mini-créatures,
   sans prime.
+
+- **Mort de la Créature et Œil corrompu** (hors Conclave) : `World._kill_enemy`
+  la retire de `enemies` mais garde son nœud dans `World.finale`, avec
+  `nm_attack = "finale"`. `Nightmare.tick_finale` déroule alors ~3,7 s : elle
+  lève les yeux, tire un laser géant vers le ciel (`NightmareFx._draw_finale`),
+  puis se désintègre. L'**Œil corrompu** (`Pickup`, `kind = "eye"`) tombe alors
+  à sa place ; la victoire n'arrive qu'à son ramassage (`World._update_eye`).
+  D'ici là, pas de vague suivante, et une brûlure en cours est éteinte.
+- **Enchantement** : chaque Œil va dans `Save.eyes`. À la forge, un Œil
+  enchante l'épée **ou** l'armure, pour de bon (`Save.sword_corrupt`,
+  `armor_corrupt`) : l'enchantement est lié au type de pièce et survit aux
+  achats suivants. La pièce prend le nom « <objet> Corrompu », accordé
+  (`corrupt` dans `Data.SWORDS` / `ARMORS`, `Save.item_name`). Armure :
+  vitesse de marche ×1,25 (`Save.speed_mult`). Épée : estoc magenta, et le
+  héros **esquive une attaque sur deux** d'un monstre ordinaire
+  (`World.dodges`) — mêlée ou projectile, mini-créatures, monstres invoqués et
+  âmes compris, jamais un boss ni un double de la Créature
+  (`Projectile.from_boss`). Esquivé, un coup n'inflige ni dégâts, ni vol de
+  vie, ni brûlure.
 
 ### Attaques spéciales des boss
 
@@ -196,7 +222,7 @@ garde les siennes, dans `Nightmare`.
 | Soldat blessé | **gerbe d'épées** (cinq projectiles `Projectile.sword`) ; **coup de bouclier** au contact, qui repousse |
 | Voix Putréfiée | **arbres** qui jaillissent du sol en ligne jusqu'au héros, puis le fouettent de leurs branches ; **arbre abattu** : il pousse près du héros et s'abat sur lui |
 | Sbire de l'ombre | **coup de tête** en ruée, qui repousse et **étourdit** (`Player.stun_timer` : ni déplacement ni coup) |
-| Nécromancien Putréfié | **coup de bâton** au contact, qui repousse ; **invocation** de trois monstres ordinaires d'un élément tiré parmi les 7 (jamais de mini-créature du Chaos), six au plus |
+| Nécromancien Putréfié | **coup de bâton** au contact, qui repousse ; **invocation** de trois monstres ordinaires d'un élément tiré parmi les 7 (jamais de mini-créature du Chaos), six au plus ; **âmes** : trois monstres fragiles (`Enemy.is_soul`) qui traquent le héros au contact, plus lents que lui, à abattre, six au plus |
 
 - **Déroulé** : `World._tick_enemies` passe la main à `BossMoves.tick` tant
   qu'une attaque est en cours (le boss ne marche, ne tire ni ne charge), sinon
@@ -216,7 +242,10 @@ garde les siennes, dans `Nightmare`.
   caractéristiques de la vague, marqués `is_mini`, ils meurent avec lui comme
   les mini-créatures de la Créature, et ne rapportent que 2 or (sinon on
   pourrait le laisser invoquer pour amasser de l'or). `Nightmare._minis` ne
-  compte que les mini-créatures du Chaos.
+  compte que les mini-créatures du Chaos. Ses **âmes** sont aussi `is_mini`
+  (elles meurent avec lui, 1 or) mais comptées à part (`_souls`) ; d'élément
+  Ombre, elles frappent pourtant au contact (`World._tick_enemies` ignore
+  `ranged` pour elles).
 - Une attaque ajoutée à `BossMoves.MOVES` doit aussi l'être à
   `Data.BOSS_ATTACKS` et `Data.ATTACKS`, avec son icône.
 
@@ -278,7 +307,8 @@ d'élément, le Nécromancien Putréfié et la Créature cauchemardesque
 - La **Créature cauchemardesque**, réveillée, garde son jeu d'attaques
   (`Nightmare`) et ne se promène pas : elle bouge déjà par ses sauts et ruées.
   Ses doubles seraient séparés comme des boss (`_is_bulky`), mais elle ne se
-  dédouble plus, faute de PV perdus.
+  dédouble plus, n'enrage pas et ne meurt pas, faute de PV perdus : pas d'Œil
+  corrompu dans le Conclave.
 - Un boss ne monte pas dans la bande du haut réservée au HUD (`RUSH_HUD_TOP`).
 - Pas de vagues ni de fiole (le héros n'y perd pas de PV). La victoire du
   Conclave (mort du dernier boss, écran de fin avec le temps) reste dans le
@@ -341,6 +371,8 @@ fente de l'attaque, flash, dissolution, particules, halos). Fichiers renommés
 | Icônes d'attaque de la Créature | `attacks/laser`, `whip`, `sweep`, `rush`, `leap`, `summon`, `field`, `split` | `gui/spells/` : `conjuration/searing_ray`, `summoning/summon_horrible_things`, `air/tornado`, `translocation/blink`, `earth/shatter_new`, `summoning/summon_shadow_creatures_new`, `translocation/gravitas`, `necromancy/simulacrum_new` |
 | Icônes des attaques spéciales | `attacks/ash_breath`, `blood_bite`, `blood_splash`, `fire_wave`, `devour`, `sword_throw`, `shield_bash`, `tree_rise`, `tree_fall`, `staff`, `raise`, `headbutt` | `gui/spells/monster/miasma_breath`, `item/weapon/artefact/spwpn_vampires_tooth`, `gui/spells/necromancy/sublimation_of_blood_new`, `gui/spells/fire/fire_storm_new`, `gui/spells/translocation/apportation_new`, `gui/spells/enchantment/tukimas_dance_new`, `item/armor/shields/large_shield_2_new`, `gui/spells/summoning/summon_forest`, `dungeon/trees/tree_1_red`, `item/staff/staff_3`, `gui/spells/necromancy/animate_dead_new`, `gui/spells/enchantment/confuse_new` |
 | Attaques spéciales (visuel) | `fx/sword`, `shield`, `staff`, `blood_puddle`, `tree_0`, `tree_1` | `item/weapon/short_sword_2_new`, `item/armor/shields/large_shield_2_new`, `item/staff/staff_3`, `misc/blood/blood_puddle_red`, `dungeon/trees/tree_1_red`, `tree_2_red` |
+| Âmes, Œil corrompu | `monsters/lost_soul`, `fx/corrupted_eye` | `monster/undead/lost_soul`, `monster/eyes/eye_of_draining` |
+| Icônes des âmes et de la rage | `attacks/souls`, `enrage` | `gui/spells/necromancy/haunt_new`, `gui/spells/transmutation/alter_self` |
 | Difficultés (menu) | `ui/difficulty_facile`, `_intermediaire`, `_difficile` | `monster/animals/rat`, `monster/orc`, `monster/ogre` |
 
 Les trois icônes de difficulté suivent la même convention que les éléments, mais

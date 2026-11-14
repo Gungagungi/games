@@ -35,6 +35,14 @@ var enemies: Array[Enemy] = []
 var projectiles: Array[Projectile] = []
 ## Fiole de soin au sol, une seule à la fois (voir `_drop_potion`).
 var potion: Pickup = null
+## Créature cauchemardesque vaincue en Chaos : retirée de `enemies`, elle joue
+## sa mort (regard vers le haut, laser géant, désintégration, voir
+## `Nightmare.tick_finale`), puis lâche l'Œil corrompu. La victoire attend
+## qu'on le ramasse.
+var finale: Enemy = null
+var eye: Pickup = null
+## Mode smoke : attaques esquivées grâce à l'épée corrompue.
+var dodged := 0
 var wave_intermission := 0
 var enemies_to_spawn := 0
 var spawn_timer := 0
@@ -158,7 +166,10 @@ func _process(delta: float) -> void:
 		return
 	_acc += delta
 	var n := 0
-	while _acc >= TICK and n < MAX_TICKS_PER_FRAME:
+	# Arrêt dès la fin de partie : sinon les ticks restants de la frame
+	# relanceraient la vague suivante après une victoire gagnée en plein tick
+	# (ramassage de l'Œil corrompu).
+	while _acc >= TICK and n < MAX_TICKS_PER_FRAME and Game.state == "playing":
 		_tick()
 		_acc -= TICK
 		n += 1
@@ -203,6 +214,12 @@ func clear_run() -> void:
 	if potion != null:
 		potion.queue_free()
 		potion = null
+	if finale != null:
+		finale.queue_free()
+		finale = null
+	if eye != null:
+		eye.queue_free()
+		eye = null
 	for layer in [fx_layer, ground_layer]:
 		for c: Node in layer.get_children():
 			c.queue_free()
@@ -247,9 +264,13 @@ func start_run(start_wave := 1) -> void:
 
 func _tick() -> void:
 	_update_player()
+	if finale != null:
+		_tick_finale()
 	if Game.boss_rush:
 		_update_boss_rush()
-	else:
+	elif finale == null and eye == null:
+		# Pendant la mort de la Créature et jusqu'au ramassage de l'Œil, pas
+		# de vague suivante : la partie est gagnée.
 		_update_waves()
 	# Pendant l'annonce du Conclave, les boss restent figés en anneau.
 	if rush_intro == 0:
@@ -268,6 +289,7 @@ func _tick() -> void:
 				frozen.position = hold
 			_separate_bosses(frozen)
 	_update_potion()
+	_update_eye()
 	if Game.state == "playing":
 		_update_projectiles()
 
@@ -298,7 +320,7 @@ func _update_player() -> void:
 	player.moving = dir != Vector2.ZERO
 	if player.moving:
 		dir = dir.normalized()
-		player.position += dir * player.speed
+		player.position += dir * player.speed * Save.speed_mult()
 		if player.attack_timer <= 0:
 			player.facing = dir
 	player.position = player.position.clamp(Vector2.ONE * player.radius, Data.ARENA - Vector2.ONE * player.radius)
@@ -365,6 +387,18 @@ func stun_player(frames: int) -> void:
 ## projection, ni étourdissement, ni saisie). Seul le héros porte des coups.
 static func harms_player() -> bool:
 	return not Game.boss_rush
+
+## Épée corrompue : le héros esquive une attaque sur deux d'un monstre
+## ordinaire (mini-créatures, monstres invoqués et âmes compris), jamais celle
+## d'un boss ni d'un double de la Créature. Vrai si l'attaque est esquivée.
+func dodges(from_boss: bool) -> bool:
+	if from_boss or not Save.sword_corrupt or not harms_player() or Game.state != "playing":
+		return false
+	if randf() >= Data.CORRUPT_DODGE:
+		return false
+	dodged += 1
+	Fx.float_text(fx_layer, player.position + Vector2(0, -player.radius - 18), "Esquive", Data.CORRUPT_COLOR)
+	return true
 
 func hit_player(raw_dmg: float) -> void:
 	if Game.state != "playing" or not harms_player():
@@ -517,7 +551,7 @@ func make_enemy(element: String, is_boss: bool, is_final: bool) -> Enemy:
 	return e
 
 ## Tir d'un monstre : brique, trait d'ombre ou épée.
-func shoot(from: Vector2, velocity: Vector2, dmg: float, radius: float, brick := false, sword := false) -> void:
+func shoot(from: Vector2, velocity: Vector2, dmg: float, radius: float, brick := false, sword := false, from_boss := true) -> void:
 	var p := Projectile.new()
 	p.position = from
 	p.velocity = velocity
@@ -525,6 +559,7 @@ func shoot(from: Vector2, velocity: Vector2, dmg: float, radius: float, brick :=
 	p.radius = radius
 	p.brick = brick
 	p.sword = sword
+	p.from_boss = from_boss
 	entities.add_child(p)
 	projectiles.append(p)
 
@@ -555,7 +590,13 @@ func _kill_enemy(e: Enemy) -> void:
 	Fx.puff(fx_layer, e.position, e.glow, e.sprite_scale)
 	Audio.sfx("enemy_death")
 	Audio.sfx("gold")
-	e.die()
+	# La Créature, en Chaos, ne se dissout pas tout de suite : elle joue sa mort
+	# et lâche l'Œil corrompu (pas dans le Conclave, où elle est invulnérable).
+	var dramatic := e.is_final and Nightmare.handles(e) and not Game.boss_rush
+	if dramatic:
+		_start_finale(e)
+	else:
+		e.die()
 	if e.is_boss:
 		shake(7.0)
 	if e.is_final:
@@ -566,11 +607,60 @@ func _kill_enemy(e: Enemy) -> void:
 				Fx.puff(fx_layer, o.position, o.glow, o.sprite_scale)
 				o.die()
 	# Conclave : seule la chute du dernier boss compte, boss finals compris.
-	var won := current_boss() == null if Game.boss_rush else e.is_final
+	var won := current_boss() == null if Game.boss_rush else e.is_final and not dramatic
 	if won and Game.state == "playing":
-		Game.set_state("victory")
-		Audio.stop_music()
-		Audio.sfx("victory", 1.0, 0.0)
+		_win()
+
+func _win() -> void:
+	Game.set_state("victory")
+	Audio.stop_music()
+	Audio.sfx("victory", 1.0, 0.0)
+
+## Mort de la Créature cauchemardesque : elle quitte `enemies` (plus de coups
+## ni d'attaques) mais reste à l'écran le temps de `Nightmare.tick_finale`.
+func _start_finale(e: Enemy) -> void:
+	finale = e
+	e.nm_attack = "finale"
+	e.nm_timer = Nightmare.FINALE_TIME
+	e.nm_height = 0.0
+	e.nm_slide_timer = 0
+	e.charging = false
+	e.charge_telegraph = 0
+	# Une brûlure en cours ne doit pas tuer le héros après sa victoire.
+	player.burn_timer = 0
+	Audio.stop_music()
+	if Game.smoke_test:
+		print("[smoke] la Créature meurt : laser vers le ciel, puis l'Œil corrompu")
+
+func _tick_finale() -> void:
+	if not Nightmare.tick_finale(self, finale):
+		return
+	var pos := finale.position
+	finale.queue_free()
+	finale = null
+	eye = Pickup.new()
+	eye.kind = "eye"
+	eye.position = pos.clamp(Vector2.ONE * 60.0, Data.ARENA - Vector2.ONE * 60.0)
+	entities.add_child(eye)
+	Fx.float_text(fx_layer, eye.position + Vector2(0, -70), "L'Œil corrompu tombe !", Data.CORRUPT_COLOR, true)
+
+## L'Œil se ramasse en marchant dessus, une fois tombé au sol : il rejoint la
+## sauvegarde et la partie est gagnée.
+func _update_eye() -> void:
+	if eye == null or Game.state != "playing" or not eye.landed():
+		return
+	if player.position.distance_to(eye.position) > eye.radius + player.radius:
+		return
+	Save.eyes += 1
+	Save.write()
+	Fx.float_text(fx_layer, player.position + Vector2(0, -player.radius - 18), "+1 Œil corrompu", Data.CORRUPT_COLOR, true)
+	Fx.sparks(fx_layer, eye.position, Data.CORRUPT_COLOR)
+	Audio.sfx("purchase", 0.7)
+	eye.queue_free()
+	eye = null
+	if Game.smoke_test:
+		print("[smoke] Œil corrompu ramassé : %d en réserve" % Save.eyes)
+	_win()
 
 func queue_spawn(e: Enemy) -> void:
 	_spawn_queue.append(e)
@@ -601,7 +691,8 @@ func _tick_enemies() -> void:
 			continue
 		# Par monstre : en Chaos, les éléments se côtoient dans la même vague.
 		var elem: Dictionary = Data.ELEMENTS[e.element]
-		var ranged: bool = elem.get("ranged", false)
+		# Les âmes du Nécromancien sont d'élément Ombre, mais frappent au contact.
+		var ranged: bool = elem.get("ranged", false) and not e.is_soul
 		var bricks: bool = elem.get("bricks", false)
 		var lifesteal: float = elem.get("lifesteal", 0.0)
 		var burn: bool = elem.get("burn", false)
@@ -656,7 +747,7 @@ func _tick_enemies() -> void:
 				e.shoot_cooldown -= 1
 			elif dist < 420.0:
 				var radius := (13.0 if bricks else 10.0) if e.is_boss else (9.0 if bricks else 6.0)
-				shoot(e.position, to / dist * (3.2 if bricks else 4.5), e.dmg, radius, bricks)
+				shoot(e.position, to / dist * (3.2 if bricks else 4.5), e.dmg, radius, bricks, false, _is_bulky(e))
 				e.shoot_cooldown = roundi((55 if e.is_boss else 90) * shoot_mult)
 				if bricks:
 					Audio.sfx("throw", 0.8)
@@ -665,12 +756,14 @@ func _tick_enemies() -> void:
 		if dist > e.radius + player.radius:
 			e.position += to / dist * e.speed
 		elif e.attack_cooldown <= 0 and harms_player():
-			hit_player(e.dmg)
 			e.attack_cooldown = 50
-			if lifesteal > 0.0:
-				e.hp = minf(e.max_hp, e.hp + e.dmg * lifesteal)
-			if burn:
-				player.burn_timer = 120
+			# Esquivé : ni dégâts, ni vol de vie, ni brûlure.
+			if not dodges(_is_bulky(e)):
+				hit_player(e.dmg)
+				if lifesteal > 0.0:
+					e.hp = minf(e.max_hp, e.hp + e.dmg * lifesteal)
+				if burn:
+					player.burn_timer = 120
 		if e.attack_cooldown > 0:
 			e.attack_cooldown -= 1
 		if Game.state != "playing":
@@ -691,7 +784,8 @@ func _update_projectiles() -> void:
 			var spark := Color(0.9, 0.9, 1.0) if p.sword else (Color(1, 0.3, 0.1) if p.brick else Color(0.7, 0.35, 1))
 			Fx.sparks(fx_layer, p.position, spark)
 			p.queue_free()
-			hit_player(p.dmg)
+			if not dodges(p.from_boss):
+				hit_player(p.dmg)
 			if Game.state != "playing":
 				return
 

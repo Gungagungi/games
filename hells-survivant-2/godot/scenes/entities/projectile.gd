@@ -8,6 +8,8 @@ var dmg := 1.0
 var radius := 6.0
 var brick := false
 var sword := false
+## Tiré par un boss : l'épée corrompue n'en esquive pas (`World.dodges`).
+var from_boss := true
 var spin := 0.0
 
 var _sprite: Sprite2D

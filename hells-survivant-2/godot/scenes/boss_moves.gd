@@ -21,7 +21,8 @@ extends RefCounted
 ## - Sbire de l'ombre : coup de tête en ruée, qui repousse et étourdit ;
 ## - Nécromancien Putréfié : coup de bâton qui repousse, et invocation de
 ##   monstres ordinaires de n'importe quel élément (jamais de mini-créatures du
-##   Chaos), qui meurent avec lui.
+##   Chaos), qui meurent avec lui ; et trois âmes, monstres fragiles qui
+##   traquent le héros et qu'il faut abattre.
 ## Dans le Conclave, rien de tout cela ne blesse ni ne déplace le héros
 ## (`World.harms_player`).
 
@@ -35,13 +36,14 @@ const MOVES := {
 	"feu": ["firewave"],
 	"destruction": ["devour"],
 	"ombre": ["headbutt"],
-	"final_ombre": ["staff", "raise"],
+	"final_ombre": ["staff", "raise", "souls"],
 }
 ## Distance au héros au-delà de laquelle une attaque n'est pas tentée.
 const REACH := {
 	"breath": 250.0, "bite": 420.0, "splash": 400.0, "firewave": 380.0,
 	"devour": 300.0, "swords": 420.0, "shield": 130.0, "roots": 380.0,
 	"treefall": 460.0, "headbutt": 300.0, "staff": 150.0, "raise": INF,
+	"souls": 520.0,
 }
 
 const BREATH_AIM := 36
@@ -135,6 +137,14 @@ const RAISE_TIME := 50
 const RAISE_COUNT := 3
 const RAISED_MAX := 6
 
+## Âmes du Nécromancien : trois monstres fragiles qui traquent le héros, à
+## abattre. Plus lentes que lui, elles se distancent en courant.
+const SOULS_TIME := 44
+const SOULS_COUNT := 3
+const SOULS_MAX := 6
+const SOUL_SPEED := 2.3
+const SOUL_COLOR := Color(0.45, 1.0, 0.65)
+
 ## Mode smoke : nombre de fois où chaque attaque a été lancée.
 static var played := {}
 
@@ -153,7 +163,7 @@ static func telegraphing(e: Enemy) -> bool:
 	match e.sp_attack:
 		"":
 			return false
-		"raise":
+		"raise", "souls":
 			return true
 		"roots":
 			return e.sp_age < ROOTS_AIM
@@ -192,7 +202,8 @@ static func try_start(w: World, e: Enemy, dist: float) -> bool:
 		return false
 	var options: Array[String] = []
 	for m: String in MOVES[_key(e)]:
-		if dist <= float(REACH[m]) and (m != "raise" or _raised(w) < RAISED_MAX):
+		if dist <= float(REACH[m]) and (m != "raise" or _raised(w) < RAISED_MAX) \
+				and (m != "souls" or _souls(w) < SOULS_MAX):
 			options.append(m)
 	if options.is_empty():
 		# Héros hors de portée : on retente bientôt.
@@ -265,6 +276,13 @@ static func _begin(w: World, e: Enemy, move: String) -> void:
 				e.sp_points.append(_inside(e.position + Vector2.from_angle(a0 + TAU * i / RAISE_COUNT) * 90.0, 24.0))
 			_start(e, "raise", RAISE_TIME)
 			Audio.sfx("boss_warning", 0.8)
+		"souls":
+			# Les âmes sortent au-dessus de lui, en éventail vers le héros.
+			for i in SOULS_COUNT:
+				var d := dir.rotated((i - (SOULS_COUNT - 1) / 2.0) * 0.7)
+				e.sp_points.append(_inside(e.position + Vector2(0, -e.top() * 0.4) + d * (e.radius + 30.0), 20.0))
+			_start(e, "souls", SOULS_TIME)
+			Audio.sfx("boss_charge", 1.6)
 
 static func tick(w: World, e: Enemy) -> void:
 	var p := w.player
@@ -466,6 +484,10 @@ static func tick(w: World, e: Enemy) -> void:
 			if e.sp_timer <= 0:
 				_raise(w, e)
 				_end(e)
+		"souls":
+			if e.sp_timer <= 0:
+				_release_souls(w, e)
+				_end(e)
 
 ## Distance parcourue par la vague de feu depuis son départ.
 static func wave_dist(e: Enemy) -> float:
@@ -499,9 +521,38 @@ static func _in_cone(from: Vector2, dir: Vector2, length: float, half: float, po
 static func _raised(w: World) -> int:
 	var n := 0
 	for o in w.enemies:
-		if o.is_mini and o.element != Data.CHAOS:
+		if o.is_mini and not o.is_soul and o.element != Data.CHAOS:
 			n += 1
 	return n
+
+## Âmes du Nécromancien encore en vie.
+static func _souls(w: World) -> int:
+	var n := 0
+	for o in w.enemies:
+		if o.is_soul:
+			n += 1
+	return n
+
+## Âmes : monstres de mêlée de la vague, fragiles, plus rapides que les autres
+## mais moins que le héros. Comme les monstres invoqués, elles meurent avec le
+## Nécromancien et ne rapportent presque rien.
+static func _release_souls(w: World, e: Enemy) -> void:
+	var n := mini(SOULS_COUNT, SOULS_MAX - _souls(w))
+	for i in n:
+		var m := w.make_enemy(e.element, false, false)
+		m.position = e.sp_points[i % e.sp_points.size()]
+		m.is_mini = true
+		m.is_soul = true
+		m.radius = 12.0
+		m.hp = m.max_hp * 0.5
+		m.max_hp = m.hp
+		m.dmg = e.dmg * 0.3
+		m.speed = SOUL_SPEED
+		m.gold_value = 1
+		m.attack_cooldown = 20
+		w.queue_spawn(m)
+		Fx.puff(w.fx_layer, m.position, SOUL_COLOR, 1.2)
+	Audio.sfx("boss_warning", 1.5)
 
 ## Invocation du Nécromancien : des monstres ordinaires de la vague, d'un
 ## élément tiré au hasard parmi les 7 (jamais une mini-créature du Chaos).
@@ -645,6 +696,11 @@ class Visual extends Node2D:
 					for j in 6:
 						var a := TAU * j / 6.0 + _t * 3.0
 						draw_arc(pt, 32.0, a, a + 0.6, 6, Color(ARCANE, 0.8), 2.5)
+			"souls":
+				var f := 1.0 - k / BossMoves.SOULS_TIME
+				for pt in e.sp_points:
+					draw_circle(pt, 22.0 * f, Color(BossMoves.SOUL_COLOR, 0.2))
+					draw_arc(pt, 24.0, 0.0, TAU, 24, Color(BossMoves.SOUL_COLOR, 0.4 + 0.4 * sin(_t * 20.0)), 2.0)
 
 	func _draw_top(e: Enemy) -> void:
 		var k := float(e.sp_timer)
@@ -734,6 +790,14 @@ class Visual extends Node2D:
 				for pt in e.sp_points:
 					draw_line(pt, pt + Vector2(0, -70.0 * f), Color(ARCANE, 0.6), 7.0 * f + 1.0)
 					draw_circle(pt + Vector2(0, -70.0 * f), 5.0 * f, Color(1, 0.85, 1, 0.9))
+			"souls":
+				# Volutes qui s'échappent du Nécromancien vers chaque point d'apparition.
+				var f := 1.0 - k / BossMoves.SOULS_TIME
+				var from := e.position + Vector2(0, -e.top() * 0.5)
+				for pt in e.sp_points:
+					var pos := from.lerp(pt, f) + Vector2(sin(_t * 9.0 + pt.x) * 6.0, 0)
+					draw_circle(pos, 4.0 + 7.0 * f, Color(BossMoves.SOUL_COLOR, 0.35))
+					draw_circle(pos, 2.0 + 3.0 * f, Color(0.85, 1, 0.9, 0.9))
 
 	## Front de la vague de feu : une rangée de langues de flammes.
 	func _flames(e: Enemy) -> void:
