@@ -306,6 +306,12 @@ d'élément, le Nécromancien Putréfié et la Créature cauchemardesque
   du tableau en le parcourant et sautait le suivant).
 - L'or gagné croît de **+12 % par vague** au lieu de +5 % dans la v1
   (`World._spawn_enemy`), pour raccourcir l'attente avant un achat à la forge.
+- Les **PV des monstres et des boss suivent le niveau de l'épée** équipée :
+  ×(1 + 0,3 × niveau), soit ×1 aux poings nus et ×2,5 avec Excalibur déchue
+  (`Data.HP_PER_SWORD_TIER`, `World.make_enemy`). Les boss ont en plus ×12 PV
+  au lieu de ×8, et les boss finals ×24 au lieu de ×16. Sans quoi, forge au
+  maximum, tout tombait en un ou deux coups. Sans effet sur le Conclave
+  (boss invulnérables).
 - La cadence des tireurs (Ombre, Destruction) suit la difficulté via
   `shoot_mult` : **Difficile garde le rechargement de la v1** (90 frames, 55
   pour un boss), Intermédiaire ×1,3 et Facile ×1,7. La v1 tirait à cadence fixe.
