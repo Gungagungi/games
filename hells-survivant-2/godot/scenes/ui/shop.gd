@@ -46,6 +46,8 @@ func refresh() -> void:
 	if _cards == null:
 		return
 	_gold.text = "Or disponible : %d — I ou Échap pour fermer" % Save.gold
+	if Save.eyes > 0:
+		_gold.text = "Or disponible : %d — Œil corrompu : %d — I ou Échap pour fermer" % [Save.gold, Save.eyes]
 	for c in _cards.get_children():
 		_cards.remove_child(c)
 		c.queue_free()
@@ -83,10 +85,21 @@ func _card(is_sword: bool) -> PanelContainer:
 	var info := VBoxContainer.new()
 	head.add_child(info)
 	info.add_child(UiTheme.label("Épée" if is_sword else "Armure", 22, UiTheme.GOLD, 3))
-	info.add_child(UiTheme.label("Actuel : %s" % current["name"], 15))
+	info.add_child(UiTheme.label("Actuel : %s" % Save.item_name(current, is_sword), 15))
 	var stats := "Dégâts : %d" % current["dmg"] if is_sword else \
 		"PV : %d   Défense : %d%%" % [current["hp"], roundi(float(current["def"]) * 100.0)]
 	info.add_child(UiTheme.label(stats, 15, UiTheme.MUTED))
+	var corrupt := Save.sword_corrupt if is_sword else Save.armor_corrupt
+	var effect := "esquive 1 coup/2 des monstres" if is_sword else "vitesse de marche +25 %"
+	if corrupt:
+		info.add_child(UiTheme.label("Corrompu : %s" % effect, 14, Data.CORRUPT_COLOR))
+		cs.border_color = Data.CORRUPT_COLOR
+	elif Save.eyes > 0:
+		info.add_child(UiTheme.label("Œil corrompu : %s" % effect, 14, Data.CORRUPT_COLOR))
+		var enchant := UiTheme.button("Enchanter — 1 Œil corrompu", Vector2(0, 40), 14)
+		enchant.add_theme_color_override("font_color", Data.CORRUPT_COLOR)
+		enchant.pressed.connect(_enchant.bind(is_sword))
+		box.add_child(enchant)
 
 	if next.is_empty():
 		var maxed := UiTheme.label("Niveau maximum atteint", 15, Color("#8a6a4a"))
@@ -97,11 +110,29 @@ func _card(is_sword: bool) -> PanelContainer:
 	else:
 		var stat := "Dégâts %d" % next["dmg"] if is_sword else \
 			"PV %d · Déf %d%%" % [next["hp"], roundi(float(next["def"]) * 100.0)]
-		var buy := UiTheme.button("Acheter %s (%s) — %d or" % [next["name"], stat, next["cost"]], Vector2(0, 40), 14)
+		var buy := UiTheme.button("Acheter %s (%s) — %d or" % [Save.item_name(next, is_sword), stat, next["cost"]], Vector2(0, 40), 14)
 		buy.disabled = Save.gold < int(next["cost"])
 		buy.pressed.connect(_buy.bind(is_sword))
 		box.add_child(buy)
 	return card
+
+## Dépense un Œil corrompu sur l'épée ou l'armure, pour de bon.
+func _enchant(is_sword: bool) -> void:
+	if Save.eyes <= 0:
+		return
+	if is_sword:
+		if Save.sword_corrupt:
+			return
+		Save.sword_corrupt = true
+	else:
+		if Save.armor_corrupt:
+			return
+		Save.armor_corrupt = true
+	Save.eyes -= 1
+	Save.write()
+	Audio.sfx("boss_warning", 1.4)
+	world.player.refresh_equipment()
+	refresh()
 
 func _buy(is_sword: bool) -> void:
 	if is_sword:

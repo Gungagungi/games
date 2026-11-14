@@ -9,23 +9,34 @@ const ARENA := Vector2(900, 600)
 ## ×1 aux poings nus, ×2,5 avec Excalibur déchue.
 const HP_PER_SWORD_TIER := 0.3
 
+## `corrupt` : « Corrompu » accordé au nom, une fois l'objet enchanté par l'Œil
+## corrompu (voir `Save.item_name`).
 const SWORDS := [
-	{"name": "Poings nus", "cost": 0, "dmg": 3, "range": 70},
-	{"name": "Épée rouillée", "cost": 25, "dmg": 6, "range": 82},
-	{"name": "Épée en acier", "cost": 75, "dmg": 11, "range": 92},
-	{"name": "Épée enchantée", "cost": 180, "dmg": 18, "range": 102},
-	{"name": "Lame des enfers", "cost": 400, "dmg": 30, "range": 112},
-	{"name": "Excalibur déchue", "cost": 900, "dmg": 50, "range": 126},
+	{"name": "Poings nus", "corrupt": "Corrompus", "cost": 0, "dmg": 3, "range": 70},
+	{"name": "Épée rouillée", "corrupt": "Corrompue", "cost": 25, "dmg": 6, "range": 82},
+	{"name": "Épée en acier", "corrupt": "Corrompue", "cost": 75, "dmg": 11, "range": 92},
+	{"name": "Épée enchantée", "corrupt": "Corrompue", "cost": 180, "dmg": 18, "range": 102},
+	{"name": "Lame des enfers", "corrupt": "Corrompue", "cost": 400, "dmg": 30, "range": 112},
+	{"name": "Excalibur déchue", "corrupt": "Corrompue", "cost": 900, "dmg": 50, "range": 126},
 ]
 
 const ARMORS := [
-	{"name": "Peau nue", "cost": 0, "hp": 50, "def": 0.0},
-	{"name": "Haillons", "cost": 25, "hp": 65, "def": 0.05},
-	{"name": "Cuir clouté", "cost": 75, "hp": 85, "def": 0.12},
-	{"name": "Cotte de mailles", "cost": 180, "hp": 115, "def": 0.20},
-	{"name": "Armure infernale", "cost": 400, "hp": 160, "def": 0.30},
-	{"name": "Armure du Damné", "cost": 900, "hp": 230, "def": 0.40},
+	{"name": "Peau nue", "corrupt": "Corrompue", "cost": 0, "hp": 50, "def": 0.0},
+	{"name": "Haillons", "corrupt": "Corrompus", "cost": 25, "hp": 65, "def": 0.05},
+	{"name": "Cuir clouté", "corrupt": "Corrompu", "cost": 75, "hp": 85, "def": 0.12},
+	{"name": "Cotte de mailles", "corrupt": "Corrompue", "cost": 180, "hp": 115, "def": 0.20},
+	{"name": "Armure infernale", "corrupt": "Corrompue", "cost": 400, "hp": 160, "def": 0.30},
+	{"name": "Armure du Damné", "corrupt": "Corrompue", "cost": 900, "hp": 230, "def": 0.40},
 ]
+
+## Œil corrompu, que lâche la Créature cauchemardesque à sa mort : chaque Œil
+## enchante une pièce d'équipement à la forge, pour de bon (l'enchantement
+## survit aux achats suivants). Armure : vitesse de marche. Épée : le héros
+## esquive une attaque sur deux des monstres ordinaires, jamais celles d'un boss
+## ni d'un double de la Créature.
+const CORRUPT_SPEED := 1.25
+const CORRUPT_DODGE := 0.5
+const CORRUPT_COLOR := Color("#e040c0")
 
 ## `shoot_mult` allonge le rechargement des tireurs (Ombre, Destruction) :
 ## Difficile garde la cadence de la v1, les deux autres tirent plus lentement.
@@ -138,6 +149,8 @@ const ATTACKS := {
 	"staff": "Coup de bâton qui vous repousse",
 	"raise": "Invoque des monstres de tous les éléments",
 	"headbutt": "Coup de tête : vous repousse et vous étourdit",
+	"souls": "Lance trois âmes qui vous traquent : abattez-les",
+	"enrage": "Enragée à 25 % de vie : plus grande et plus forte",
 }
 
 ## Attaques de chaque boss du Conclave, dans l'ordre de l'infobulle. Clé :
@@ -150,9 +163,9 @@ const BOSS_ATTACKS := {
 	"feu": ["melee", "burn", "charge", "fire_wave"],
 	"destruction": ["bricks", "charge", "devour"],
 	"ombre": ["bolts", "charge", "headbutt"],
-	"final_ombre": ["giant", "bolts", "charge", "staff", "raise"],
+	"final_ombre": ["giant", "bolts", "charge", "staff", "raise", "souls"],
 	"final_chaos": ["giant", "burn", "lifesteal", "laser", "whip", "sweep", "rush",
-		"leap", "summon", "field", "split"],
+		"leap", "summon", "field", "split", "enrage"],
 }
 
 func boss_attacks(element: String, is_final: bool) -> Array:
