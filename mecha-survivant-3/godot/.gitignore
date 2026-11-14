@@ -1,0 +1,4 @@
+# Cache d'import Godot : régénéré par `godot --headless --import`
+.godot/
+# Sorties d'export (le build web est produit en CI, pas versionné)
+/export/

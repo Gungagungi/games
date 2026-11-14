@@ -1,0 +1,163 @@
+# Manifeste des assets
+
+Le jeu tourne **sans aucun de ces fichiers** : tant qu'un asset est absent,
+l'entité se dessine en placeholder géométrique (`scenes/fx/sprite_or_shape.gd`)
+et les appels audio sont silencieux (`autoload/audio_manager.gd`). Déposer un
+fichier au bon nom suffit à le brancher — aucun code à modifier, juste relancer
+`scripts/build.sh`.
+
+**Tout ce qui est listé ici est branché** : chaque fichier a son point de
+chargement dans le code, et le rendu de secours qu'il remplace. Rien n'est
+décoratif ni « pour plus tard » — si un fichier de cette liste ne se voit pas
+une fois déposé, c'est un bug.
+
+## Sprites — `assets/sprites/`
+
+**Format** : PNG, fond transparent, strip horizontal (une frame par case,
+frames carrées de la taille indiquée), palette limitée, pas d'anti-aliasing.
+Le filtrage est en *nearest* pour tout le projet
+(`rendering/textures/canvas_textures/default_texture_filter=0`), le pixel art
+reste donc net.
+
+**L'ordre des cases compte** : la colonne « Découpage » donne les plages que le
+code va chercher, dans l'ordre où elles doivent apparaître sur la planche. Ce
+découpage est déclaré une seule fois, dans `SHEETS`
+(`scenes/fx/sprite_or_shape.gd`) — c'est là qu'il faut regarder en cas de doute,
+et là qu'il faudrait le changer si une planche livrée s'organisait autrement.
+
+| Fichier | Tuile | Cases | Découpage |
+| --- | --- | --- | --- |
+| `player_mech.png` | 64×64 | 13 | `idle` 0-3, `walk` 4-9, `dash` 10-12 |
+| `enemy_zombie.png` | 32×32 | 8 | `walk` 0-3, `death` 4-7 |
+| `enemy_skeleton.png` | 32×32 | 8 | `walk` 0-3, `death` 4-7 |
+| `enemy_risen.png` | 32×32 | 8 | `walk` 0-3, `death` 4-7 |
+| `enemy_shade.png` | 32×32 | 8 | `walk` 0-3, `death` 4-7 |
+| `enemy_flameling.png` | 32×32 | 8 | `walk` 0-3, `death` 4-7 |
+| `enemy_fire_skeleton.png` | 32×32 | 8 | `walk` 0-3, `death` 4-7 |
+| `boss_giant_knight.png` | 96×96 | 8 | `idle` 0-3, `attack` 4-7 |
+| `boss_sewer_monster.png` | 96×96 | 8 | `idle` 0-3, `attack` 4-7 |
+| `boss_zombie_titan.png` | 96×96 | 8 | `idle` 0-3, `attack` 4-7 |
+| `boss_galaxy_boss.png` | 128×128 | 8 | `idle` 0-3, `attack` 4-7 |
+| `boss_destroyer.png` | 128×128 | 8 | `idle` 0-3, `attack` 4-7 — niveau spécial ; dessiné en code tant qu'absent, visière et symbole du torse doivent tomber à `VISOR` / `CORE` de `destroyer_boss.gd` (origine des lasers) |
+| `boss_gravedigger.png` | 96×96 | 8 | `idle` 0-3, `attack` 4-7 |
+| `boss_bone_colossus.png` | 96×96 | 8 | `idle` 0-3, `attack` 4-7 |
+| `boss_plague.png` | 96×96 | 8 | `idle` 0-3, `attack` 4-7 |
+| `megaboss.png` | 128×128 | 8 | `idle` 0-3, `attack` 4-7 (phases teintées en `modulate`) |
+| `titan.png` | 160×160 | 14 | `idle` 0-3, `scythe` 4-9, `charge` 10-13 |
+| `proj_bullet.png` | 16×16 | 1 | projectile du joueur |
+| `proj_arrow.png` | 16×16 | 1 | flèche de squelette |
+| `proj_fireball.png` | 16×16 | 4 | boule de feu du flameling, en boucle |
+| `proj_poison.png` | 16×16 | 1 | projectile empoisonné |
+| `proj_orb.png` | 16×16 | 1 | orbe de boss |
+| `proj_ultimate.png` | 64×64 | 4 | boule de feu ultime du Titan, en boucle |
+| `fx_shockwave.png` | 64×64 | 6 | onde de choc, déroulée une fois sur 0,35 s |
+| `fx_hit.png` | 64×64 | 5 | impact, déroulé une fois à chaque coup encaissé |
+| `fx_telegraph.png` | 64×64 | 1 | cercle d'annonce, opacité pilotée par le code |
+| `tiles_floor.png` | 32×32 | 4 | dalles des rues et de la place, variante tirée au hachage des coordonnées (DCSS) |
+| `tiles_ground.png` | 32×32 | 7 | herbe ×2, « herbe caillouteuse » (3e herbe), terre ×2, pierre, pavés (DCSS) |
+| `tiles_indoor.png` | 32×32 | 5 | sols intérieurs : dalles de calcaire ×5 (DCSS) |
+| `tiles_wall.png` | 32×32 | 8 | faces de mur : pierre de catacombe ×6 ; pans écroulés ×2 (colonnes brisées) (DCSS) |
+| `tiles_props.png` | 32×32 | 19 | arbres ×3, tombes ×5 (stèle, statues), rochers ×4, tonneaux ×2 (caisse, coffre), mobilier ×5 (coffre, sarcophage, piédestal, autels) (DCSS) |
+| `hazard_poison.png` | 48×48 | 4 | flaque de poison, en boucle |
+| `ui_upgrades.png` | 32×32 | 8 | cadence, dégâts, coque, vitesse, salve, bouclier, onde, endurance — **cet ordre exactement**, c'est celui de `UpgradeManager.ALL` |
+| `icon.png` | 64×64 | 1 | icône du jeu (placeholder généré, à remplacer) |
+
+**Cadrage** — un sprite est affiché à la taille de sa case, sans mise à
+l'échelle : une case de 32 px occupe 32 px à l'écran, l'entité doit donc
+remplir sa case. Trois exceptions, mises à l'échelle de la zone qu'elles
+couvrent : `fx_shockwave`, `fx_telegraph` et `hazard_poison` sont cadrées sur le
+**diamètre** de l'effet, cercle inscrit dans la case.
+
+**Orientation** — le mech est le seul sprite tourné par le code
+(`player.gd` : `rotation = velocity.angle() + PI/2`), il doit donc être dessiné
+**vu de dessus, face vers le haut**. Ni les ennemis, ni les boss, ni les
+projectiles ne sont tournés : ils gardent à l'écran l'orientation dans laquelle
+ils sont dessinés, quelle que soit leur direction de déplacement. Conséquence à
+accepter ou à corriger un jour dans le code : la flèche de squelette pointera
+toujours du même côté.
+
+**v3 : mech, ennemis et boss viennent de Dungeon Crawl Stone Soup** (CC0,
+licence dans `assets/DCSS-LICENSE.txt`), produits par `scripts/import-dcss.py`
+depuis le zip d'OpenGameArt. Le pack ne fournit qu'une image de 32 px par
+monstre : les cases d'animation en sont dérivées par le script, et les tailles
+de case ci-dessus sont des multiples entiers de 32 (mech ×2, boss ×3 à ×5)
+pour garder le pixel art net. C'est pourquoi le mech passe de 48 à 64 px.
+Le Destructeur d'univers reste dessiné en code ; les boss retirés, les
+projectiles, les effets et le décor sont ceux de la v2.
+
+**Direction artistique** (v2) — donjon de morts-vivants, palette froide et
+désaturée (bleus-gris, verts putrides), le mech du joueur en cyan lumineux
+tranchant sur le fond, les boss en rouge/violet.
+
+**Génération** — `scripts/gen-sprites.py` produit ces 24 planches depuis l'API
+PixelLab, aux dimensions exactes du tableau ci-dessus. Les prompts, un par
+planche, vivent dans `scripts/sprite-prompts.json` : c'est là qu'on retouche
+une créature qui ne ressemble à rien, pas dans le code.
+
+```sh
+scripts/gen-sprites.py --list                  # ce qu'il y a à produire
+scripts/gen-sprites.py --fake                  # valide la chaîne sans crédit
+scripts/gen-sprites.py --only enemy_zombie     # une planche
+scripts/gen-sprites.py --budget 5              # tout, en s'arrêtant à 5 $
+scripts/gen-sprites.py --only titan --redo scythe   # refaire une seule animation
+scripts/preview-sheet.py titan                 # relire la planche, case par case
+```
+
+Une planche produite à la main ou par un autre outil reste parfaitement
+valable : le jeu ne connaît que le fichier, jamais son origine.
+
+**Décor du niveau (v3 : Dungeon Crawl Stone Soup, CC0)** — les cinq planches
+`tiles_*` sont composées par `scripts/import-dcss.py` (table `TUILES`), comme
+les sprites, depuis le même zip. Elles remplacent case pour case les planches
+Kenney de la v2, en 32 px au lieu de 16 : `level.gd` déduit la taille d'une
+case de la largeur de la planche. Sol, intérieurs et rues sont étalonnés à
+l'import (assombris, désaturés) pour la palette froide du jeu.
+
+Leur ordre est un contrat avec les constantes `GROUND_*`, `WALL_*` et
+`PROP_*` de `scenes/level.gd` : changer une tuile se fait dans `TUILES`,
+réordonner oblige à suivre dans `level.gd`. `import-kenney.py` a été retiré
+de la v3 : relancé, il aurait écrasé ces planches.
+
+## Polices — `assets/fonts/`
+
+| Fichier | Rôle |
+| --- | --- |
+| `MedievalSharp.ttf` | police par défaut de tout l'UI (licence SIL OFL, `MedievalSharp-OFL.txt`) |
+
+## Effets sonores — `assets/sfx/`
+
+**v3 : banques libres CC0 d'OpenGameArt**, déposées par
+`scripts/import-audio.py` (table `SFX` : quelle clé vient de quel fichier de
+quel pack). Crédits dans `assets/AUDIO-CREDITS.md`. Format `.ogg`, tous sous
+2 s (mesuré dans les en-têtes Ogg) ; ni rognés ni normalisés, faute de
+décodeur sans dépendance — les volumes relatifs se jugent à l'oreille.
+
+Les 21 clés, celles que le code passe à `AudioManager.sfx()` :
+
+`shoot`, `hit_enemy`, `enemy_death`, `enemy_groan`, `player_hurt`, `dash`,
+`shockwave`, `upgrade_pick`, `ui_click`, `wave_start`, `boss_spawn`,
+`boss_hurt`, `boss_death`, `shade_phase`, `flameling_cast`, `fireball_impact`,
+`bone_sweep`, `laser_charge`, `titan_charge`, `titan_ultimate`, `game_over`.
+
+Le nom du fichier est la clé : `shoot.ogg` et rien d'autre. `AudioManager`
+essaie `.ogg`, puis `.wav`, puis `.mp3` — une seule version par clé, sans quoi
+la suivante pèse dans l'export sans jamais jouer. Chaque son est joué avec
+±8 % de variation de hauteur.
+
+## Musique — `assets/music/`
+
+| Fichier | Moment | Piste (CC0) |
+| --- | --- | --- |
+| `menu.ogg` | écran-titre | Ambient Horror Track 01 — CleytonKauffman |
+| `dungeon.mp3` | vagues ordinaires | Battle Theme — Wolfgang_ |
+| `boss.mp3` | boss des vagues 5, 10, 15, 20 | Boss Battle Loop — Pro Sensory |
+| `titan.ogg` | faux Titan (vague 1) et Destructeur | Heavy Boss Battle 2 — MintoDog |
+
+Elles pèsent **13 Mo** à elles quatre (5 en v2) : des pistes complètes, pas
+réencodables ici sans `ffmpeg`. C'est le gros du `.pck`, donc du temps de
+chargement web ; une piste plus courte se substitue en changeant `MUSIC` dans
+le script.
+
+Une piste ne boucle pas toute seule : il faut `loop=true` dans son `.import`
+(créé par `scripts/build.sh`). `scripts/import-audio.py --loops` le pose, puis
+un second build le prend en compte.

@@ -1,0 +1,142 @@
+class_name WaveManager
+extends Node
+## Orchestration des vagues, à l'identique de la v1 :
+## `5 + n*2` ennemis, `tier = floor((n-1)/2)`, boss toutes les 5 vagues, plus
+## la vague 1 qui ouvre le jeu sur le Titan de la Mort.
+##
+## Le Titan de la Mort annoncé depuis la v1 n'a en réalité qu'1 point de vie —
+## un leurre qui meurt au premier coup, dès la vague 1. Sa mort ne déclenche
+## pas `boss_defeated` (voir `titan_decoy.gd`) mais une réplique pausée ; une
+## fois le dialogue refermé, la vague se termine normalement. Le vrai combat
+## final, le Boss Galaxie, apparaît directement à la vague 20 — sans leurre.
+
+const BOSS_BY_WAVE := {
+	1: "res://scenes/bosses/titan_decoy.gd",
+	5: "res://scenes/bosses/giant_knight.gd",
+	10: "res://scenes/bosses/sewer_monster.gd",
+	15: "res://scenes/bosses/zombie_titan.gd",
+	20: "res://scenes/bosses/galaxy_boss.gd",
+}
+## Boss du niveau spécial, hors de la boucle des vagues.
+const DESTROYER := "res://scenes/bosses/destroyer_boss.gd"
+const BOSS_OFFSET := 140.0
+const BOSS_MARGIN := 80.0
+
+var arena: Node2D
+var remaining_to_spawn := 0
+var spawn_cd := 0.0
+var wave_active := false
+var _boss_alive := false
+
+const SCRIPTS := {
+	"zombie": "res://scenes/enemies/zombie.gd",
+	"skeleton": "res://scenes/enemies/skeleton.gd",
+	"risen": "res://scenes/enemies/risen.gd",
+	"shade": "res://scenes/enemies/shade.gd",
+	"flameling": "res://scenes/enemies/flameling.gd",
+	"fire_skeleton": "res://scenes/enemies/fire_skeleton.gd",
+}
+
+func _ready() -> void:
+	EventBus.boss_defeated.connect(_on_boss_defeated)
+	EventBus.titan_decoy_defeated.connect(_on_titan_decoy_defeated)
+
+func start_wave(n: int) -> void:
+	GameState.wave = n
+	wave_active = true
+	_boss_alive = false
+	AudioManager.sfx("wave_start")
+	EventBus.wave_started.emit(n)
+	if GameState.is_boss_wave(n):
+		remaining_to_spawn = 0
+		_spawn_boss(n)
+		AudioManager.play_music("titan" if n == 1 else "boss")
+	else:
+		remaining_to_spawn = GameState.enemy_count(n)
+		spawn_cd = 0.0
+		AudioManager.play_music("dungeon")
+
+## Niveau spécial : le Destructeur d'univers seul, sans renforts. La vague ne
+## se conclut jamais ici — c'est la gemme dorée qu'il lâche qui termine la
+## partie (`EventBus.golden_gem_collected`, écouté par `main.gd`).
+func start_destroyer() -> void:
+	wave_active = true
+	_boss_alive = false
+	remaining_to_spawn = 0
+	AudioManager.sfx("wave_start")
+	EventBus.wave_started.emit(GameState.wave)
+	_spawn_boss_script(DESTROYER)
+	AudioManager.play_music("titan")
+
+func _process(delta: float) -> void:
+	if not wave_active or not GameState.running:
+		return
+	if GameState.special_level:
+		return
+	if remaining_to_spawn > 0:
+		spawn_cd -= delta
+		if spawn_cd <= 0.0:
+			spawn_cd = GameState.spawn_interval(GameState.wave)
+			_spawn_regular()
+			remaining_to_spawn -= 1
+	elif not _boss_alive and _living_enemies() == 0:
+		wave_active = false
+		EventBus.wave_cleared.emit(GameState.wave)
+
+func _living_enemies() -> int:
+	var n := 0
+	for e in get_tree().get_nodes_in_group("enemies"):
+		if (e as EnemyBase).alive:
+			n += 1
+	return n
+
+func _spawn_regular() -> void:
+	var types := EnemyStats.available_types(GameState.wave)
+	if types.is_empty():
+		types = ["zombie"]
+	var type: String = types[randi() % types.size()]
+	var enemy: EnemyBase = load(SCRIPTS[type]).new()
+	enemy.configure(EnemyStats.scaled(type, GameState.tier()))
+	enemy.position = _edge_position()
+	arena.add_child(enemy)
+
+## Apparition juste hors champ, sur une case libre et accessible du niveau.
+func _edge_position() -> Vector2:
+	return Level.current.spawn_point()
+
+func _spawn_boss(n: int) -> void:
+	_spawn_boss_script(BOSS_BY_WAVE.get(n, "res://scenes/bosses/giant_knight.gd"))
+
+func _spawn_boss_script(path: String) -> void:
+	var boss: EnemyBase = load(path).new()
+	boss.configure_boss(GameState.tier())
+	# Au-dessus du joueur, en haut de l'écran comme avant ; le boss traverse
+	# les ruines, peu importe où il tombe.
+	var world := Level.current.world_rect().grow(-BOSS_MARGIN)
+	var player := get_tree().get_first_node_in_group("player") as Node2D
+	boss.position = (player.position + Vector2(0.0, -BOSS_OFFSET)).clamp(world.position, world.end)
+	# `call_deferred` : un spawn de boss peut arriver ici en réaction directe à
+	# la mort du boss précédent, elle-même remontée depuis la collision d'une
+	# balle. Ajouter une Area2D en pleine mise à jour physique fait planter le
+	# moteur (« flushing queries ») ; différer l'ajout au prochain tour de
+	# boucle l'évite.
+	arena.call_deferred("add_child", boss)
+	_boss_alive = true
+	AudioManager.sfx("boss_spawn")
+
+func _on_boss_defeated() -> void:
+	_boss_alive = false
+	if GameState.special_level:
+		wave_active = false
+		return
+	if wave_active and _living_enemies() <= 1:
+		wave_active = false
+		EventBus.wave_cleared.emit(GameState.wave)
+
+## Le leurre meurt en un coup sans jamais passer par `boss_defeated` — la
+## vague reste active, en pause le temps de la réplique, puis se termine
+## normalement une fois le dialogue refermé (via la boucle de `_process`).
+func _on_titan_decoy_defeated() -> void:
+	_boss_alive = false
+	EventBus.dialogue_requested.emit("Titan de la Mort",
+		"Ha... tu crois m'avoir vaincu ? Je ne suis même pas le plus puissant d'entre eux.")
