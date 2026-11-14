@@ -46,6 +46,7 @@ func _ready() -> void:
 
 	start_screen.start_requested.connect(_begin_game)
 	start_screen.destroyer_requested.connect(_begin_destroyer)
+	start_screen.destroyer_final_requested.connect(_begin_destroyer.bind(true))
 	EventBus.golden_gem_collected.connect(_on_golden_gem)
 	upgrade_screen.upgrade_chosen.connect(_on_upgrade_chosen)
 	game_over_screen.restart_requested.connect(_back_to_title)
@@ -66,7 +67,7 @@ func _ready() -> void:
 		if "--destroyer" in args:
 			print("[smoke] niveau spécial : le Destructeur d'univers")
 			_smoke_left = SMOKE_DURATION_DESTROYER
-			_begin_destroyer()
+			_begin_destroyer("--destroyer-final" in args)
 			return
 		print("[smoke] départ vague %d" % wave)
 		_begin_game(wave)
@@ -114,11 +115,12 @@ func _begin_game(start_wave: int) -> void:
 	arena.waves.start_wave(start_wave)
 
 ## Niveau spécial : on arrive face au Destructeur d'univers avec les pouvoirs
-## et le tier d'une partie menée jusqu'à la vague finale.
-func _begin_destroyer() -> void:
+## et le tier d'une partie menée jusqu'à la vague finale. `final_phase` le fait
+## entrer directement en dernière phase, à 1 % de vie (bouton « PHASE 5 »).
+func _begin_destroyer(final_phase: bool = false) -> void:
 	_prepare_run(GameState.FINAL_WAVE)
 	GameState.reset(GameState.FINAL_WAVE, true)
-	arena.waves.start_destroyer()
+	arena.waves.start_destroyer(final_phase)
 
 func _prepare_run(start_wave: int) -> void:
 	start_screen.visible = false
