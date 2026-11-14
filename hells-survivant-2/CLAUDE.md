@@ -191,7 +191,7 @@ garde les siennes, dans `Nightmare`.
 | --- | --- |
 | Chevalier de cendres | **souffle** de cendres en cône, qui suit lentement le héros |
 | Golem de sang | **morsure** à distance (des mâchoires se referment sur la position du héros, figée un instant avant, et le soignent) ; **éclaboussures** : cinq gerbes autour du héros, qui laissent des flaques brûlantes 4 s |
-| Créature infernale | **vague de feu** en ligne droite, qui s'élargit en avançant et enflamme |
+| Balrog des abîmes | **vague de feu** en ligne droite, qui s'élargit en avançant et enflamme ; **plongeon** : il s'envole (`Enemy.nm_height`), une cible au sol suit le héros puis se fige, et il pique dessus épée ardente en avant (dégâts ×1,6 et brûlure dans `PLUNGE_R`). Dans le Conclave, le boss de l'infobulle retombe sur place |
 | Mangeur de soldats | **dévoreur** : il bondit, saisit le héros (`Player.held_by`), le croque trois fois, puis le projette à l'autre bout de l'arène (même point d'arrivée que le champ de force, `Nightmare.knock_target`) |
 | Soldat blessé | **gerbe d'épées** (cinq projectiles `Projectile.sword`) ; **coup de bouclier** au contact, qui repousse |
 | Voix Putréfiée | **arbres** qui jaillissent du sol en ligne jusqu'au héros, puis le fouettent de leurs branches ; **arbre abattu** : il pousse près du héros et s'abat sur lui |
@@ -208,6 +208,11 @@ garde les siennes, dans `Nightmare`.
   bande, trapèze, ombre de l'arbre), le temps de s'écarter.
 - **Un coup par attaque** : une ligne d'arbres ne blesse qu'une fois au
   jaillissement et une fois aux branches (`sp_hit`, `sp_hit2`).
+- **Balrog des abîmes** (boss Feu) : le sprite `balrug` reste, mais
+  `Enemy.BalrogFx` dessine par-dessus en code ses ailes de ténèbres bordées de
+  feu (qui battent, et s'ouvrent en vol), une crinière de flammes derrière la
+  tête et une épée ardente (`fx/fire_sword`) qui suit l'attaque : levée,
+  brandie, pointe en bas pendant le piqué, plantée dans le sol à l'impact.
 - **Visuel** : deux nœuds `BossMoves.Visual` par boss, en coordonnées de
   l'arène : l'un dans `World.ground_layer` (sous les créatures : télégraphes,
   flaques), l'autre dans `fx_layer` (cendres, flammes, mâchoires, arbres,
@@ -345,8 +350,8 @@ fente de l'attaque, flash, dissolution, particules, halos). Fichiers renommés
 | Projectiles, or, fiole | `fx/brick`, `fx/bolt`, `fx/gold`, `fx/potion` | `effect/rock_0_new`, `effect/magic_bolt_1`, `item/gold/gold_pile_5`, `item/potion/ruby` |
 | Icônes d'attaque (Conclave) | `attacks/melee`, `heavy`, `fast`, `tough`, `charge`, `lifesteal`, `burn`, `bricks`, `bolts`, `giant` | `gui/spells/` : `components/sword`, `enchantment/berserker_rage_new`, `air/swiftness_new`, `earth/stoneskin_new`, `enchantment/haste_new`, `necromancy/vampiric_draining_new`, `fire/sticky_flame_new`, `components/stones`, `conjuration/magic_dart`, `necromancy/deaths_door_new` |
 | Icônes d'attaque de la Créature | `attacks/laser`, `whip`, `sweep`, `rush`, `leap`, `summon`, `field`, `split` | `gui/spells/` : `conjuration/searing_ray`, `summoning/summon_horrible_things`, `air/tornado`, `translocation/blink`, `earth/shatter_new`, `summoning/summon_shadow_creatures_new`, `translocation/gravitas`, `necromancy/simulacrum_new` |
-| Icônes des attaques spéciales | `attacks/ash_breath`, `blood_bite`, `blood_splash`, `fire_wave`, `devour`, `sword_throw`, `shield_bash`, `tree_rise`, `tree_fall`, `staff`, `raise`, `headbutt` | `gui/spells/monster/miasma_breath`, `item/weapon/artefact/spwpn_vampires_tooth`, `gui/spells/necromancy/sublimation_of_blood_new`, `gui/spells/fire/fire_storm_new`, `gui/spells/translocation/apportation_new`, `gui/spells/enchantment/tukimas_dance_new`, `item/armor/shields/large_shield_2_new`, `gui/spells/summoning/summon_forest`, `dungeon/trees/tree_1_red`, `item/staff/staff_3`, `gui/spells/necromancy/animate_dead_new`, `gui/spells/enchantment/confuse_new` |
-| Attaques spéciales (visuel) | `fx/sword`, `shield`, `staff`, `blood_puddle`, `tree_0`, `tree_1` | `item/weapon/short_sword_2_new`, `item/armor/shields/large_shield_2_new`, `item/staff/staff_3`, `misc/blood/blood_puddle_red`, `dungeon/trees/tree_1_red`, `tree_2_red` |
+| Icônes des attaques spéciales | `attacks/ash_breath`, `blood_bite`, `blood_splash`, `fire_wave`, `devour`, `sword_throw`, `shield_bash`, `tree_rise`, `tree_fall`, `staff`, `raise`, `headbutt`, `plunge` | `gui/spells/monster/miasma_breath`, `item/weapon/artefact/spwpn_vampires_tooth`, `gui/spells/necromancy/sublimation_of_blood_new`, `gui/spells/fire/fire_storm_new`, `gui/spells/translocation/apportation_new`, `gui/spells/enchantment/tukimas_dance_new`, `item/armor/shields/large_shield_2_new`, `gui/spells/summoning/summon_forest`, `dungeon/trees/tree_1_red`, `item/staff/staff_3`, `gui/spells/necromancy/animate_dead_new`, `gui/spells/enchantment/confuse_new`, `gui/spells/fire/fire_brand` |
+| Attaques spéciales (visuel) | `fx/fire_sword`, `fx/sword`, `shield`, `staff`, `blood_puddle`, `tree_0`, `tree_1` | `gui/spells/fire/fire_brand`, `item/weapon/short_sword_2_new`, `item/armor/shields/large_shield_2_new`, `item/staff/staff_3`, `misc/blood/blood_puddle_red`, `dungeon/trees/tree_1_red`, `tree_2_red` |
 | Difficultés (menu) | `ui/difficulty_facile`, `_intermediaire`, `_difficile` | `monster/animals/rat`, `monster/orc`, `monster/ogre` |
 
 Les trois icônes de difficulté suivent la même convention que les éléments, mais
