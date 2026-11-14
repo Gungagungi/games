@@ -9,6 +9,7 @@ var _panel_style: StyleBoxFlat
 var _title: Label
 var _wave: Label
 var _gold: Label
+var _eye: Label
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(PRESET_FULL_RECT)
@@ -30,8 +31,9 @@ func _ready() -> void:
 	_title = UiTheme.label("", 36, Color.WHITE, 6)
 	_wave = UiTheme.label("", 18)
 	_gold = UiTheme.label("", 18, Color("#ffd23c"))
+	_eye = UiTheme.label("", 16, Data.CORRUPT_COLOR)
 	var hint := UiTheme.label("Clic, Entrée ou P : retour au menu (équipement conservé)", 14, UiTheme.MUTED)
-	for l in [_title, _wave, _gold, hint]:
+	for l in [_title, _wave, _gold, _eye, hint]:
 		(l as Label).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		box.add_child(l)
 	UiTheme.ignore_mouse(self)
@@ -62,6 +64,9 @@ func present(victory: bool) -> void:
 					alive += 1
 			_wave.text = "Boss restants : %d / %d, après %s" % [alive, world.rush_total, time]
 	_gold.text = "Or récolté ce run : %d" % Game.run_gold
+	# Victoire sur la Créature : l'Œil corrompu ramassé attend à la forge.
+	_eye.visible = victory and not Game.boss_rush and Game.is_chaos()
+	_eye.text = "Œil corrompu obtenu : enchante ton épée ou ton armure à la forge (I)"
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:

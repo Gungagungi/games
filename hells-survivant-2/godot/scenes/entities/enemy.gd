@@ -6,6 +6,7 @@ extends Node2D
 
 const SHADER := preload("res://shaders/sprite.gdshader")
 const DISSOLVE_TIME := 0.5
+const SOUL_GLOW := Color(0.45, 1.0, 0.65)
 
 var radius := 15.0
 var hp := 1.0
@@ -28,6 +29,9 @@ var face_left := false
 var is_clone := false
 ## Mini-créature invoquée par la Créature : monstre de mêlée ordinaire.
 var is_mini := false
+## Âme lancée par le Nécromancien Putréfié : monstre de mêlée fragile qui
+## traque le héros (aussi `is_mini` : elle meurt avec lui).
+var is_soul := false
 ## Conclave : place du boss sur l'anneau, autour de laquelle il rôde tant que
 ## le héros ne l'approche pas (`World._update_rush_awake`).
 var home := Vector2.INF
@@ -49,6 +53,8 @@ var nm_height := 0.0
 var nm_splits := 0
 var nm_slide := Vector2.ZERO
 var nm_slide_timer := 0
+## Enragée à 25 % de PV : plus grande (`sprite_scale`, `radius`), plus forte.
+var nm_enraged := false
 
 # Attaques spéciales des autres boss, pilotées par `BossMoves`.
 ## Attaque en cours ("" : logique commune de `World`), frames restantes et
@@ -72,6 +78,8 @@ var puddles: Array[Vector3] = []
 var fog_timer := 0
 
 var sprite_scale := 1.0
+## Échelle de naissance : `sprite_scale` peut grandir ensuite (rage).
+var base_scale := 1.0
 var glow := Color.WHITE
 var _sprite: Sprite2D
 var _mat: ShaderMaterial
@@ -84,13 +92,17 @@ func _ready() -> void:
 	var elem: Dictionary = Data.ELEMENTS[element]
 	glow = elem["glow"]
 	var key: String = Data.final_boss(element)["sprite"] if is_final else (elem["boss_sprite"] if is_boss else elem["sprite"])
+	if is_soul:
+		key = "lost_soul"
+		glow = SOUL_GLOW
 	# Texel ×2 comme le héros et le sol ; la hitbox (`radius`) reste celle de la v1.
 	sprite_scale = 4.0 if is_final else (3.0 if is_boss or is_clone else 2.0)
+	base_scale = sprite_scale
 	_t = randf() * TAU
 	_mat = ShaderMaterial.new()
 	_mat.shader = SHADER
 	_mat.set_shader_parameter("outline_color", glow)
-	if is_boss or is_clone or element in ["feu", "ombre", "destruction"]:
+	if is_boss or is_clone or is_soul or element in ["feu", "ombre", "destruction"]:
 		_light = Fx.light(glow, 0.7 * sprite_scale, 0.8)
 		add_child(_light)
 	_sprite = Sprite2D.new()
@@ -101,6 +113,8 @@ func _ready() -> void:
 	if is_clone:
 		# Double un peu spectral, pour le distinguer de l'original.
 		_sprite.modulate = Color(0.8, 0.75, 1.0, 0.78)
+	elif is_soul:
+		_sprite.modulate = Color(1, 1, 1, 0.85)
 	_aura = Fx.element_aura(element, sprite_scale)
 	add_child(_aura)
 	if Nightmare.handles(self):
@@ -158,6 +172,12 @@ func _process(delta: float) -> void:
 	if fog_timer > 0:
 		veil = 0.3 if Game.boss_rush else 0.0
 	modulate.a = move_toward(modulate.a, veil, delta * 3.0)
+	if nm_attack == "finale":
+		_animate_finale()
+		queue_redraw()
+		return
+	# Enragée : teinte rouge sang, pour la distinguer de ses doubles.
+	_sprite.self_modulate = Color(1, 0.62, 0.62) if nm_enraged else Color.WHITE
 	var bob_speed := 7.0 + speed * 2.0
 	_sprite.position = Vector2(0, -absf(sin(_t * bob_speed)) * 1.5 * sprite_scale)
 	_sprite.rotation = sin(_t * bob_speed) * 0.04
@@ -167,7 +187,7 @@ func _process(delta: float) -> void:
 	elif nm_attack == "jump_crouch":
 		# Accroupie avant le saut : écrasée et tremblante.
 		_sprite.scale = Vector2(1.1, 0.88) * sprite_scale
-	elif nm_attack in ["split", "summon", "field_aim"] or sp_attack in ["devour_hold", "raise"]:
+	elif nm_attack in ["split", "summon", "field_aim", "enrage"] or sp_attack in ["devour_hold", "raise", "souls"]:
 		_sprite.position.x += randf_range(-1.5, 1.5) * sprite_scale
 	_mat.set_shader_parameter("flash", 0.85 if hit_flash > 0 else 0.0)
 	if charging and charge_telegraph > 0:
@@ -176,7 +196,7 @@ func _process(delta: float) -> void:
 		_sprite.scale = Vector2.ONE * sprite_scale * (1.0 + 0.06 * sin(_t * 30.0))
 		if _light:
 			_light.energy = 1.6
-	elif nm_attack in ["split", "summon", "laser_aim", "laser", "field_aim"] or BossMoves.telegraphing(self):
+	elif nm_attack in ["split", "summon", "laser_aim", "laser", "field_aim", "enrage"] or BossMoves.telegraphing(self):
 		_mat.set_shader_parameter("outline", 0.6 + 0.4 * sin(_t * 24.0))
 		# Le Golem de sang se gonfle avant de projeter ses éclaboussures.
 		var swell := 1.0
@@ -193,11 +213,32 @@ func _process(delta: float) -> void:
 			_light.energy = 0.8 + 0.1 * sin(_t * 6.0)
 	queue_redraw()
 
+## Mort de la Créature (voir `Nightmare.tick_finale`) : elle se dresse et
+## s'étire vers le ciel en tremblant, tire son laser, puis se désintègre.
+func _animate_finale() -> void:
+	var age := float(Nightmare.finale_age(self))
+	var look := clampf(age / Nightmare.FINALE_LOOK, 0.0, 1.0)
+	var fade := clampf((age - Nightmare.FINALE_LOOK - Nightmare.FINALE_BEAM) / Nightmare.FINALE_FADE, 0.0, 1.0)
+	_sprite.flip_h = face_left
+	_sprite.rotation = 0.0
+	_sprite.position = Vector2(randf_range(-1.0, 1.0) * look * sprite_scale, -3.0 * look * sprite_scale)
+	_sprite.scale = Vector2(1.0 - 0.08 * look, 1.0 + 0.15 * look) * sprite_scale
+	_sprite.self_modulate = Color.WHITE
+	_mat.set_shader_parameter("flash", 0.6 if fade == 0.0 and age > Nightmare.FINALE_LOOK and int(age) % 8 < 3 else 0.0)
+	_mat.set_shader_parameter("outline", (0.6 + 0.4 * sin(_t * 30.0)) * (1.0 - fade))
+	_mat.set_shader_parameter("dissolve", fade)
+	_aura.emitting = fade == 0.0
+	if _light:
+		_light.energy = 2.0 * (1.0 - fade)
+
 func _draw() -> void:
 	draw_set_transform(Vector2(0, 12.0 * sprite_scale), 0.0, Vector2(1.0, 0.35))
 	# En saut, l'ombre reste au sol et rétrécit avec la hauteur.
 	var lift := clampf(1.0 - nm_height / 220.0, 0.4, 1.0)
-	draw_circle(Vector2.ZERO, 11.0 * sprite_scale * lift, Color(0, 0, 0, 0.45))
+	var shade := 0.45
+	if nm_attack == "finale":
+		shade *= 1.0 - clampf(float(Nightmare.finale_age(self) - Nightmare.FINALE_LOOK - Nightmare.FINALE_BEAM) / Nightmare.FINALE_FADE, 0.0, 1.0)
+	draw_circle(Vector2.ZERO, 11.0 * sprite_scale * lift, Color(0, 0, 0, shade))
 	draw_set_transform(Vector2.ZERO)
 	if _dying > 0.0 or is_boss:
 		return
@@ -258,6 +299,8 @@ class NightmareFx extends Node2D:
 	func _draw_beam(e: Enemy, k: float) -> void:
 		var eye := e.eye_offset()
 		match e.nm_attack:
+			"finale":
+				_draw_finale(e, eye)
 			"laser_aim":
 				var locked := k <= Nightmare.LASER_LOCK
 				var a := (0.9 if int(_t * 20.0) % 2 == 0 else 0.4) if locked else 0.35
@@ -295,6 +338,31 @@ class NightmareFx extends Node2D:
 				var c := Vector2(0, 6.0 * e.sprite_scale)
 				draw_arc(c, r, 0.0, TAU, 64, Color(BEAM, 0.35 * a + 0.2), Nightmare.WAVE_HALF * 2.2)
 				draw_arc(c, r, 0.0, TAU, 64, Color(1, 0.85, 1, a), 4.0)
+
+	## Mort de la Créature : l'œil se charge en regardant le ciel, puis crache un
+	## laser géant à la verticale, qui s'éteint quand elle se désintègre.
+	func _draw_finale(e: Enemy, eye: Vector2) -> void:
+		var age := float(Nightmare.finale_age(e))
+		var look := Nightmare.FINALE_LOOK
+		var stop := Nightmare.FINALE_LOOK + Nightmare.FINALE_BEAM + 20
+		# L'œil remonte un peu : elle lève les yeux.
+		eye += Vector2(0, -3.0 * e.sprite_scale * clampf(age / look, 0.0, 1.0))
+		if age < look:
+			var f := age / look
+			draw_circle(eye, 6.0 + 22.0 * f, Color(BEAM, 0.35 + 0.5 * f))
+			draw_circle(eye, 3.0 + 8.0 * f, Color(1, 0.9, 1, f))
+			return
+		if age >= stop:
+			return
+		var open := clampf(minf(age - look, stop - age) / 10.0, 0.0, 1.0)
+		var pulse := 1.0 + 0.12 * sin(_t * 45.0)
+		var sky := Vector2(eye.x, -2000.0)
+		draw_line(eye, sky, Color(BEAM, 0.25), 150.0 * pulse * open)
+		draw_line(eye, sky, Color(BEAM, 0.6), 90.0 * pulse * open)
+		draw_line(eye, sky, Color(1, 0.85, 1, 0.95), 36.0 * pulse * open)
+		draw_line(eye, sky, Color.WHITE, 12.0 * open)
+		draw_circle(eye, 60.0 * pulse * open, Color(BEAM, 0.7))
+		draw_circle(eye, 28.0 * open, Color.WHITE)
 
 	## Tentacule ondulé et effilé, de `from` sur `length` selon `dir`.
 	func _tentacle(from: Vector2, dir: Vector2, length: float, width: float, phase: float) -> void:

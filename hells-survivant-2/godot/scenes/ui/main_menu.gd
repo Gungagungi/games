@@ -172,7 +172,10 @@ func refresh() -> void:
 	_trait.text = "%s : %s%s" % [elem["label"], elem["trait"], tag]
 	_wave_label.text = "Vague %d" % Game.start_wave
 	_wave_info.text = _wave_description(Game.start_wave)
-	_equip.text = "Équipement : %s — %s — Or : %d" % [Save.sword()["name"], Save.armor()["name"], Save.gold]
+	_equip.text = "Équipement : %s — %s — Or : %d" % [
+		Save.item_name(Save.sword(), true), Save.item_name(Save.armor(), false), Save.gold]
+	if Save.eyes > 0:
+		_equip.text += " — Œil corrompu : %d" % Save.eyes
 	_hints.text = "QD : difficulté — ZS : élément — AE : vague — Entrée : combattre — B : conclave — I : forge — M : %s" % (
 		"réactiver le son" if Save.muted else "couper le son")
 

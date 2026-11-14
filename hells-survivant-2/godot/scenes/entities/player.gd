@@ -108,8 +108,10 @@ func _process(delta: float) -> void:
 		var progress := 1.0 - attack_timer / 14.0
 		lunge = facing * 5.0 * SCALE * sin(progress * PI)
 		var base_angle := facing.angle()
+		# Épée corrompue : estoc à la couleur de l'Œil.
+		var col: Color = Data.CORRUPT_COLOR if Save.sword_corrupt else SLASH_COLORS[Save.sword_tier]
 		_slash.show_arc(base_angle - PI / 3.2, base_angle + (progress - 0.5) * (PI / 1.6),
-			_swing_range, SLASH_COLORS[Save.sword_tier], 1.0 - progress * 0.6)
+			_swing_range, col, 1.0 - progress * 0.6)
 	else:
 		_slash.hide_arc()
 	_rig.position = Vector2(0, bob) + lunge

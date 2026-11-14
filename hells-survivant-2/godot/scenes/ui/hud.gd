@@ -14,6 +14,8 @@ var _boss_panel: PanelContainer
 var _boss_name: Label
 var _boss_bar: ProgressBar
 var _banner: Label
+## Rappel des touches I, P, M : remplacé par des boutons en mode tactile.
+var _keys_hint: VBoxContainer
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(PRESET_FULL_RECT)
@@ -53,6 +55,7 @@ func _ready() -> void:
 	# Ancres posées après add_child : avant, la marge était recalculée contre un
 	# parent de taille nulle et le bloc sortait de l'écran.
 	var right := VBoxContainer.new()
+	_keys_hint = right
 	add_child(right)
 	right.set_anchor_and_offset(SIDE_LEFT, 1.0, -220)
 	right.set_anchor_and_offset(SIDE_RIGHT, 1.0, -14)
@@ -111,6 +114,7 @@ func _process(_delta: float) -> void:
 	var tag := " — " + boss_name if boss_name != "" else ""
 	_wave.text = "Vague %d%s" % [Game.wave, tag]
 	_mode.text = "%s — %s" % [Game.diff()["label"], Game.elem()["label"]]
+	_keys_hint.visible = not Game.touch_mode
 	_sound.text = "M : son (coupé)" if Save.muted else "M : son (activé)"
 	if Game.boss_rush:
 		_process_boss_rush()
