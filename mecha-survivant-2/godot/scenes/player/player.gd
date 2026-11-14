@@ -243,6 +243,16 @@ func take_damage(amount: float) -> void:
 	if hp <= 0.0:
 		die()
 
+## Soin (potion du niveau spécial) : plafonné aux PV max, éteint l'embrasement.
+func heal(amount: float) -> void:
+	if not alive:
+		return
+	var gained := minf(max_hp, hp + amount) - hp
+	hp += gained
+	burn_time = 0.0
+	EventBus.float_text_requested.emit(global_position + Vector2(0, -30),
+		"+%d PV" % roundi(gained), Color(0.45, 1.0, 0.5))
+
 ## Embrasement (squelette de feu) : dégâts continus tant que `burn_time` court,
 ## sans passer par le bouclier ni l'invulnérabilité de coup — seule
 ## l'invulnérabilité empêche l'embrasement de prendre au moment de l'impact.
