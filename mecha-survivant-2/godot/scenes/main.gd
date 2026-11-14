@@ -1,7 +1,8 @@
 extends Node
 ## Point d'entrée : enchaîne écran-titre → arène → écran d'upgrade → fin.
 ##
-## Mode smoke test : `godot --headless --path godot -- --smoke [--wave=N]` joue
+## Mode smoke test : `godot --headless --path godot -- --smoke [--wave=N |
+## --destroyer | --crystal]` joue
 ## une partie en accéléré sans rendu, puis quitte. C'est le test de
 ## non-régression du dépôt (spawns, vagues, boss) sur une machine sans écran.
 ## Le joueur y est immortel et tire tout seul, sinon rien n'irait plus loin que
@@ -49,6 +50,8 @@ func _ready() -> void:
 	EventBus.golden_gem_collected.connect(_on_golden_gem)
 	upgrade_screen.upgrade_chosen.connect(_on_upgrade_chosen)
 	game_over_screen.restart_requested.connect(_back_to_title)
+	game_over_screen.crystal_requested.connect(_begin_crystal)
+	EventBus.crystal_destroyed.connect(_on_crystal_destroyed)
 	EventBus.wave_cleared.connect(_on_wave_cleared)
 	EventBus.player_died.connect(_on_player_died)
 
@@ -63,6 +66,12 @@ func _ready() -> void:
 		for a in args:
 			if a.begins_with("--wave="):
 				wave = int(a.trim_prefix("--wave="))
+		if "--crystal" in args:
+			print("[smoke] entraînement : le Cristal")
+			_prepare_run(GameState.FINAL_WAVE)
+			GameState.reset(GameState.FINAL_WAVE, true)
+			_begin_crystal()
+			return
 		if "--destroyer" in args:
 			print("[smoke] niveau spécial : le Destructeur d'univers")
 			_smoke_left = SMOKE_DURATION_DESTROYER
@@ -162,6 +171,26 @@ func _on_golden_gem() -> void:
 		_smoke_left = 0.0
 	game_over_screen.show_golden_gem()
 
+## Entraînement contre le Cristal, une fois la gemme dorée ramassée — ou de
+## nouveau après un combat. Le mech garde ses pouvoirs et repart plein.
+func _begin_crystal() -> void:
+	game_over_screen.visible = false
+	arena.clear_transients()
+	arena.player.revive()
+	GameState.special_level = true
+	GameState.crystal_training = true
+	GameState.running = true
+	arena.waves.start_crystal()
+
+func _on_crystal_destroyed() -> void:
+	GameState.running = false
+	AudioManager.stop_music()
+	if GameState.smoke_test:
+		print("[smoke] cristal détruit — entraînement réussi")
+		_smoke_left = 0.0
+		return
+	game_over_screen.show_crystal_destroyed()
+
 func _on_player_died() -> void:
 	GameState.running = false
 	AudioManager.stop_music()
@@ -169,6 +198,7 @@ func _on_player_died() -> void:
 
 func _back_to_title() -> void:
 	GameState.running = false
+	GameState.crystal_training = false
 	arena.clear_transients()
 	AudioManager.play_music("menu")
 	start_screen.visible = true

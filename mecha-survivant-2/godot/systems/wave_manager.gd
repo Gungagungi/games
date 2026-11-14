@@ -19,6 +19,8 @@ const BOSS_BY_WAVE := {
 }
 ## Boss du niveau spécial, hors de la boucle des vagues.
 const DESTROYER := "res://scenes/bosses/destroyer_boss.gd"
+## Mini-boss d'entraînement, proposé une fois la gemme dorée ramassée.
+const CRYSTAL := "res://scenes/bosses/crystal_boss.gd"
 const BOSS_OFFSET := 140.0
 const BOSS_MARGIN := 80.0
 
@@ -67,6 +69,17 @@ func start_destroyer() -> void:
 	EventBus.wave_started.emit(GameState.wave)
 	_spawn_boss_script(DESTROYER)
 	AudioManager.play_music("titan")
+
+## Entraînement contre le Cristal : même cadre que le Destructeur, la fin du
+## combat passe par `EventBus.crystal_destroyed` (écouté par `main.gd`).
+func start_crystal() -> void:
+	wave_active = true
+	_boss_alive = false
+	remaining_to_spawn = 0
+	AudioManager.sfx("wave_start")
+	EventBus.wave_started.emit(GameState.wave)
+	_spawn_boss_script(CRYSTAL)
+	AudioManager.play_music("boss")
 
 func _process(delta: float) -> void:
 	if not wave_active or not GameState.running:
