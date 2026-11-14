@@ -50,6 +50,11 @@ Cloudflare, en « DNS uniquement » pour que GitHub émette lui-même le certifi
 portfolio (`~/dev/pro/portfolio`) renvoie vers ce domaine depuis sa section « Jeux » : un
 nouveau jeu doit aussi y être ajouté.
 
+`mecha-survivant-2` et `hells-survivant-2` sont aussi joignables sur l'adresse IP nue du VPS
+(`https://<ip>/<jeu>/`), relayés depuis Pages par le Caddy de Fretline
+(`~/dev/pro/music-website`, variable `GAMES_IP_ADDRESS`) : renommer ou déplacer l'un de
+ces dossiers casse ce relais, dont la liste des jeux est écrite en dur dans le `Caddyfile`.
+
 ## Architecture
 
 - Exception assumée : `mecha-survivant-2/`, `mecha-survivant-3/` et `hells-survivant-2/` ne sont pas du HTML/JS pur mais des projets **Godot 4** exportés en WebAssembly. Ils ont une étape de build (`scripts/build.sh`), leur jeu jouable n'est pas versionné (la CI le construit), et ils ne s'ouvrent pas en `file://` — voir leur `CLAUDE.md`. Ce sont les trois seuls jeux du dépôt dans ce cas ; ils partagent la même version de Godot, installée par `mecha-survivant-2/scripts/install-godot.sh`.
