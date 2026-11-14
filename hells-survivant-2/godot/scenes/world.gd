@@ -53,6 +53,8 @@ var _inspected: Enemy = null
 var _spawn_queue: Array[Enemy] = []
 
 var entities: Node2D
+## Télégraphes et flaques au sol des attaques de boss, sous les créatures.
+var ground_layer: Node2D
 var fx_layer: Node2D
 var _camera: Camera2D
 var _acc := 0.0
@@ -82,6 +84,8 @@ func _ready() -> void:
 	_camera = Camera2D.new()
 	_camera.anchor_mode = Camera2D.ANCHOR_MODE_FIXED_TOP_LEFT
 	add_child(_camera)
+	ground_layer = Node2D.new()
+	add_child(ground_layer)
 	entities = Node2D.new()
 	entities.y_sort_enabled = true
 	add_child(entities)
@@ -199,8 +203,9 @@ func clear_run() -> void:
 	if potion != null:
 		potion.queue_free()
 		potion = null
-	for c in fx_layer.get_children():
-		c.queue_free()
+	for layer in [fx_layer, ground_layer]:
+		for c: Node in layer.get_children():
+			c.queue_free()
 	_spawn_queue.clear()
 
 func reset_player() -> void:
@@ -209,6 +214,8 @@ func reset_player() -> void:
 	player.position = Data.ARENA / 2.0
 	player.burn_timer = 0
 	player.knock_timer = 0
+	player.stun_timer = 0
+	player.held_by = null
 	player.attack_timer = 0
 	player.attack_cooldown = 0
 	player.facing = Vector2(0, 1)
@@ -278,6 +285,16 @@ func _update_player() -> void:
 		var k := 1.0 - float(player.knock_timer) / player.knock_time
 		player.position = player.knock_from.lerp(player.knock_to, 1.0 - (1.0 - k) * (1.0 - k))
 		dir = Vector2.ZERO
+	if player.held_by != null:
+		# Dans la gueule du Mangeur de soldats : il le tient jusqu'à le projeter.
+		var h := player.held_by
+		if is_instance_valid(h) and enemies.has(h) and h.sp_attack == "devour_hold":
+			dir = Vector2.ZERO
+		else:
+			player.held_by = null
+	if player.stun_timer > 0:
+		player.stun_timer -= 1
+		dir = Vector2.ZERO
 	player.moving = dir != Vector2.ZERO
 	if player.moving:
 		dir = dir.normalized()
@@ -302,7 +319,7 @@ func attack_toward(target: Vector2) -> void:
 	do_attack()
 
 func do_attack() -> void:
-	if Game.state != "playing" or player.attack_cooldown > 0 or player.attack_timer > 0:
+	if Game.state != "playing" or player.attack_cooldown > 0 or player.attack_timer > 0 or player.stun_timer > 0:
 		return
 	var sword := Save.sword()
 	var sword_dmg: float = sword["dmg"]
@@ -330,9 +347,22 @@ func knock_player(to: Vector2, frames: int) -> void:
 	player.knock_time = maxi(frames, 1)
 	player.knock_timer = player.knock_time
 
+## Repousse le héros de `dist` px selon `dir` (coups de bouclier, de bâton,
+## de tête), sans le sortir de l'arène.
+func push_player(dir: Vector2, dist: float, frames: int) -> void:
+	knock_player(player.position + dir * dist, frames)
+
+## Étourdit le héros : il ne bouge ni ne frappe pendant `frames` frames.
+func stun_player(frames: int) -> void:
+	if Game.state != "playing" or not harms_player():
+		return
+	if player.stun_timer == 0:
+		Fx.float_text(fx_layer, player.position + Vector2(0, -player.radius - 30), "Étourdi !", Color("#ffe066"))
+	player.stun_timer = maxi(player.stun_timer, frames)
+
 ## Faux dans le Conclave des boss : les boss y montrent leurs attaques sans
 ## jamais blesser le héros (ni dégâts, ni brûlure, ni vol de vie, ni
-## projection). Seul le héros porte des coups.
+## projection, ni étourdissement, ni saisie). Seul le héros porte des coups.
 static func harms_player() -> bool:
 	return not Game.boss_rush
 
@@ -437,6 +467,16 @@ func _update_potion() -> void:
 	potion = null
 
 func _spawn_enemy(element: String, is_boss: bool, is_final: bool) -> Enemy:
+	var e := make_enemy(element, is_boss, is_final)
+	entities.add_child(e)
+	enemies.append(e)
+	if BossMoves.handles(e):
+		BossMoves.attach_fx(self, e)
+	return e
+
+## Crée un monstre aux caractéristiques de la vague en cours, au bord de
+## l'arène, sans l'ajouter à la partie (voir `_spawn_enemy`, `queue_spawn`).
+func make_enemy(element: String, is_boss: bool, is_final: bool) -> Enemy:
 	var diff := Game.diff()
 	var elem: Dictionary = Data.ELEMENTS[element]
 	var pos := Vector2.ZERO
@@ -471,9 +511,22 @@ func _spawn_enemy(element: String, is_boss: bool, is_final: bool) -> Enemy:
 	e.gold_value = roundi(gold_base * gold_mult * (1.0 + Game.wave * 0.12))
 	if is_final and Data.final_boss(element).has("gold"):
 		e.gold_value = Data.final_boss(element)["gold"]
-	entities.add_child(e)
-	enemies.append(e)
+	# Première attaque spéciale peu après l'apparition, puis à intervalles
+	# irréguliers (`BossMoves._end`).
+	e.sp_cooldown = 150 + randi() % 90
 	return e
+
+## Tir d'un monstre : brique, trait d'ombre ou épée.
+func shoot(from: Vector2, velocity: Vector2, dmg: float, radius: float, brick := false, sword := false) -> void:
+	var p := Projectile.new()
+	p.position = from
+	p.velocity = velocity
+	p.dmg = dmg
+	p.radius = radius
+	p.brick = brick
+	p.sword = sword
+	entities.add_child(p)
+	projectiles.append(p)
 
 func damage_enemy(e: Enemy, amount: float) -> void:
 	# Déjà retiré : un double emporté par la mort du boss pendant le même coup.
@@ -532,6 +585,10 @@ func _update_enemies() -> void:
 func _tick_enemies() -> void:
 	var shoot_mult: float = Game.diff()["shoot_mult"]
 	for e in enemies:
+		if BossMoves.handles(e):
+			BossMoves.tick_hazards(self, e)
+			if Game.state != "playing":
+				return
 		if Game.boss_rush and _rush_resting(e):
 			_rest(e)
 			continue
@@ -551,6 +608,13 @@ func _tick_enemies() -> void:
 		if e.hit_flash > 0:
 			e.hit_flash -= 1
 		e.face_left = player.position.x < e.position.x
+
+		# Attaque spéciale en cours : le boss ne marche, ne tire ni ne charge.
+		if BossMoves.busy(e):
+			BossMoves.tick(self, e)
+			if Game.state != "playing":
+				return
+			continue
 
 		if e.is_boss:
 			e.charge_timer -= 1.0
@@ -572,6 +636,8 @@ func _tick_enemies() -> void:
 
 		var to := player.position - e.position
 		var dist := to.length() if to.length() > 0.0 else 1.0
+		if BossMoves.handles(e) and BossMoves.try_start(self, e, dist):
+			continue
 
 		if ranged:
 			const PREFERRED := 230.0
@@ -589,14 +655,8 @@ func _tick_enemies() -> void:
 			if e.shoot_cooldown > 0:
 				e.shoot_cooldown -= 1
 			elif dist < 420.0:
-				var p := Projectile.new()
-				p.position = e.position
-				p.velocity = to / dist * (3.2 if bricks else 4.5)
-				p.dmg = e.dmg
-				p.radius = (13.0 if bricks else 10.0) if e.is_boss else (9.0 if bricks else 6.0)
-				p.brick = bricks
-				entities.add_child(p)
-				projectiles.append(p)
+				var radius := (13.0 if bricks else 10.0) if e.is_boss else (9.0 if bricks else 6.0)
+				shoot(e.position, to / dist * (3.2 if bricks else 4.5), e.dmg, radius, bricks)
 				e.shoot_cooldown = roundi((55 if e.is_boss else 90) * shoot_mult)
 				if bricks:
 					Audio.sfx("throw", 0.8)
@@ -628,7 +688,8 @@ func _update_projectiles() -> void:
 			continue
 		if p.position.distance_to(player.position) < p.radius + player.radius:
 			projectiles.remove_at(i)
-			Fx.sparks(fx_layer, p.position, Color(1, 0.3, 0.1) if p.brick else Color(0.7, 0.35, 1))
+			var spark := Color(0.9, 0.9, 1.0) if p.sword else (Color(1, 0.3, 0.1) if p.brick else Color(0.7, 0.35, 1))
+			Fx.sparks(fx_layer, p.position, spark)
 			p.queue_free()
 			hit_player(p.dmg)
 			if Game.state != "playing":
@@ -681,7 +742,8 @@ func _update_boss_rush() -> void:
 
 ## Réveille les boss que le héros approche, endort ceux qu'il a quittés. Un boss
 ## endormi n'attaque pas : il rôde près de sa place (`_rest`). En s'endormant,
-## un boss abandonne sa charge ; la Créature finit d'abord son attaque en cours.
+## un boss abandonne sa charge, mais finit d'abord son attaque spéciale en
+## cours, comme la Créature.
 func _update_rush_awake() -> void:
 	for e in enemies:
 		if not _is_bulky(e):
@@ -700,11 +762,12 @@ func _update_rush_awake() -> void:
 			e.charge_timer = minf(e.charge_timer, 60.0 + randf() * 60.0)
 			e.shoot_cooldown = mini(e.shoot_cooldown, 20)
 			e.nm_cooldown = mini(e.nm_cooldown, 30)
+			e.sp_cooldown = mini(e.sp_cooldown, 40 + randi() % 40)
 
 func _rush_resting(e: Enemy) -> bool:
 	if not _is_bulky(e) or e.rush_awake:
 		return false
-	return e.nm_attack == "" if Nightmare.handles(e) else not e.charging
+	return e.nm_attack == "" if Nightmare.handles(e) else not e.charging and not BossMoves.busy(e)
 
 ## Boss endormi du Conclave : il revient vers sa place et y décrit une petite
 ## boucle, propre à chacun, sans rien tenter contre le héros.
@@ -728,7 +791,7 @@ func _wander_bosses() -> void:
 	for e in enemies:
 		# La Créature cauchemardesque se déplace par ses propres attaques
 		# (saut, ruée, laser) : un pas de côté les fausserait.
-		if not e.is_boss or not e.rush_awake or e.charging or Nightmare.handles(e):
+		if not e.is_boss or not e.rush_awake or e.charging or BossMoves.busy(e) or Nightmare.handles(e):
 			continue
 		var to := player.position - e.position
 		if to == Vector2.ZERO:
