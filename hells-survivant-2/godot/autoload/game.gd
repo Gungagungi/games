@@ -19,6 +19,10 @@ var boss_queue: Array[String] = []
 ## Niveau spécial « Conclave des boss » (voir `World.start_boss_rush`).
 var boss_rush := false
 var smoke_test := false
+## Écran tactile détecté (ou premier toucher reçu) : `TouchControls` s'affiche.
+var touch_mode := false
+## Direction du joystick tactile, lue par `World` quand le clavier est au repos.
+var touch_dir := Vector2.ZERO
 
 func set_state(s: String) -> void:
 	state = s

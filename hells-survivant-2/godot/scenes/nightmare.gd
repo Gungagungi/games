@@ -17,8 +17,10 @@ extends RefCounted
 ##   est proche ; s'il est pris dedans, il est blessé et projeté à l'autre bout
 ##   de l'arène (`World.knock_player`).
 ## À 75, 50 et 25 % de PV, elle se dédouble : le double reprend ses attaques,
-## sauf le laser, l'invocation, le champ de force et le dédoublement. Sa mort emporte doubles et
-## mini-créatures.
+## sauf le laser, l'invocation, le champ de force et le dédoublement. À 25 %,
+## elle enrage aussi : ×1,4 en taille (hitbox comprise), ×1,5 en dégâts. Sa
+## mort emporte doubles et mini-créatures ; elle lève alors les yeux, tire un
+## laser géant vers le ciel, se désintègre et lâche l'Œil corrompu.
 
 const LASER_AIM := 60
 ## Dernières frames de visée : la direction est figée, le temps de s'écarter.
@@ -67,6 +69,21 @@ const FIELD_KNOCK_SPEED := 22.0
 const SPLIT_TIME := 40
 const SPLIT_AT := [0.75, 0.5, 0.25]
 const SLIDE_TIME := 16
+
+## Rage : à 25 % de PV (juste après le dernier dédoublement), elle grandit en
+## une seconde, hitbox comprise, et frappe plus fort. Ses doubles, non.
+const ENRAGE_AT := 0.25
+const ENRAGE_TIME := 60
+const ENRAGE_SCALE := 1.4
+const ENRAGE_DMG := 1.5
+
+## Mort (hors de `World.enemies`, voir `World._start_finale`) : elle lève les
+## yeux, tire un laser géant vers le ciel, puis se désintègre et lâche l'Œil
+## corrompu.
+const FINALE_LOOK := 50
+const FINALE_BEAM := 110
+const FINALE_FADE := 60
+const FINALE_TIME := FINALE_LOOK + FINALE_BEAM + FINALE_FADE
 
 ## Le boss final ou l'un de ses doubles (pas les mini-créatures, qui suivent la
 ## logique des monstres ordinaires).
@@ -168,6 +185,32 @@ static func tick(w: World, e: Enemy) -> void:
 			if e.nm_timer <= 0:
 				_split(w, e)
 				_end(e)
+		"enrage":
+			var k := 1.0 - float(e.nm_timer) / ENRAGE_TIME
+			e.sprite_scale = lerpf(e.base_scale, e.base_scale * ENRAGE_SCALE, k * k)
+			w.shake(2.0)
+			if e.nm_timer <= 0:
+				_enrage(w, e)
+				_end(e)
+
+## Frames écoulées depuis le début de la mort.
+static func finale_age(e: Enemy) -> int:
+	return FINALE_TIME - e.nm_timer
+
+## Un tick de la mort de la Créature ; vrai quand elle a fini de se désintégrer.
+static func tick_finale(w: World, e: Enemy) -> bool:
+	e.nm_timer -= 1
+	var age := finale_age(e)
+	if age == FINALE_LOOK:
+		Audio.sfx("boss_warning", 0.6)
+		Audio.sfx("boss_charge", 0.5)
+		w.shake(12.0)
+	elif age > FINALE_LOOK and age < FINALE_LOOK + FINALE_BEAM:
+		w.shake(4.0)
+	elif age == FINALE_LOOK + FINALE_BEAM:
+		Fx.puff(w.fx_layer, e.position, e.glow, e.sprite_scale)
+		Audio.sfx("enemy_death", 0.5)
+	return e.nm_timer <= 0
 
 ## Rayon actuel de l'onde de choc, partagé avec le visuel.
 static func wave_radius(e: Enemy) -> float:
@@ -188,6 +231,10 @@ static func _idle(w: World, e: Enemy, dir: Vector2, dist: float) -> void:
 	if e.is_final and e.nm_splits < SPLIT_AT.size() and e.hp <= e.max_hp * float(SPLIT_AT[e.nm_splits]):
 		_start(e, "split", SPLIT_TIME)
 		Audio.sfx("boss_charge", 1.3)
+		return
+	if e.is_final and not e.nm_enraged and e.hp <= e.max_hp * ENRAGE_AT:
+		_start(e, "enrage", ENRAGE_TIME)
+		Audio.sfx("boss_warning", 0.8)
 		return
 	if dist > e.radius + p.radius:
 		e.position += dir * e.speed
@@ -388,6 +435,19 @@ static func _split(w: World, e: Enemy) -> void:
 	Fx.float_text(w.fx_layer, e.position + Vector2(0, -e.top() - 20), "Elle se dédouble !", e.glow, true)
 	Audio.sfx("boss_warning")
 	w.shake(5.0)
+
+static func _enrage(w: World, e: Enemy) -> void:
+	e.nm_enraged = true
+	e.sprite_scale = e.base_scale * ENRAGE_SCALE
+	e.radius *= ENRAGE_SCALE
+	e.dmg *= ENRAGE_DMG
+	e.position = _clamp(e, e.position)
+	Fx.puff(w.fx_layer, e.position, Color(1, 0.2, 0.3), 3.0)
+	Fx.float_text(w.fx_layer, e.position + Vector2(0, -e.top() - 20), "Elle enrage !", Color("#ff3c5a"), true)
+	Audio.sfx("boss_warning")
+	w.shake(9.0)
+	if Game.smoke_test:
+		print("[smoke] la Créature enrage : taille ×%.1f, dégâts ×%.1f" % [ENRAGE_SCALE, ENRAGE_DMG])
 
 static func _clamp(e: Enemy, pos: Vector2) -> Vector2:
 	var margin := Vector2.ONE * e.radius

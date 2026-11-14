@@ -9,7 +9,9 @@ extends RefCounted
 ## montre la zone touchée, le temps de s'écarter. Pendant une attaque, le boss
 ## ne marche, ne tire ni ne charge. Il en choisit une quand son compteur
 ## (`Enemy.sp_cooldown`) tombe à zéro, parmi celles dont le héros est à portée :
-## - Chevalier de cendres : souffle de cendres en cône, qui suit lentement le héros ;
+## - Chevalier de cendres : souffle de cendres en cône, qui suit lentement le
+##   héros ; tornade de cendres qui le poursuit, le fait tournoyer puis le
+##   projette ; brouillard sur toute l'arène, qui le rend invisible 5 s ;
 ## - Golem de sang : morsure à distance (des mâchoires se referment sur le
 ##   héros et le soignent), et éclaboussures qui laissent des flaques brûlantes ;
 ## - Créature infernale : vague de feu qui déferle en ligne droite et enflamme,
@@ -22,28 +24,29 @@ extends RefCounted
 ## - Sbire de l'ombre : coup de tête en ruée, qui repousse et étourdit ;
 ## - Nécromancien Putréfié : coup de bâton qui repousse, et invocation de
 ##   monstres ordinaires de n'importe quel élément (jamais de mini-créatures du
-##   Chaos), qui meurent avec lui.
+##   Chaos), qui meurent avec lui ; et trois âmes, monstres fragiles qui
+##   traquent le héros et qu'il faut abattre.
 ## Dans le Conclave, rien de tout cela ne blesse ni ne déplace le héros
 ## (`World.harms_player`).
 
 ## Attaques de chaque boss, clé comme `Data.BOSS_ATTACKS`. Une attaque ajoutée
 ## ici doit aussi l'être là, sinon l'infobulle du Conclave ment.
 const MOVES := {
-	"cendres": ["breath"],
+	"cendres": ["breath", "tornado", "fog"],
 	"sang": ["bite", "splash"],
 	"violence": ["swords", "shield"],
 	"terre": ["roots", "treefall"],
 	"feu": ["firewave", "plunge"],
 	"destruction": ["devour"],
 	"ombre": ["headbutt"],
-	"final_ombre": ["staff", "raise"],
+	"final_ombre": ["staff", "raise", "souls"],
 }
 ## Distance au héros au-delà de laquelle une attaque n'est pas tentée.
 const REACH := {
 	"breath": 250.0, "bite": 420.0, "splash": 400.0, "firewave": 380.0,
 	"devour": 300.0, "swords": 420.0, "shield": 130.0, "roots": 380.0,
 	"treefall": 460.0, "headbutt": 300.0, "staff": 150.0, "raise": INF,
-	"plunge": 440.0,
+	"tornado": 380.0, "fog": 450.0, "souls": 520.0, "plunge": 440.0,
 }
 
 const BREATH_AIM := 36
@@ -56,6 +59,32 @@ const BREATH_HALF := 0.45
 ## Le souffle suit le héros, plus lentement qu'il ne court de côté.
 const BREATH_TURN := 0.008
 const BREATH_TICK := 12
+
+const TORNADO_AIM := 36
+const TORNADO_LOCK := 10
+## Course de la tornade : le boss reste sur place pour la diriger.
+const TORNADO_TIME := 120
+## Plus lente que le héros (3,2), et elle vire peu : on peut l'esquiver.
+const TORNADO_SPEED := 2.4
+const TORNADO_TURN := 0.03
+const TORNADO_R := 30.0
+## Hauteur de l'entonnoir dessiné.
+const TORNADO_H := 120.0
+## Le héros pris tournoie `TORNADO_SPIN` frames, blessé toutes les
+## `TORNADO_TICK`, puis il est projeté.
+const TORNADO_SPIN := 66
+const TORNADO_TICK := 16
+const TORNADO_ORBIT := 24.0
+const TORNADO_THROW_SPEED := 18.0
+
+const FOG_AIM := 45
+## Durée du brouillard (5 s) ; il se lève et retombe en `FOG_FADE` frames.
+const FOG_TIME := 300
+const FOG_FADE := 30
+## Trouée autour du héros : il voit clair jusqu'à `FOG_CLEAR`, puis le
+## brouillard s'épaissit sur `FOG_EDGE`.
+const FOG_CLEAR := 70.0
+const FOG_EDGE := 110.0
 
 const BITE_AIM := 48
 const BITE_LOCK := 16
@@ -151,6 +180,14 @@ const RAISE_TIME := 50
 const RAISE_COUNT := 3
 const RAISED_MAX := 6
 
+## Âmes du Nécromancien : trois monstres fragiles qui traquent le héros, à
+## abattre. Plus lentes que lui, elles se distancent en courant.
+const SOULS_TIME := 44
+const SOULS_COUNT := 3
+const SOULS_MAX := 6
+const SOUL_SPEED := 2.3
+const SOUL_COLOR := Color(0.45, 1.0, 0.65)
+
 ## Mode smoke : nombre de fois où chaque attaque a été lancée.
 static var played := {}
 
@@ -169,7 +206,7 @@ static func telegraphing(e: Enemy) -> bool:
 	match e.sp_attack:
 		"":
 			return false
-		"raise":
+		"raise", "souls":
 			return true
 		"roots":
 			return e.sp_age < ROOTS_AIM
@@ -190,6 +227,8 @@ static func attach_fx(w: World, e: Enemy) -> void:
 ## Effets qui durent au-delà de l'attaque : les flaques de sang.
 static func tick_hazards(w: World, e: Enemy) -> void:
 	var p := w.player
+	if e.fog_timer > 0:
+		e.fog_timer -= 1
 	for i in range(e.puddles.size() - 1, -1, -1):
 		var pd := e.puddles[i]
 		pd.z -= 1.0
@@ -208,7 +247,8 @@ static func try_start(w: World, e: Enemy, dist: float) -> bool:
 		return false
 	var options: Array[String] = []
 	for m: String in MOVES[_key(e)]:
-		if dist <= float(REACH[m]) and (m != "raise" or _raised(w) < RAISED_MAX):
+		if dist <= float(REACH[m]) and (m != "raise" or _raised(w) < RAISED_MAX) \
+				and (m != "souls" or _souls(w) < SOULS_MAX) and (m != "fog" or e.fog_timer == 0):
 			options.append(m)
 	if options.is_empty():
 		# Héros hors de portée : on retente bientôt.
@@ -231,6 +271,12 @@ static func _begin(w: World, e: Enemy, move: String) -> void:
 		"breath":
 			_start(e, "breath_aim", BREATH_AIM)
 			Audio.sfx("boss_charge", 0.7)
+		"tornado":
+			_start(e, "tornado_aim", TORNADO_AIM)
+			Audio.sfx("boss_charge", 0.8)
+		"fog":
+			_start(e, "fog_aim", FOG_AIM)
+			Audio.sfx("boss_warning", 0.6)
 		"bite":
 			e.sp_origin = p.position
 			_start(e, "bite_aim", BITE_AIM)
@@ -287,6 +333,13 @@ static func _begin(w: World, e: Enemy, move: String) -> void:
 				e.sp_points.append(_inside(e.position + Vector2.from_angle(a0 + TAU * i / RAISE_COUNT) * 90.0, 24.0))
 			_start(e, "raise", RAISE_TIME)
 			Audio.sfx("boss_warning", 0.8)
+		"souls":
+			# Les âmes sortent au-dessus de lui, en éventail vers le héros.
+			for i in SOULS_COUNT:
+				var d := dir.rotated((i - (SOULS_COUNT - 1) / 2.0) * 0.7)
+				e.sp_points.append(_inside(e.position + Vector2(0, -e.top() * 0.4) + d * (e.radius + 30.0), 20.0))
+			_start(e, "souls", SOULS_TIME)
+			Audio.sfx("boss_charge", 1.6)
 
 static func tick(w: World, e: Enemy) -> void:
 	var p := w.player
@@ -309,6 +362,57 @@ static func tick(w: World, e: Enemy) -> void:
 			if e.sp_age % BREATH_TICK == 0 and _in_cone(e.position, e.sp_dir, BREATH_LEN, BREATH_HALF, p.position, p.radius):
 				_hurt(w, e, 0.45)
 			if e.sp_timer <= 0:
+				_end(e)
+		"tornado_aim":
+			if e.sp_timer > TORNADO_LOCK:
+				e.sp_dir = dir
+			e.sp_origin = _inside(e.position + e.sp_dir * (e.top() + 24.0), 24.0)
+			if e.sp_timer <= 0:
+				_start(e, "tornado", TORNADO_TIME)
+				Audio.sfx("throw", 0.5)
+		"tornado":
+			var to_p := p.position - e.sp_origin
+			if to_p.length() > 1.0:
+				var a := e.sp_dir.angle()
+				a += clampf(angle_difference(a, to_p.angle()), -TORNADO_TURN, TORNADO_TURN)
+				e.sp_dir = Vector2.from_angle(a)
+			e.sp_origin = _inside(e.sp_origin + e.sp_dir * TORNADO_SPEED, 24.0)
+			# Dans le Conclave, elle passe à travers le héros sans l'emporter.
+			if not e.sp_hit and e.sp_origin.distance_to(p.position) < TORNADO_R + p.radius:
+				e.sp_hit = true
+				if World.harms_player() and p.held_by == null and p.knock_timer == 0:
+					p.held_by = e
+					_start(e, "tornado_spin", TORNADO_SPIN)
+					Fx.float_text(w.fx_layer, p.position + Vector2(0, -p.radius - 30), "Emporté !", Color("#d8d0c0"))
+					Audio.sfx("throw", 0.8)
+			if e.sp_attack == "tornado" and e.sp_timer <= 0:
+				_end(e)
+		"tornado_spin":
+			if p.held_by == e:
+				p.position = e.sp_origin + Vector2.from_angle(e.sp_age * 0.35) * TORNADO_ORBIT
+				if e.sp_age % TORNADO_TICK == 0:
+					_hurt(w, e, 0.3)
+					Audio.sfx("hit_enemy", 0.7)
+			if e.sp_timer <= 0:
+				if p.held_by == e:
+					p.held_by = null
+					# Projeté loin du boss, à l'autre bout de l'arène.
+					var away := p.position - e.position
+					away = away.normalized() if away.length() > 1.0 else e.sp_dir
+					var target := Nightmare.knock_target(e.position, p.position, away, p.radius)
+					var frames := clampi(ceili(p.position.distance_to(target) / TORNADO_THROW_SPEED * 2.0), 10, 60)
+					_hurt(w, e, 0.6)
+					w.knock_player(target, frames)
+					w.shake(6.0)
+				Audio.sfx("throw", 0.5)
+				_end(e)
+		"fog_aim":
+			if e.sp_timer <= 0:
+				e.fog_timer = FOG_TIME
+				Fx.puff(w.fx_layer, e.position, Color(0.6, 0.6, 0.6), 3.0)
+				Fx.float_text(w.fx_layer, e.position + Vector2(0, -e.top() - 30), "Brouillard !", Color("#c8c8c8"))
+				Audio.sfx("throw", 0.4)
+				w.shake(3.0)
 				_end(e)
 		"bite_aim":
 			# Les mâchoires suivent le héros avec un temps de retard, puis se figent.
@@ -530,6 +634,10 @@ static func tick(w: World, e: Enemy) -> void:
 			if e.sp_timer <= 0:
 				_raise(w, e)
 				_end(e)
+		"souls":
+			if e.sp_timer <= 0:
+				_release_souls(w, e)
+				_end(e)
 
 ## Distance parcourue par la vague de feu depuis son départ.
 static func wave_dist(e: Enemy) -> float:
@@ -563,9 +671,38 @@ static func _in_cone(from: Vector2, dir: Vector2, length: float, half: float, po
 static func _raised(w: World) -> int:
 	var n := 0
 	for o in w.enemies:
-		if o.is_mini and o.element != Data.CHAOS:
+		if o.is_mini and not o.is_soul and o.element != Data.CHAOS:
 			n += 1
 	return n
+
+## Âmes du Nécromancien encore en vie.
+static func _souls(w: World) -> int:
+	var n := 0
+	for o in w.enemies:
+		if o.is_soul:
+			n += 1
+	return n
+
+## Âmes : monstres de mêlée de la vague, fragiles, plus rapides que les autres
+## mais moins que le héros. Comme les monstres invoqués, elles meurent avec le
+## Nécromancien et ne rapportent presque rien.
+static func _release_souls(w: World, e: Enemy) -> void:
+	var n := mini(SOULS_COUNT, SOULS_MAX - _souls(w))
+	for i in n:
+		var m := w.make_enemy(e.element, false, false)
+		m.position = e.sp_points[i % e.sp_points.size()]
+		m.is_mini = true
+		m.is_soul = true
+		m.radius = 12.0
+		m.hp = m.max_hp * 0.5
+		m.max_hp = m.hp
+		m.dmg = e.dmg * 0.3
+		m.speed = SOUL_SPEED
+		m.gold_value = 1
+		m.attack_cooldown = 20
+		w.queue_spawn(m)
+		Fx.puff(w.fx_layer, m.position, SOUL_COLOR, 1.2)
+	Audio.sfx("boss_warning", 1.5)
 
 ## Invocation du Nécromancien : des monstres ordinaires de la vague, d'un
 ## élément tiré au hasard parmi les 7 (jamais une mini-créature du Chaos).
@@ -645,9 +782,19 @@ class Visual extends Node2D:
 			var fade := clampf(pd.z / 40.0, 0.0, 1.0)
 			var r := BossMoves.PUDDLE_R * 1.3
 			draw_texture_rect(PUDDLE, Rect2(Vector2(pd.x, pd.y) - Vector2.ONE * r, Vector2.ONE * r * 2.0), false, Color(1, 1, 1, 0.85 * fade))
+		# Sous le brouillard, les repères passent par-dessus (`_draw_top`).
+		if e.fog_timer == 0:
+			_telegraphs(e)
+
+	## Repères au sol des attaques : la zone touchée, le temps de s'écarter.
+	func _telegraphs(e: Enemy) -> void:
 		var k := float(e.sp_timer)
 		var blink := 0.5 + 0.5 * sin(_t * 20.0)
 		var col := e.glow
+		# Charge de la v1 : son télégraphe est le contour du sprite, invisible
+		# dans le brouillard. Un anneau au sol le remplace.
+		if e.fog_timer > 0 and e.charging and e.charge_telegraph > 0:
+			draw_arc(e.position, e.radius + 16.0, 0.0, TAU, 32, Color(col, 0.35 + 0.5 * blink), 3.0)
 		match e.sp_attack:
 			"breath_aim":
 				var locked := k <= BossMoves.BREATH_LOCK
@@ -655,6 +802,25 @@ class Visual extends Node2D:
 					Color(0.85, 0.85, 0.85, 0.1 + (0.15 * blink if locked else 0.05)), Color(0.9, 0.9, 0.9, 0.7 if locked else 0.4))
 			"breath":
 				_cone(e.position, e.sp_dir, BossMoves.BREATH_LEN, BossMoves.BREATH_HALF, Color(0.5, 0.5, 0.5, 0.12), Color(0.8, 0.8, 0.8, 0.25))
+			"tornado_aim":
+				# Là où la tornade va se lever, et la direction qu'elle prendra.
+				var f := 1.0 - k / BossMoves.TORNADO_AIM
+				var locked := k <= BossMoves.TORNADO_LOCK
+				draw_circle(e.sp_origin, BossMoves.TORNADO_R * f, Color(0.6, 0.6, 0.6, 0.15 + (0.15 * blink if locked else 0.0)))
+				for j in 3:
+					var a := TAU * j / 3.0 - _t * 6.0
+					draw_arc(e.sp_origin, BossMoves.TORNADO_R, a, a + 1.4, 10, Color(0.85, 0.85, 0.85, 0.7 if locked else 0.45), 2.5)
+				for i in 3:
+					var c := e.sp_origin + e.sp_dir * (50.0 + 45.0 * i + fposmod(_t * 80.0, 45.0))
+					_chevron(c, e.sp_dir, 12.0, Color(0.85, 0.85, 0.85, 0.5))
+			"tornado", "tornado_spin":
+				draw_set_transform(e.sp_origin, 0.0, Vector2(1.0, 0.4))
+				draw_circle(Vector2.ZERO, BossMoves.TORNADO_R * 1.3, Color(0, 0, 0, 0.35))
+				draw_arc(Vector2.ZERO, BossMoves.TORNADO_R * 1.3, 0.0, TAU, 32, Color(0.8, 0.8, 0.8, 0.35), 2.0)
+				draw_set_transform(Vector2.ZERO)
+			"fog_aim":
+				var f := 1.0 - k / BossMoves.FOG_AIM
+				draw_arc(e.position, lerpf(20.0, 160.0, f), 0.0, TAU, 48, Color(0.8, 0.8, 0.8, 0.6 * (1.0 - f) + 0.1), 3.0)
 			"bite_aim":
 				var locked := k <= BossMoves.BITE_LOCK
 				draw_circle(e.sp_origin, BossMoves.BITE_R, Color(BLOOD, 0.12 + (0.2 * blink if locked else 0.0)))
@@ -731,9 +897,19 @@ class Visual extends Node2D:
 					for j in 6:
 						var a := TAU * j / 6.0 + _t * 3.0
 						draw_arc(pt, 32.0, a, a + 0.6, 6, Color(ARCANE, 0.8), 2.5)
+			"souls":
+				var f := 1.0 - k / BossMoves.SOULS_TIME
+				for pt in e.sp_points:
+					draw_circle(pt, 22.0 * f, Color(BossMoves.SOUL_COLOR, 0.2))
+					draw_arc(pt, 24.0, 0.0, TAU, 24, Color(BossMoves.SOUL_COLOR, 0.4 + 0.4 * sin(_t * 20.0)), 2.0)
 
 	func _draw_top(e: Enemy) -> void:
 		var k := float(e.sp_timer)
+		# Le brouillard d'abord : les attaques en cours restent lisibles par-dessus.
+		if e.fog_timer > 0:
+			_fog(e)
+			# Le boss est invisible, mais ses attaques restent annoncées.
+			_telegraphs(e)
 		match e.sp_attack:
 			"breath":
 				var open := clampf(minf(BossMoves.BREATH_TIME - k, k) / 8.0, 0.0, 1.0)
@@ -747,6 +923,22 @@ class Visual extends Node2D:
 					draw_circle(pos, 5.0 + 17.0 * f, Color(g, g, g, 0.5 * (1.0 - f) * open))
 					if i % 6 == 0:
 						draw_circle(pos, 2.5, Color(1, 0.55, 0.15, (1.0 - f) * open))
+			"tornado_aim":
+				_tornado(e.sp_origin, 0.35 * (1.0 - k / BossMoves.TORNADO_AIM), 0.7)
+			"tornado":
+				_tornado(e.sp_origin, minf(1.0, 0.35 + e.sp_age / 12.0), clampf(k / 10.0, 0.0, 1.0))
+			"tornado_spin":
+				_tornado(e.sp_origin, 1.15, 1.0)
+			"fog_aim":
+				# Les cendres montent en spirale autour du boss.
+				var f := 1.0 - k / BossMoves.FOG_AIM
+				for i in 24:
+					var h := fposmod(_t * 0.8 + _hash(i * 3.7), 1.0)
+					var a := _t * 4.0 + i * 0.9
+					var r := e.top() * (0.6 + h) * (0.5 + f)
+					var pos := e.position + Vector2(cos(a) * r, sin(a) * r * 0.4 - h * 70.0)
+					var g := lerpf(0.8, 0.45, h)
+					draw_circle(pos, 6.0 + 14.0 * h, Color(g, g, g, 0.45 * (1.0 - h) * f))
 			"bite_aim":
 				if k <= BossMoves.BITE_LOCK:
 					_jaws(e.sp_origin, BossMoves.BITE_R, BossMoves.BITE_R * 0.9, 0.8)
@@ -835,6 +1027,60 @@ class Visual extends Node2D:
 				for pt in e.sp_points:
 					draw_line(pt, pt + Vector2(0, -70.0 * f), Color(ARCANE, 0.6), 7.0 * f + 1.0)
 					draw_circle(pt + Vector2(0, -70.0 * f), 5.0 * f, Color(1, 0.85, 1, 0.9))
+			"souls":
+				# Volutes qui s'échappent du Nécromancien vers chaque point d'apparition.
+				var f := 1.0 - k / BossMoves.SOULS_TIME
+				var from := e.position + Vector2(0, -e.top() * 0.5)
+				for pt in e.sp_points:
+					var pos := from.lerp(pt, f) + Vector2(sin(_t * 9.0 + pt.x) * 6.0, 0)
+					draw_circle(pos, 4.0 + 7.0 * f, Color(BossMoves.SOUL_COLOR, 0.35))
+					draw_circle(pos, 2.0 + 3.0 * f, Color(0.85, 1, 0.9, 0.9))
+
+	## Tornade de cendres : un entonnoir d'anneaux qui tournoient, plus larges en
+	## haut, et des braises emportées. `s` : échelle, `a` : opacité.
+	func _tornado(c: Vector2, s: float, a: float) -> void:
+		const RINGS := 11
+		for i in RINGS:
+			var h := float(i) / (RINGS - 1)
+			var width := lerpf(8.0, 46.0, h * h) * s
+			var off := Vector2(sin(_t * 5.0 + h * 4.0) * 10.0 * h * s, -h * BossMoves.TORNADO_H * s)
+			var g := lerpf(0.35, 0.75, h)
+			var phase := -_t * 14.0 + i * 0.8
+			draw_set_transform(c + off, 0.0, Vector2(1.0, 0.32))
+			draw_arc(Vector2.ZERO, width, phase, phase + 4.2, 18, Color(g, g, g * 0.95, 0.7 * a), 6.0 * s + 1.0)
+			draw_arc(Vector2.ZERO, width * 0.7, phase + PI, phase + PI + 2.5, 12, Color(0.9, 0.88, 0.85, 0.45 * a), 3.0 * s + 1.0)
+		draw_set_transform(Vector2.ZERO)
+		for j in 14:
+			var h := _hash(j * 2.3)
+			var width := lerpf(8.0, 46.0, h * h) * s
+			var ang := -_t * (8.0 + 4.0 * _hash(j * 5.1)) + j
+			var pos := c + Vector2(cos(ang) * width + sin(_t * 5.0 + h * 4.0) * 10.0 * h * s, -h * BossMoves.TORNADO_H * s + sin(ang) * width * 0.32)
+			var ember := j % 3 == 0
+			draw_circle(pos, 2.5 if ember else 3.5, Color(1, 0.55, 0.15, a) if ember else Color(0.3, 0.3, 0.3, 0.8 * a))
+
+	## Brouillard de cendres sur toute l'arène, sauf une trouée autour du héros.
+	## Il se lève et retombe en `FOG_FADE` frames.
+	func _fog(e: Enemy) -> void:
+		var left := float(e.fog_timer)
+		var a := clampf(minf(left, BossMoves.FOG_TIME - left) / BossMoves.FOG_FADE, 0.0, 1.0)
+		# Volutes en dégradé radial (la texture des halos), pour un bord flou.
+		var tex := Fx.light_texture()
+		const STEP := 45.0
+		var cols := int(Data.ARENA.x / STEP) + 4
+		var rows := int(Data.ARENA.y / STEP) + 4
+		for gx in cols:
+			for gy in rows:
+				var h1 := _hash(gx * 3.1 + gy * 7.7)
+				var h2 := _hash(gx * 5.3 - gy * 1.9 + 2.0)
+				# Les volutes dérivent lentement vers la droite, et bouclent.
+				var x := fposmod(gx * STEP + _t * 12.0 + h1 * 30.0, cols * STEP) - STEP * 2.0
+				var pos := Vector2(x, (gy - 2) * STEP) + Vector2(sin(_t * 0.5 + h1 * TAU), cos(_t * 0.4 + h2 * TAU)) * 20.0
+				var clear := clampf((pos.distance_to(player.position) - BossMoves.FOG_CLEAR) / BossMoves.FOG_EDGE, 0.0, 1.0)
+				if clear <= 0.0:
+					continue
+				var g := 0.5 + 0.25 * h2
+				var r := STEP * (1.6 + 0.6 * h1)
+				draw_texture_rect(tex, Rect2(pos - Vector2.ONE * r, Vector2.ONE * r * 2.0), false, Color(g, g, g * 0.95, 0.42 * a * clear))
 
 	## Front de la vague de feu : une rangée de langues de flammes.
 	func _flames(e: Enemy) -> void:

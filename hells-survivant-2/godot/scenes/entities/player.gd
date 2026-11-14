@@ -108,12 +108,17 @@ func _process(delta: float) -> void:
 		var progress := 1.0 - attack_timer / 14.0
 		lunge = facing * 5.0 * SCALE * sin(progress * PI)
 		var base_angle := facing.angle()
+		# Épée corrompue : estoc à la couleur de l'Œil.
+		var col: Color = Data.CORRUPT_COLOR if Save.sword_corrupt else SLASH_COLORS[Save.sword_tier]
 		_slash.show_arc(base_angle - PI / 3.2, base_angle + (progress - 0.5) * (PI / 1.6),
-			_swing_range, SLASH_COLORS[Save.sword_tier], 1.0 - progress * 0.6)
+			_swing_range, col, 1.0 - progress * 0.6)
 	else:
 		_slash.hide_arc()
 	_rig.position = Vector2(0, bob) + lunge
 	_rig.rotation = sin(_t * 11.0) * 0.05 if moving else 0.0
+	# Emporté par la tornade de cendres : il tournoie sur lui-même.
+	if held_by != null and is_instance_valid(held_by) and held_by.sp_attack == "tornado_spin":
+		_rig.rotation = _t * 18.0
 	_hurt = maxf(0.0, _hurt - delta)
 	_mat.set_shader_parameter("flash", 0.9 if _hurt > 0.0 else 0.0)
 	_burn.emitting = burn_timer > 0

@@ -17,6 +17,7 @@ var menu: MainMenu
 var hud: Hud
 var shop: Shop
 var end_screen: EndScreen
+var touch: TouchControls
 
 var _smoke_left := 0.0
 var _smoke_start_wave := 1
@@ -63,6 +64,14 @@ func _ready() -> void:
 	end_screen = EndScreen.new()
 	end_screen.world = world
 	root.add_child(end_screen)
+	touch = TouchControls.new()
+	touch.world = world
+	root.add_child(touch)
+	touch.shop_requested.connect(Game.open_shop)
+	touch.menu_requested.connect(_back_to_menu)
+	touch.mute_requested.connect(func() -> void:
+		Audio.toggle_mute()
+		menu.refresh())
 
 	menu.start_requested.connect(func() -> void: world.start_run(Game.start_wave))
 	menu.boss_rush_requested.connect(world.start_boss_rush)
@@ -112,7 +121,9 @@ func _back_to_menu() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
-		if mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT and Game.state == "playing":
+		# Sur écran tactile, le clic est imité depuis un doigt déjà traité par
+		# `TouchControls` (joystick ou frapper) : ne pas frapper une seconde fois.
+		if mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT and Game.state == "playing" and not Game.touch_mode:
 			world.attack_toward(world.get_global_mouse_position())
 		return
 	if not (event is InputEventKey) or not event.pressed:
@@ -164,6 +175,10 @@ func _start_smoke_if_asked() -> void:
 	# En mémoire seulement : Save.write() ne fait rien en mode smoke.
 	Save.sword_tier = Data.SWORDS.size() - 1
 	Save.armor_tier = Data.ARMORS.size() - 1
+	# Équipement corrompu : la vitesse et l'esquive sont exercées à chaque partie.
+	Save.sword_corrupt = true
+	Save.armor_corrupt = true
+	Save.eyes = 0
 	var rush := "--boss-rush" in args
 	_smoke_expect_victory = Data.is_final_boss_wave(Game.element, _smoke_start_wave) and not rush
 	if rush:
@@ -210,6 +225,12 @@ func _process(delta: float) -> void:
 		for m: String in BossMoves.played:
 			moves.append("%s×%d" % [m, BossMoves.played[m]])
 		print("[smoke] attaques spéciales : %s" % ", ".join(moves))
+	if world.dodged > 0:
+		print("[smoke] attaques de monstres esquivées (épée corrompue) : %d" % world.dodged)
+	# Créature vaincue : la victoire passe par l'Œil corrompu ramassé.
+	if _smoke_expect_victory and Game.is_chaos() and Save.eyes != 1:
+		print("[smoke] Œil corrompu non ramassé")
+		ok = false
 	print("[smoke] %s — état : %s, vague atteinte : %d, ennemis vivants : %d, or gagné : %d" % [
 		"OK" if ok else "ÉCHEC", Game.state, Game.wave, world.enemies.size(), Game.run_gold])
 	get_tree().quit(0 if ok else 1)
@@ -235,6 +256,12 @@ func _drive_smoke_player() -> void:
 		return
 	if Game.boss_rush:
 		_visit_boss(p)
+		return
+	# La Créature vaincue, il va ramasser l'Œil corrompu : c'est ce qui gagne.
+	if world.eye != null:
+		var to_eye := world.eye.position - p.position
+		if to_eye.length() > 4.0:
+			world.smoke_dir = to_eye.normalized()
 		return
 	var nearest: Enemy = null
 	var best := INF
