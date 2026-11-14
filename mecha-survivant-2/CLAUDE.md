@@ -225,6 +225,17 @@ et le tier d'une partie menée à la vague 20, puis
   de secours) et `Figure` dessine la silhouette ; une planche déposée prend le
   relais sans toucher au code, mais devra placer visière et symbole aux
   hauteurs de `VISOR` et `CORE`, sans quoi les rayons partiront d'ailleurs.
+- **Potions de soin** (`scenes/fx/health_potion.gd`, dessinées en code) : le
+  boss en pose une près du mech toutes les 12 s et une à chaque phase
+  franchie, trois au plus sur la carte (groupe `potions`). Elle rend 30 % des
+  PV max via `Player.heal()`, éteint l'embrasement, et s'évapore au bout de
+  22 s. En smoke, elle se ramasse seule (« potion de soin ramassée » dans la
+  sortie de `check.sh`). Propres au niveau spécial : aucune vague n'en pose.
+- **Détails du dessin** : plaques biseautées, cape, conduits d'énergie,
+  antennes, pistons ; l'armure se fissure d'une phase à l'autre, fume dès la
+  phase 2 et crépite dès la phase 3. Le mode headless ne dessine rien :
+  `check.sh` ne passe jamais par `_draw`, une capture (`MS2_DESTROYER=1`) est
+  le seul contrôle du rendu.
 - **Sa mort lâche la gemme dorée** (`scenes/fx/golden_gem.gd`, dessinée en
   code, attirée vers le mech à courte distance), posée sur une case libre et
   ajoutée en différé. La ramasser émet `EventBus.golden_gem_collected` :
