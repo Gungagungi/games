@@ -5,6 +5,10 @@ extends Node
 
 const ARENA := Vector2(900, 600)
 
+## PV des monstres et boss en plus par niveau d'épée (0 = poings nus) :
+## ×1 aux poings nus, ×2,5 avec Excalibur déchue.
+const HP_PER_SWORD_TIER := 0.3
+
 const SWORDS := [
 	{"name": "Poings nus", "cost": 0, "dmg": 3, "range": 70},
 	{"name": "Épée rouillée", "cost": 25, "dmg": 6, "range": 82},
