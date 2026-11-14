@@ -4,10 +4,10 @@ extends CanvasLayer
 ## ramassée sur le Destructeur d'univers (le jeu est alors réussi), puis fin
 ## d'un combat d'entraînement contre le Cristal.
 ##
-## Le bouton du Cristal n'apparaît qu'après la gemme : « AFFRONTER LE
-## CRISTAL », puis « RECOMBATTRE » à l'issue de chaque combat. Le bouton
-## principal ramène à l'écran-titre (« REJOUER », ou « QUITTER L'ARÈNE »
-## depuis l'entraînement).
+## Le Cristal se lance depuis l'écran-titre, une fois débloqué par la gemme ;
+## ici, le bouton « RECOMBATTRE » n'apparaît qu'à l'issue d'un combat contre
+## lui. Le bouton principal ramène à l'écran-titre (« REJOUER », ou « QUITTER
+## L'ARÈNE » depuis l'entraînement).
 
 signal restart_requested()
 signal crystal_requested()
@@ -75,8 +75,8 @@ func show_result(victory: bool, wave: int) -> void:
 func show_golden_gem() -> void:
 	_title.text = "JEU RÉUSSI"
 	_title.add_theme_color_override("font_color", Color(1.0, 0.86, 0.25))
-	_detail.text = "Le Destructeur d'univers est tombé.\nLa gemme dorée est à toi.\n\nElle cache un cristal : affronte-le pour t'entraîner."
-	_set_buttons("AFFRONTER LE CRISTAL", "REJOUER")
+	_detail.text = "Le Destructeur d'univers est tombé.\nLa gemme dorée est à toi.\n\nCristal débloqué : affronte-le depuis le menu principal, autant de fois que tu veux."
+	_set_buttons("", "MENU PRINCIPAL")
 	visible = true
 
 func show_crystal_destroyed() -> void:

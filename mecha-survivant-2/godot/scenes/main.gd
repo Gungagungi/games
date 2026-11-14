@@ -48,6 +48,7 @@ func _ready() -> void:
 	start_screen.start_requested.connect(_begin_game)
 	start_screen.destroyer_requested.connect(_begin_destroyer)
 	start_screen.destroyer_final_requested.connect(_begin_destroyer.bind(true))
+	start_screen.crystal_requested.connect(_begin_crystal_from_menu)
 	EventBus.golden_gem_collected.connect(_on_golden_gem)
 	upgrade_screen.upgrade_chosen.connect(_on_upgrade_chosen)
 	game_over_screen.restart_requested.connect(_back_to_title)
@@ -69,9 +70,7 @@ func _ready() -> void:
 				wave = int(a.trim_prefix("--wave="))
 		if "--crystal" in args:
 			print("[smoke] entraînement : le Cristal")
-			_prepare_run(GameState.FINAL_WAVE)
-			GameState.reset(GameState.FINAL_WAVE, true)
-			_begin_crystal()
+			_begin_crystal_from_menu()
 			return
 		if "--destroyer" in args:
 			print("[smoke] niveau spécial : le Destructeur d'univers")
@@ -168,13 +167,21 @@ func _on_upgrade_chosen(id: String) -> void:
 func _on_golden_gem() -> void:
 	GameState.running = false
 	AudioManager.stop_music()
+	GameState.unlock_crystal()
 	if GameState.smoke_test:
 		print("[smoke] gemme dorée ramassée — jeu réussi")
 		_smoke_left = 0.0
 	game_over_screen.show_golden_gem()
 
-## Entraînement contre le Cristal, une fois la gemme dorée ramassée — ou de
-## nouveau après un combat. Le mech garde ses pouvoirs et repart plein.
+## Depuis l'écran-titre (Cristal débloqué) : nouvelle carte, et les pouvoirs
+## et le tier d'une partie menée à la vague 20, comme pour le Destructeur.
+func _begin_crystal_from_menu() -> void:
+	_prepare_run(GameState.FINAL_WAVE)
+	GameState.reset(GameState.FINAL_WAVE, true)
+	_begin_crystal()
+
+## Combat contre le Cristal — premier, ou « RECOMBATTRE » après un combat. Le
+## mech garde ses pouvoirs et repart plein.
 func _begin_crystal() -> void:
 	game_over_screen.visible = false
 	arena.clear_transients()
@@ -203,6 +210,7 @@ func _back_to_title() -> void:
 	GameState.crystal_training = false
 	arena.clear_transients()
 	AudioManager.play_music("menu")
+	start_screen.refresh_unlocks()
 	start_screen.visible = true
 
 ## Crochet de débogage exposé au navigateur : la boucle de jeu vit dans le wasm,

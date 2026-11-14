@@ -258,7 +258,13 @@ pleine. En smoke : `--destroyer --destroyer-final` (sixième partie de
   le tirage des pouvoirs faisant varier la durée du combat du simple au
   triple.
 - **Le Cristal, entraînement d'après-jeu** (`scenes/bosses/crystal_boss.gd`,
-  dessiné en code) : l'écran « JEU RÉUSSI » propose AFFRONTER LE CRISTAL.
+  dessiné en code) : ramasser la gemme le **débloque pour toujours**
+  (`GameState.unlock_crystal()`, écrit dans `user://progression.cfg`, donc
+  IndexedDB sur le web — la seule donnée gardée d'une partie à l'autre ; le
+  mode smoke n'écrit jamais). L'écran-titre affiche alors, sur la dernière
+  ligne pour ne décaler aucun clic du scénario, ENTRAÎNEMENT : LE CRISTAL
+  (`refresh_unlocks()` à chaque retour au menu) ; il se lance avec les
+  pouvoirs d'une partie menée à la vague 20, sur une carte neuve.
   Deux phases, une seule arme : des rafales de `LaserBeam` visés, tirés vite
   et à répétition ; en phase 2 il devient rouge, chaque tir devient un
   éventail de trois rayons et la charge raccourcit. Pas de dégâts de contact.
