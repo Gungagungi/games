@@ -277,6 +277,8 @@ func _tick() -> void:
 
 func _update_player() -> void:
 	var dir := Vector2(Input.get_axis("move_left", "move_right"), Input.get_axis("move_up", "move_down"))
+	if dir == Vector2.ZERO:
+		dir = Game.touch_dir
 	if Game.smoke_test:
 		dir = smoke_dir
 	if player.knock_timer > 0:
