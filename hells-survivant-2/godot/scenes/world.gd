@@ -487,10 +487,14 @@ func make_enemy(element: String, is_boss: bool, is_final: bool) -> Enemy:
 		_: pos = Vector2(randf() * Data.ARENA.x, Data.ARENA.y + 30)
 
 	var wave_growth := 1.0 + Game.wave * 0.08
-	var base_hp: float = 18.0 * elem["hp_mult"] * diff["hp_mult"] * wave_growth
+	# Écart assumé avec la v1 : les PV suivent le niveau de l'épée équipée
+	# (`Data.HP_PER_SWORD_TIER`), sinon tout tombait en un ou deux coups une
+	# fois la forge au maximum, sans alourdir le début de partie aux poings nus.
+	var gear_mult := 1.0 + Save.sword_tier * Data.HP_PER_SWORD_TIER
+	var base_hp: float = 18.0 * elem["hp_mult"] * diff["hp_mult"] * wave_growth * gear_mult
 	var base_dmg: float = 4.0 * elem["dmg_mult"] * diff["dmg_mult"]
 	var base_speed: float = 1.3 * elem["speed_mult"]
-	var hp_mult := 16.0 if is_final else (8.0 if is_boss else 1.0)
+	var hp_mult := 24.0 if is_final else (12.0 if is_boss else 1.0)
 	var dmg_mult := 2.5 if is_final else (2.0 if is_boss else 1.0)
 	var gold_base := 300.0 if is_final else (40.0 if is_boss else 4.0)
 	var gold_mult: float = diff["gold_mult"]
