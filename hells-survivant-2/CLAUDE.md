@@ -12,7 +12,8 @@ persistante. Ce qui change : sprites, halos lumineux, particules, shaders,
 interface et sons en fichiers, là où la v1 dessinait des formes au Canvas 2D et
 synthétisait tout en Web Audio. S'y ajoutent deux modes absents de la v1 : le
 **Chaos** (voir « Mode Chaos ») et le niveau spécial **Conclave des boss**
-(voir « Conclave des boss »).
+(voir « Conclave des boss »), ainsi qu'une **attaque spéciale par boss** au
+moins, en plus de leur logique de la v1 (voir « Attaques spéciales des boss »).
 
 **En ligne** : <https://jeux.lambertdeharosanchez.com/hells-survivant-2/>, lié
 depuis le portail du dépôt. Premier chargement de quelques secondes (≈ 40 Mo de
@@ -62,8 +63,11 @@ parties Chaos : vagues mélangées (vague 1), dernier boss de la file (vague 35)
 et Créature cauchemardesque jusqu'à la victoire (vague 40, sur 60 s au lieu de
 20 : elle saute, charge et se dédouble, le pilote automatique met plus
 longtemps à la finir), enfin le Conclave des boss (60 s aussi), où le pilote
-fait le tour des boss, un toutes les 4 s de jeu. Chaque apparition de boss est écrite dans la sortie
-(`[smoke] vague N : <boss>`). Le héros y est immortel, équipé au maximum (en
+fait le tour des boss, un toutes les 4 s de jeu. Chaque apparition de boss est
+écrite dans la sortie (`[smoke] vague N : <boss>`), et en fin de partie le
+nombre de fois où chaque attaque spéciale a été lancée (`[smoke] attaques
+spéciales : breath×3, …`) : le Conclave doit les montrer toutes. Ce relevé
+n'est pas une assertion, il se lit. Le héros y est immortel, équipé au maximum (en
 mémoire, `Save.write()` ne fait rien en smoke) et combat tout seul. Une partie
 échoue si elle ne progresse pas, si une vague de boss final ne se conclut pas
 en victoire, ou sur toute erreur GDScript. Le Conclave, lui, échoue s'il ne
@@ -116,6 +120,8 @@ Autoloads (`autoload/`) : `Data` (tables de la v1 : épées, armures, difficult�
   compteurs en secondes par petites touches.
 - `scenes/entities/` — `Player`, `Enemy`, `Projectile`, `Pickup` ne portent que
   l'état (champs de la v1) et leur visuel ; ils ne décident de rien.
+- `scenes/boss_moves.gd` — attaques spéciales des boss d'élément et du
+  Nécromancien (voir plus bas), et leur visuel (`BossMoves.Visual`).
 - `scenes/fx.gd` — halos, auras de particules par élément, textes flottants,
   pièces d'or. `shaders/sprite.gdshader` fait le flash de coup, le contour
   (télégraphe de charge des boss) et la dissolution à la mort.
@@ -174,6 +180,46 @@ l'un des 7 `Data.MOB_ELEMENTS` à l'apparition.
   passent par `World.queue_spawn`. Sa mort emporte doubles et mini-créatures,
   sans prime.
 
+### Attaques spéciales des boss
+
+Absentes de la v1. `BossMoves` (`scenes/boss_moves.gd`) donne à chaque boss
+d'élément et au Nécromancien Putréfié une ou deux attaques en plus de leur IA de
+la v1 (mêlée ou tir, charge), qui reste intacte. La Créature cauchemardesque
+garde les siennes, dans `Nightmare`.
+
+| Boss | Attaques (`BossMoves.MOVES`) |
+| --- | --- |
+| Chevalier de cendres | **souffle** de cendres en cône, qui suit lentement le héros |
+| Golem de sang | **morsure** à distance (des mâchoires se referment sur la position du héros, figée un instant avant, et le soignent) ; **éclaboussures** : cinq gerbes autour du héros, qui laissent des flaques brûlantes 4 s |
+| Créature infernale | **vague de feu** en ligne droite, qui s'élargit en avançant et enflamme |
+| Mangeur de soldats | **dévoreur** : il bondit, saisit le héros (`Player.held_by`), le croque trois fois, puis le projette à l'autre bout de l'arène (même point d'arrivée que le champ de force, `Nightmare.knock_target`) |
+| Soldat blessé | **gerbe d'épées** (cinq projectiles `Projectile.sword`) ; **coup de bouclier** au contact, qui repousse |
+| Voix Putréfiée | **arbres** qui jaillissent du sol en ligne jusqu'au héros, puis le fouettent de leurs branches ; **arbre abattu** : il pousse près du héros et s'abat sur lui |
+| Sbire de l'ombre | **coup de tête** en ruée, qui repousse et **étourdit** (`Player.stun_timer` : ni déplacement ni coup) |
+| Nécromancien Putréfié | **coup de bâton** au contact, qui repousse ; **invocation** de trois monstres ordinaires d'un élément tiré parmi les 7 (jamais de mini-créature du Chaos), six au plus |
+
+- **Déroulé** : `World._tick_enemies` passe la main à `BossMoves.tick` tant
+  qu'une attaque est en cours (le boss ne marche, ne tire ni ne charge), sinon
+  `BossMoves.try_start` décompte `Enemy.sp_cooldown` et choisit une attaque
+  parmi celles dont le héros est à portée (`REACH`), en évitant de répéter la
+  précédente. Tout se compte en frames, comme le reste de `World`.
+- **Toutes sont télégraphiées** : contour lumineux du boss
+  (`BossMoves.telegraphing`) et repère au sol de la zone touchée (cône, cercle,
+  bande, trapèze, ombre de l'arbre), le temps de s'écarter.
+- **Un coup par attaque** : une ligne d'arbres ne blesse qu'une fois au
+  jaillissement et une fois aux branches (`sp_hit`, `sp_hit2`).
+- **Visuel** : deux nœuds `BossMoves.Visual` par boss, en coordonnées de
+  l'arène : l'un dans `World.ground_layer` (sous les créatures : télégraphes,
+  flaques), l'autre dans `fx_layer` (cendres, flammes, mâchoires, arbres,
+  épées, bouclier, bâton). Ils disparaissent avec le boss, flaques comprises.
+- **Monstres du Nécromancien** : créés par `World.make_enemy` aux
+  caractéristiques de la vague, marqués `is_mini`, ils meurent avec lui comme
+  les mini-créatures de la Créature, et ne rapportent que 2 or (sinon on
+  pourrait le laisser invoquer pour amasser de l'or). `Nightmare._minis` ne
+  compte que les mini-créatures du Chaos.
+- Une attaque ajoutée à `BossMoves.MOVES` doit aussi l'être à
+  `Data.BOSS_ATTACKS` et `Data.ATTACKS`, avec son icône.
+
 ### Conclave des boss
 
 Niveau spécial, sans équivalent dans la v1, lancé par le bouton du menu ou la
@@ -220,9 +266,11 @@ d'élément, le Nécromancien Putréfié et la Créature cauchemardesque
   non figé dérivait.
 - **Personne ne blesse personne** : on observe les boss, on ne les combat
   pas. Ils lancent leurs attaques (charges, tirs, laser, fouet, champ de
-  force…) mais ne blessent jamais le héros — ni dégâts, ni brûlure, ni vol de
-  vie, ni projection. Tout passe par `World.harms_player()`, faux dans le
-  Conclave, que consultent `hit_player`, `knock_player` et `Nightmare._hit`.
+  force, souffle, morsures, arbres…) mais ne blessent jamais le héros — ni
+  dégâts, ni brûlure, ni vol de vie, ni projection, ni étourdissement, ni
+  saisie (le Mangeur de soldats croque dans le vide). Tout passe par
+  `World.harms_player()`, faux dans le Conclave, que consultent `hit_player`,
+  `knock_player`, `stun_player`, `Nightmare._hit` et `BossMoves._hurt`.
   En retour, un coup du héros sur un boss (ou un double) n'affiche
   qu'« Invulnérable » (`World.damage_enemy`) ; les mini-créatures, elles,
   meurent normalement. La partie ne se perd ni ne se gagne : **on en sort par
@@ -247,6 +295,9 @@ d'élément, le Nécromancien Putréfié et la Créature cauchemardesque
   l'élément (30 Ombre, 40 Chaos), sinon à 50. Non sauvegardé. Un départ en
   cours de partie ne donne ni or ni équipement ; en Chaos, les boss des vagues
   sautées sont réputés tués (`World.start_run`).
+- Chaque boss a des **attaques spéciales** en plus de celles de la v1, et le
+  Nécromancien Putréfié **invoque** des monstres (voir « Attaques spéciales des
+  boss »).
 - Le menu au clavier boucle sur les **7** éléments et le Chaos (la v1 bouclait
   sur 6 et sautait l'Ombre).
 - Un tireur (Destruction, Ombre) qui recule s'arrête au bord de l'arène : dans la
@@ -288,6 +339,8 @@ fente de l'attaque, flash, dissolution, particules, halos). Fichiers renommés
 | Projectiles, or, fiole | `fx/brick`, `fx/bolt`, `fx/gold`, `fx/potion` | `effect/rock_0_new`, `effect/magic_bolt_1`, `item/gold/gold_pile_5`, `item/potion/ruby` |
 | Icônes d'attaque (Conclave) | `attacks/melee`, `heavy`, `fast`, `tough`, `charge`, `lifesteal`, `burn`, `bricks`, `bolts`, `giant` | `gui/spells/` : `components/sword`, `enchantment/berserker_rage_new`, `air/swiftness_new`, `earth/stoneskin_new`, `enchantment/haste_new`, `necromancy/vampiric_draining_new`, `fire/sticky_flame_new`, `components/stones`, `conjuration/magic_dart`, `necromancy/deaths_door_new` |
 | Icônes d'attaque de la Créature | `attacks/laser`, `whip`, `sweep`, `rush`, `leap`, `summon`, `field`, `split` | `gui/spells/` : `conjuration/searing_ray`, `summoning/summon_horrible_things`, `air/tornado`, `translocation/blink`, `earth/shatter_new`, `summoning/summon_shadow_creatures_new`, `translocation/gravitas`, `necromancy/simulacrum_new` |
+| Icônes des attaques spéciales | `attacks/ash_breath`, `blood_bite`, `blood_splash`, `fire_wave`, `devour`, `sword_throw`, `shield_bash`, `tree_rise`, `tree_fall`, `staff`, `raise`, `headbutt` | `gui/spells/monster/miasma_breath`, `item/weapon/artefact/spwpn_vampires_tooth`, `gui/spells/necromancy/sublimation_of_blood_new`, `gui/spells/fire/fire_storm_new`, `gui/spells/translocation/apportation_new`, `gui/spells/enchantment/tukimas_dance_new`, `item/armor/shields/large_shield_2_new`, `gui/spells/summoning/summon_forest`, `dungeon/trees/tree_1_red`, `item/staff/staff_3`, `gui/spells/necromancy/animate_dead_new`, `gui/spells/enchantment/confuse_new` |
+| Attaques spéciales (visuel) | `fx/sword`, `shield`, `staff`, `blood_puddle`, `tree_0`, `tree_1` | `item/weapon/short_sword_2_new`, `item/armor/shields/large_shield_2_new`, `item/staff/staff_3`, `misc/blood/blood_puddle_red`, `dungeon/trees/tree_1_red`, `tree_2_red` |
 | Difficultés (menu) | `ui/difficulty_facile`, `_intermediaire`, `_difficile` | `monster/animals/rat`, `monster/orc`, `monster/ogre` |
 
 Les trois icônes de difficulté suivent la même convention que les éléments, mais

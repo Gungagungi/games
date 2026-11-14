@@ -50,6 +50,24 @@ var nm_splits := 0
 var nm_slide := Vector2.ZERO
 var nm_slide_timer := 0
 
+# Attaques spéciales des autres boss, pilotées par `BossMoves`.
+## Attaque en cours ("" : logique commune de `World`), frames restantes et
+## frames écoulées depuis son début.
+var sp_attack := ""
+var sp_timer := 0
+var sp_age := 0
+var sp_cooldown := 150
+var sp_last := ""
+var sp_hit := false
+var sp_hit2 := false
+var sp_dir := Vector2.RIGHT
+## Point d'ancrage de l'attaque (cible de la morsure, pied de l'arbre…).
+var sp_origin := Vector2.ZERO
+## Points visés : arbres qui jaillissent, éclaboussures, invocations.
+var sp_points: Array[Vector2] = []
+## Flaques de sang du Golem : position (x, y) et frames restantes (z).
+var puddles: Array[Vector3] = []
+
 var sprite_scale := 1.0
 var glow := Color.WHITE
 var _sprite: Sprite2D
@@ -114,6 +132,8 @@ func tentacle_root() -> Vector2:
 func die() -> void:
 	_dying = 0.001
 	nm_attack = ""
+	sp_attack = ""
+	puddles.clear()
 	_aura.emitting = false
 
 func _process(delta: float) -> void:
@@ -137,7 +157,7 @@ func _process(delta: float) -> void:
 	elif nm_attack == "jump_crouch":
 		# Accroupie avant le saut : écrasée et tremblante.
 		_sprite.scale = Vector2(1.1, 0.88) * sprite_scale
-	elif nm_attack in ["split", "summon", "field_aim"]:
+	elif nm_attack in ["split", "summon", "field_aim"] or sp_attack in ["devour_hold", "raise"]:
 		_sprite.position.x += randf_range(-1.5, 1.5) * sprite_scale
 	_mat.set_shader_parameter("flash", 0.85 if hit_flash > 0 else 0.0)
 	if charging and charge_telegraph > 0:
@@ -146,9 +166,13 @@ func _process(delta: float) -> void:
 		_sprite.scale = Vector2.ONE * sprite_scale * (1.0 + 0.06 * sin(_t * 30.0))
 		if _light:
 			_light.energy = 1.6
-	elif nm_attack in ["split", "summon", "laser_aim", "laser", "field_aim"]:
+	elif nm_attack in ["split", "summon", "laser_aim", "laser", "field_aim"] or BossMoves.telegraphing(self):
 		_mat.set_shader_parameter("outline", 0.6 + 0.4 * sin(_t * 24.0))
-		_sprite.scale = Vector2.ONE * sprite_scale
+		# Le Golem de sang se gonfle avant de projeter ses éclaboussures.
+		var swell := 1.0
+		if sp_attack == "splash_aim":
+			swell += 0.15 * (1.0 - float(sp_timer) / BossMoves.SPLASH_AIM)
+		_sprite.scale = Vector2.ONE * sprite_scale * swell
 		if _light:
 			_light.energy = 1.4
 	else:

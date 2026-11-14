@@ -29,6 +29,10 @@ var knock_from := Vector2.ZERO
 var knock_to := Vector2.ZERO
 var knock_time := 1
 var knock_timer := 0
+## Étourdi (coup de tête du Sbire de l'ombre) : ni déplacement ni coup.
+var stun_timer := 0
+## Boss qui tient le héros dans sa gueule (Mangeur de soldats), null sinon.
+var held_by: Enemy = null
 
 var _rig: Node2D
 var _layers := {}
@@ -113,10 +117,24 @@ func _process(delta: float) -> void:
 	_hurt = maxf(0.0, _hurt - delta)
 	_mat.set_shader_parameter("flash", 0.9 if _hurt > 0.0 else 0.0)
 	_burn.emitting = burn_timer > 0
+	queue_redraw()
 
 func _draw() -> void:
 	draw_set_transform(Vector2(0, 13.0 * SCALE), 0.0, Vector2(1.0, 0.35))
 	draw_circle(Vector2.ZERO, 11.0 * SCALE, Color(0, 0, 0, 0.45))
+	draw_set_transform(Vector2.ZERO)
+	if stun_timer > 0 and _dead == 0.0:
+		# Étoiles qui tournent au-dessus de la tête.
+		for i in 3:
+			var a := _t * 6.0 + TAU * i / 3.0
+			_star(Vector2(cos(a) * 14.0, -20.0 * SCALE + sin(a) * 4.0), 5.0, Color(1, 0.9, 0.3))
+
+func _star(c: Vector2, r: float, col: Color) -> void:
+	var pts := PackedVector2Array()
+	for i in 10:
+		var rr := r if i % 2 == 0 else r * 0.45
+		pts.append(c + Vector2.from_angle(-PI / 2.0 + TAU * i / 10.0) * rr)
+	draw_colored_polygon(pts, col)
 
 ## Croissant de l'estoc : balaie l'arc réellement couvert par le coup.
 class Slash extends Node2D:

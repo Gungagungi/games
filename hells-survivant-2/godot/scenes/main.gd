@@ -205,6 +205,11 @@ func _process(delta: float) -> void:
 			and _smoke_overlap <= SMOKE_MAX_OVERLAP
 			and _smoke_inspected.size() >= SMOKE_MIN_INSPECTED
 			and _smoke_drift <= SMOKE_MAX_DRIFT)
+	if not BossMoves.played.is_empty():
+		var moves: Array[String] = []
+		for m: String in BossMoves.played:
+			moves.append("%s×%d" % [m, BossMoves.played[m]])
+		print("[smoke] attaques spéciales : %s" % ", ".join(moves))
 	print("[smoke] %s — état : %s, vague atteinte : %d, ennemis vivants : %d, or gagné : %d" % [
 		"OK" if ok else "ÉCHEC", Game.state, Game.wave, world.enemies.size(), Game.run_gold])
 	get_tree().quit(0 if ok else 1)

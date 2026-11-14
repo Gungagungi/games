@@ -338,8 +338,9 @@ static func knock_target(boss: Vector2, from: Vector2, away: Vector2, margin: fl
 
 static func _minis(w: World) -> int:
 	var n := 0
+	# Les monstres du Nécromancien, d'autres éléments, ne comptent pas.
 	for o in w.enemies:
-		if o.is_mini:
+		if o.is_mini and o.element == Data.CHAOS:
 			n += 1
 	return n
 
