@@ -142,6 +142,35 @@ Autoloads (`autoload/`) : `Data` (tables de la v1 : épées, armures, difficult�
   sans focus** : sinon Espace (frapper) et Entrée (combattre) activeraient le
   dernier bouton cliqué.
 
+### Jouer sur téléphone
+
+`scenes/ui/touch_controls.gd` (`TouchControls`) ajoute des commandes tactiles,
+dessinées seulement en partie et sur écran tactile (`Game.touch_mode`, vrai si
+`DisplayServer.is_touchscreen_available()` ou dès le premier toucher) ; clavier
+et souris ne changent pas.
+
+- **Moitié gauche** : joystick flottant, qui naît sous le pouce. Sa direction
+  passe par `Game.touch_dir`, que `World._update_player` lit quand le clavier
+  est au repos.
+- **Moitié droite** : frapper, en continu tant que le doigt reste posé, dans
+  la direction du héros (celle de sa marche).
+- **Forge, Menu, Son** en haut à droite remplacent I, P et M ; le HUD y masque
+  alors son rappel de touches.
+- Les touchers sont lus en `InputEventScreenTouch` (un index par doigt) : on
+  marche et frappe en même temps. Le clic que Godot imite depuis le premier
+  doigt suffit aux boutons du menu, de la forge et de l'écran de fin ; en
+  partie, `main.gd` l'ignore en mode tactile, sinon chaque pas du joystick
+  frapperait vers le pouce.
+- En **portrait**, un voile demande de tourner le téléphone : le jeu garde son
+  format 3:2.
+- `html/head_include` (`export_presets.cfg`) demande plein écran et paysage au
+  premier toucher (Android seulement : Safari sur iPhone refuse le plein écran
+  à une page), et déclare la page « web app » : ajoutée à l'écran d'accueil de
+  l'iPhone, elle s'ouvre sans les barres de Safari.
+- **Commentaires de `export_presets.cfg` en `;`** : une ligne `#` n'y est pas
+  un commentaire, elle avale la clé qui la suit (le `head_include` disparaissait
+  de l'export sans erreur).
+
 ### Mode Chaos
 
 Huitième case de la grille des éléments, sans équivalent dans la v1.
@@ -416,5 +445,10 @@ il n'y a ni `ffmpeg` ni encodeur OGG sur la machine.
 - Les parties smoke se jouent **une par une** : lancées en parallèle, chacune
   ralentit (le pas fixe est plafonné par frame) et la vague 40 du Chaos
   n'aboutit plus en 60 s.
+- Les commandes tactiles ont été vérifiées dans Chromium headless en émulation
+  de téléphone (deux doigts via CDP), **pas encore sur un vrai téléphone** :
+  taille du joystick, zone de frappe et lisibilité du HUD restent à juger en
+  main. Sur un écran 19,5:9, le format 3:2 laisse des bandes noires sur les
+  côtés.
 - Les sprites étant fixes, un monstre ne se retourne que par `flip_h` : pas
   d'animation de marche ni d'attaque propre à chaque créature.

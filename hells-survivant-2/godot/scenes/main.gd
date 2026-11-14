@@ -17,6 +17,7 @@ var menu: MainMenu
 var hud: Hud
 var shop: Shop
 var end_screen: EndScreen
+var touch: TouchControls
 
 var _smoke_left := 0.0
 var _smoke_start_wave := 1
@@ -63,6 +64,14 @@ func _ready() -> void:
 	end_screen = EndScreen.new()
 	end_screen.world = world
 	root.add_child(end_screen)
+	touch = TouchControls.new()
+	touch.world = world
+	root.add_child(touch)
+	touch.shop_requested.connect(Game.open_shop)
+	touch.menu_requested.connect(_back_to_menu)
+	touch.mute_requested.connect(func() -> void:
+		Audio.toggle_mute()
+		menu.refresh())
 
 	menu.start_requested.connect(func() -> void: world.start_run(Game.start_wave))
 	menu.boss_rush_requested.connect(world.start_boss_rush)
@@ -112,7 +121,9 @@ func _back_to_menu() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
-		if mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT and Game.state == "playing":
+		# Sur écran tactile, le clic est imité depuis un doigt déjà traité par
+		# `TouchControls` (joystick ou frapper) : ne pas frapper une seconde fois.
+		if mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT and Game.state == "playing" and not Game.touch_mode:
 			world.attack_toward(world.get_global_mouse_position())
 		return
 	if not (event is InputEventKey) or not event.pressed:
