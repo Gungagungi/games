@@ -286,9 +286,10 @@ func _update_player() -> void:
 		player.position = player.knock_from.lerp(player.knock_to, 1.0 - (1.0 - k) * (1.0 - k))
 		dir = Vector2.ZERO
 	if player.held_by != null:
-		# Dans la gueule du Mangeur de soldats : il le tient jusqu'à le projeter.
+		# Dans la gueule du Mangeur de soldats ou dans la tornade du Chevalier de
+		# cendres : tenu jusqu'à être projeté.
 		var h := player.held_by
-		if is_instance_valid(h) and enemies.has(h) and h.sp_attack == "devour_hold":
+		if is_instance_valid(h) and enemies.has(h) and h.sp_attack in ["devour_hold", "tornado_spin"]:
 			dir = Vector2.ZERO
 		else:
 			player.held_by = null

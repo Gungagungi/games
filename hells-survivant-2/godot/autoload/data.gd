@@ -127,6 +127,8 @@ const ATTACKS := {
 	"field": "Champ de force : vous projette au loin",
 	"split": "Se dédouble à 75, 50 et 25 % de vie",
 	"ash_breath": "Souffle de cendres en cône",
+	"ash_tornado": "Tornade : vous fait tournoyer et vous projette",
+	"ash_fog": "Brouillard : il devient invisible 5 s",
 	"blood_bite": "Morsure de sang à distance, qui le soigne",
 	"blood_splash": "Éclaboussures de sang : flaques brûlantes",
 	"fire_wave": "Vague de feu qui déferle vers vous",
@@ -143,7 +145,7 @@ const ATTACKS := {
 ## Attaques de chaque boss du Conclave, dans l'ordre de l'infobulle. Clé :
 ## l'élément, préfixé de `final_` pour un boss final (voir `boss_attacks`).
 const BOSS_ATTACKS := {
-	"cendres": ["fast", "melee", "charge", "ash_breath"],
+	"cendres": ["fast", "melee", "charge", "ash_breath", "ash_tornado", "ash_fog"],
 	"sang": ["melee", "lifesteal", "charge", "blood_bite", "blood_splash"],
 	"violence": ["heavy", "melee", "charge", "sword_throw", "shield_bash"],
 	"terre": ["tough", "melee", "charge", "tree_rise", "tree_fall"],

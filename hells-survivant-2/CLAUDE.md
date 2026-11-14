@@ -189,7 +189,7 @@ garde les siennes, dans `Nightmare`.
 
 | Boss | Attaques (`BossMoves.MOVES`) |
 | --- | --- |
-| Chevalier de cendres | **souffle** de cendres en cône, qui suit lentement le héros |
+| Chevalier de cendres | **souffle** de cendres en cône, qui suit lentement le héros ; **tornade** de cendres qui le poursuit (plus lente que lui, elle vire peu), le saisit (`Player.held_by`), le fait tournoyer puis le projette à l'autre bout de l'arène (`Nightmare.knock_target`) ; **brouillard** sur toute l'arène pendant 5 s (`Enemy.fog_timer`) : il devient invisible, nom et barre compris, mais continue de se battre |
 | Golem de sang | **morsure** à distance (des mâchoires se referment sur la position du héros, figée un instant avant, et le soignent) ; **éclaboussures** : cinq gerbes autour du héros, qui laissent des flaques brûlantes 4 s |
 | Créature infernale | **vague de feu** en ligne droite, qui s'élargit en avançant et enflamme |
 | Mangeur de soldats | **dévoreur** : il bondit, saisit le héros (`Player.held_by`), le croque trois fois, puis le projette à l'autre bout de l'arène (même point d'arrivée que le champ de force, `Nightmare.knock_target`) |
@@ -206,6 +206,13 @@ garde les siennes, dans `Nightmare`.
 - **Toutes sont télégraphiées** : contour lumineux du boss
   (`BossMoves.telegraphing`) et repère au sol de la zone touchée (cône, cercle,
   bande, trapèze, ombre de l'arbre), le temps de s'écarter.
+- **Brouillard du Chevalier de cendres** : un état qui survit à l'attaque, comme
+  les flaques (décompté par `tick_hazards`). Le boss s'efface par `modulate`
+  (à 30 % dans le Conclave, où on l'observe) et réapparaît à sa mort pour se
+  dissoudre. Une trouée suit le héros. Les repères au sol de ses attaques sont
+  alors redessinés **par-dessus** le brouillard : invisible, il reste annoncé.
+  Sa charge de la v1, dont le télégraphe est le contour du sprite, y gagne un
+  anneau clignotant au sol.
 - **Un coup par attaque** : une ligne d'arbres ne blesse qu'une fois au
   jaillissement et une fois aux branches (`sp_hit`, `sp_hit2`).
 - **Visuel** : deux nœuds `BossMoves.Visual` par boss, en coordonnées de
@@ -266,7 +273,7 @@ d'élément, le Nécromancien Putréfié et la Créature cauchemardesque
   non figé dérivait.
 - **Personne ne blesse personne** : on observe les boss, on ne les combat
   pas. Ils lancent leurs attaques (charges, tirs, laser, fouet, champ de
-  force, souffle, morsures, arbres…) mais ne blessent jamais le héros — ni
+  force, souffle, tornade, morsures, arbres…) mais ne blessent jamais le héros — ni
   dégâts, ni brûlure, ni vol de vie, ni projection, ni étourdissement, ni
   saisie (le Mangeur de soldats croque dans le vide). Tout passe par
   `World.harms_player()`, faux dans le Conclave, que consultent `hit_player`,
@@ -345,7 +352,7 @@ fente de l'attaque, flash, dissolution, particules, halos). Fichiers renommés
 | Projectiles, or, fiole | `fx/brick`, `fx/bolt`, `fx/gold`, `fx/potion` | `effect/rock_0_new`, `effect/magic_bolt_1`, `item/gold/gold_pile_5`, `item/potion/ruby` |
 | Icônes d'attaque (Conclave) | `attacks/melee`, `heavy`, `fast`, `tough`, `charge`, `lifesteal`, `burn`, `bricks`, `bolts`, `giant` | `gui/spells/` : `components/sword`, `enchantment/berserker_rage_new`, `air/swiftness_new`, `earth/stoneskin_new`, `enchantment/haste_new`, `necromancy/vampiric_draining_new`, `fire/sticky_flame_new`, `components/stones`, `conjuration/magic_dart`, `necromancy/deaths_door_new` |
 | Icônes d'attaque de la Créature | `attacks/laser`, `whip`, `sweep`, `rush`, `leap`, `summon`, `field`, `split` | `gui/spells/` : `conjuration/searing_ray`, `summoning/summon_horrible_things`, `air/tornado`, `translocation/blink`, `earth/shatter_new`, `summoning/summon_shadow_creatures_new`, `translocation/gravitas`, `necromancy/simulacrum_new` |
-| Icônes des attaques spéciales | `attacks/ash_breath`, `blood_bite`, `blood_splash`, `fire_wave`, `devour`, `sword_throw`, `shield_bash`, `tree_rise`, `tree_fall`, `staff`, `raise`, `headbutt` | `gui/spells/monster/miasma_breath`, `item/weapon/artefact/spwpn_vampires_tooth`, `gui/spells/necromancy/sublimation_of_blood_new`, `gui/spells/fire/fire_storm_new`, `gui/spells/translocation/apportation_new`, `gui/spells/enchantment/tukimas_dance_new`, `item/armor/shields/large_shield_2_new`, `gui/spells/summoning/summon_forest`, `dungeon/trees/tree_1_red`, `item/staff/staff_3`, `gui/spells/necromancy/animate_dead_new`, `gui/spells/enchantment/confuse_new` |
+| Icônes des attaques spéciales | `attacks/ash_breath`, `ash_tornado` (passée en gris cendre), `ash_fog`, `blood_bite`, `blood_splash`, `fire_wave`, `devour`, `sword_throw`, `shield_bash`, `tree_rise`, `tree_fall`, `staff`, `raise`, `headbutt` | `gui/spells/monster/miasma_breath`, `monster/nonliving/spatial_vortex`, `gui/abilities/evoke_fog`, `item/weapon/artefact/spwpn_vampires_tooth`, `gui/spells/necromancy/sublimation_of_blood_new`, `gui/spells/fire/fire_storm_new`, `gui/spells/translocation/apportation_new`, `gui/spells/enchantment/tukimas_dance_new`, `item/armor/shields/large_shield_2_new`, `gui/spells/summoning/summon_forest`, `dungeon/trees/tree_1_red`, `item/staff/staff_3`, `gui/spells/necromancy/animate_dead_new`, `gui/spells/enchantment/confuse_new` |
 | Attaques spéciales (visuel) | `fx/sword`, `shield`, `staff`, `blood_puddle`, `tree_0`, `tree_1` | `item/weapon/short_sword_2_new`, `item/armor/shields/large_shield_2_new`, `item/staff/staff_3`, `misc/blood/blood_puddle_red`, `dungeon/trees/tree_1_red`, `tree_2_red` |
 | Difficultés (menu) | `ui/difficulty_facile`, `_intermediaire`, `_difficile` | `monster/animals/rat`, `monster/orc`, `monster/ogre` |
 

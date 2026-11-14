@@ -67,6 +67,9 @@ var sp_origin := Vector2.ZERO
 var sp_points: Array[Vector2] = []
 ## Flaques de sang du Golem : position (x, y) et frames restantes (z).
 var puddles: Array[Vector3] = []
+## Brouillard du Chevalier de cendres : frames restantes. Il est invisible tant
+## qu'il dure (à peine visible dans le Conclave, où on l'observe).
+var fog_timer := 0
 
 var sprite_scale := 1.0
 var glow := Color.WHITE
@@ -134,6 +137,9 @@ func die() -> void:
 	nm_attack = ""
 	sp_attack = ""
 	puddles.clear()
+	# Le brouillard tombe avec lui : on le voit se dissoudre.
+	fog_timer = 0
+	modulate.a = 1.0
 	_aura.emitting = false
 
 func _process(delta: float) -> void:
@@ -148,6 +154,10 @@ func _process(delta: float) -> void:
 			queue_free()
 		queue_redraw()
 		return
+	var veil := 1.0
+	if fog_timer > 0:
+		veil = 0.3 if Game.boss_rush else 0.0
+	modulate.a = move_toward(modulate.a, veil, delta * 3.0)
 	var bob_speed := 7.0 + speed * 2.0
 	_sprite.position = Vector2(0, -absf(sin(_t * bob_speed)) * 1.5 * sprite_scale)
 	_sprite.rotation = sin(_t * bob_speed) * 0.04
