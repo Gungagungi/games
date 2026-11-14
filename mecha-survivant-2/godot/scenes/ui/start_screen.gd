@@ -1,7 +1,8 @@
 class_name StartScreen
 extends CanvasLayer
 ## Écran d'accueil : titre, sélecteur de vague de départ (1-20) et accès au
-## niveau spécial du Destructeur d'univers.
+## niveau spécial du Destructeur d'univers, puis — une fois la gemme dorée
+## ramassée — au combat d'entraînement contre le Cristal.
 ##
 ## Le bouton du niveau spécial est **sous** LANCER : ajouté au-dessus, il
 ## décalerait les coordonnées de clic de `tools/scenarios/ms2-gameplay.js`.
@@ -10,8 +11,12 @@ signal start_requested(wave: int)
 signal destroyer_requested()
 ## Raccourci de test : le Destructeur directement en dernière phase, à 1 %.
 signal destroyer_final_requested()
+signal crystal_requested()
 
 var _wave_select := OptionButton.new()
+## Masqué tant que le Cristal n'est pas débloqué. Dernière ligne du panneau :
+## l'afficher n'en décale aucun autre bouton.
+var _crystal := Button.new()
 
 func _ready() -> void:
 	layer = 20
@@ -89,6 +94,16 @@ func _ready() -> void:
 		destroyer_final_requested.emit())
 	special_row.add_child(final_phase)
 
+	_crystal.text = "ENTRAÎNEMENT : LE CRISTAL"
+	_crystal.custom_minimum_size = Vector2(0, 46)
+	_crystal.add_theme_color_override("font_color", Color(1.0, 0.45, 0.4))
+	_crystal.add_theme_color_override("font_hover_color", Color(1.0, 0.75, 0.7))
+	_crystal.pressed.connect(func() -> void:
+		AudioManager.sfx("ui_click")
+		crystal_requested.emit())
+	panel.add_child(_crystal)
+	refresh_unlocks()
+
 	var version := Label.new()
 	version.text = GameVersion.read()
 	version.add_theme_font_size_override("font_size", 14)
@@ -96,3 +111,7 @@ func _ready() -> void:
 	version.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	version.position = Vector2(12, -28)
 	add_child(version)
+
+## À rappeler à chaque retour au menu : le Cristal a pu être débloqué entre-temps.
+func refresh_unlocks() -> void:
+	_crystal.visible = GameState.crystal_unlocked
