@@ -184,10 +184,15 @@ lien avec le leurre : il apparaît directement à la vague 20, via le même
 - **Vague 30, le Robot géant mutant** (`scenes/bosses/mutant_robot.gd`, trois
   phases) : le petit robot du Destructeur (`DestroyerRobot.Body`) agrandi ×4,
   plus une couche `Mutation` (excroissances vertes, veines, antenne qui
-  crépite). Trois grosses boules de métal en éventail ; éclair d'antenne
-  (`scenes/fx/lightning_arc.gd`) qui, s'il touche, **s'accroche** au mech :
-  5 % des PV max par seconde pendant 3 s via `Player.take_dot_damage()`, ni
-  bouclier ni dash ne le décrochent. À sa mort il explose en chaîne
+  crépite). Trois grosses boules de métal en éventail ; laser de visière
+  (l'œil jaune) visé sur le mech puis figé, qui **explose à son point
+  d'impact** : le mech s'il coupe la trajectoire, sinon le premier mur ou le
+  bout de sa portée (`LaserBeam.blast_radius` ; seule l'explosion blesse, et
+  un rayon né dans un mur — le boss les traverse — en sort avant de chercher
+  le suivant) ; éclair d'antenne (`scenes/fx/lightning_arc.gd`) qui, s'il
+  touche, **s'accroche** au mech : 5 % des PV max par seconde pendant 3 s via
+  `Player.take_dot_damage(…, true)`, qui **entame d'abord le bouclier** puis
+  les PV ; ni bouclier ni dash ne le décrochent. À sa mort il explose en chaîne
   (`scenes/fx/blast.gd`, explosion purement visuelle) et lance « tu auras
   affaire à mon patron ». **`boss_defeated` attend `dialogue_finished`** : sans
   ce délai, l'écran de victoire s'afficherait sous la réplique. La
