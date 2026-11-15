@@ -75,7 +75,8 @@ corrompu, sans quoi la partie échoue. Une partie
 échoue si elle ne progresse pas, si une vague de boss final ne se conclut pas
 en victoire, ou sur toute erreur GDScript. Le Conclave, lui, échoue s'il ne
 finit pas **en cours** (ni victoire ni défaite), si un boss manque ou a perdu
-des PV, si moins de 3 boss ont eu leur infobulle, si le boss de l'infobulle a
+des PV, si plus de 3 mini-créatures de la Créature se sont trouvées ensemble
+ou si l'une a perdu des PV, si moins de 3 boss ont eu leur infobulle, si le boss de l'infobulle a
 bougé de plus de 0,5 px d'une frame à l'autre, ou si deux sprites de boss
 (doubles de la Créature compris) se recouvrent de plus de 8 px : la sortie
 donne le pire écart (`chevauchement max`, −6 px quand ils se touchent à la
@@ -199,7 +200,7 @@ l'un des 7 `Data.MOB_ELEMENTS` à l'apparition.
   - **saut** sur la position du héros, puis **onde de choc** en anneau : on n'est
     touché qu'au passage du front ;
   - **invocation** de mini-créatures (`is_mini`), monstres de mêlée ordinaires
-    d'élément Chaos, six au plus ;
+    d'élément Chaos, six au plus (trois dans le Conclave) ;
   - **champ de force**, quand le héros est proche : une sphère gonfle autour
     d'elle (le cercle de sa portée, 200 px, s'affiche dès le début), puis
     éclate. Le héros pris dedans est blessé et **projeté à l'autre bout de
@@ -342,8 +343,11 @@ d'élément, le Nécromancien Putréfié et la Créature cauchemardesque
   `World.harms_player()`, faux dans le Conclave, que consultent `hit_player`,
   `knock_player`, `stun_player`, `Nightmare._hit` et `BossMoves._hurt`.
   En retour, un coup du héros sur un boss (ou un double) n'affiche
-  qu'« Invulnérable » (`World.damage_enemy`) ; les mini-créatures, elles,
-  meurent normalement. La partie ne se perd ni ne se gagne : **on en sort par
+  qu'« Invulnérable » (`World.damage_enemy`), de même sur les mini-créatures
+  de la Créature (`Nightmare.is_chaos_mini`) : elles y sont **trois au plus**
+  (`Nightmare.MINIS_MAX_RUSH`, via `minis_max()`), sans quoi elles
+  s'accumuleraient. Les monstres et âmes du Nécromancien, eux, meurent
+  normalement. La partie ne se perd ni ne se gagne : **on en sort par
   P**, et le dédoublement de la Créature ne se déclenche jamais.
 - La **Créature cauchemardesque**, réveillée, garde son jeu d'attaques
   (`Nightmare`) et ne se promène pas : elle bouge déjà par ses sauts et ruées.

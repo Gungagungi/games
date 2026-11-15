@@ -38,6 +38,11 @@ var _smoke_inspected := {}
 var _smoke_last_inspected: Enemy = null
 var _smoke_last_pos := Vector2.ZERO
 var _smoke_drift := 0.0
+## Conclave : plus grand nombre de mini-créatures de la Créature vues ensemble
+## (plafonné à `Nightmare.MINIS_MAX_RUSH`), et mini-créatures blessées : elles y
+## sont invulnérables.
+var _smoke_minis := 0
+var _smoke_minis_wounded := 0
 
 func _ready() -> void:
 	randomize()
@@ -199,6 +204,7 @@ func _process(delta: float) -> void:
 	if Game.boss_rush:
 		_smoke_overlap = maxf(_smoke_overlap, world.boss_overlap())
 		_track_inspected()
+		_track_minis()
 	_smoke_left -= delta / Engine.time_scale
 	if Game.state != "victory" and _smoke_left > 0.0:
 		return
@@ -216,10 +222,13 @@ func _process(delta: float) -> void:
 			_smoke_overlap, SMOKE_MAX_OVERLAP])
 		print("[smoke] boss : %d vivants, %d blessés ; %d inspectés (min %d), déplacement max pendant l'infobulle : %.2f px (tolérance %.1f)" % [
 			bosses, wounded, _smoke_inspected.size(), SMOKE_MIN_INSPECTED, _smoke_drift, SMOKE_MAX_DRIFT])
+		print("[smoke] mini-créatures : %d au plus ensemble (max %d), %d blessées" % [
+			_smoke_minis, Nightmare.MINIS_MAX_RUSH, _smoke_minis_wounded])
 		ok = (Game.state == "playing" and bosses == world.rush_total and wounded == 0
 			and _smoke_overlap <= SMOKE_MAX_OVERLAP
 			and _smoke_inspected.size() >= SMOKE_MIN_INSPECTED
-			and _smoke_drift <= SMOKE_MAX_DRIFT)
+			and _smoke_drift <= SMOKE_MAX_DRIFT
+			and _smoke_minis <= Nightmare.MINIS_MAX_RUSH and _smoke_minis_wounded == 0)
 	if not BossMoves.played.is_empty():
 		var moves: Array[String] = []
 		for m: String in BossMoves.played:
@@ -245,6 +254,15 @@ func _track_inspected() -> void:
 			_smoke_drift = maxf(_smoke_drift, e.position.distance_to(_smoke_last_pos))
 		_smoke_last_pos = e.position
 	_smoke_last_inspected = e
+
+func _track_minis() -> void:
+	var n := 0
+	for e in world.enemies:
+		if Nightmare.is_chaos_mini(e):
+			n += 1
+			if e.hp < e.max_hp:
+				_smoke_minis_wounded += 1
+	_smoke_minis = maxi(_smoke_minis, n)
 
 ## Pilote automatique : marche sur l'ennemi le plus proche et frappe. Dans le
 ## Conclave, il fait plutôt le tour des boss, un toutes les `SMOKE_VISIT` frames.

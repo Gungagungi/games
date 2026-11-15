@@ -42,7 +42,8 @@ run --element=chaos --wave=35
 # automatique met plus de 20 s à la finir.
 run --element=chaos --wave=40 --duration=60
 # Les 9 boss ensemble, Créature comprise, visités un par un ; échoue si deux
-# boss se superposent, si un boss perd des PV ou bouge pendant son infobulle.
+# boss se superposent, si un boss perd des PV ou bouge pendant son infobulle,
+# ou si les mini-créatures de la Créature dépassent 3 ou perdent des PV.
 run --boss-rush --duration=60
 
 if [ "$fail" -ne 0 ]; then

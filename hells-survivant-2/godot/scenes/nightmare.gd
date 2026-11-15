@@ -59,6 +59,9 @@ const WAVE_HALF := 16.0
 const SUMMON_TIME := 36
 const SUMMON_COUNT := 3
 const MINIS_MAX := 6
+## Dans le Conclave, où elles ne meurent pas (`World.damage_enemy`), elles
+## s'accumuleraient : trois au plus.
+const MINIS_MAX_RUSH := 3
 
 const FIELD_AIM := 48
 const FIELD_TIME := 24
@@ -255,7 +258,7 @@ static func _choose(w: World, e: Enemy, dist: float) -> void:
 		options = ["lash", "lash", "dash", "jump"]
 		if e.is_final:
 			options.append_array(["laser", "laser"])
-			if _minis(w) < MINIS_MAX:
+			if _minis(w) < minis_max():
 				options.append("summon")
 	var fresh := options.filter(func(o: String) -> bool: return o != e.nm_last)
 	var pick: String = (fresh if not fresh.is_empty() else options).pick_random()
@@ -383,18 +386,25 @@ static func knock_target(boss: Vector2, from: Vector2, away: Vector2, margin: fl
 				best = pt
 	return best if best_score > -INF else fallback
 
+static func minis_max() -> int:
+	return MINIS_MAX_RUSH if Game.boss_rush else MINIS_MAX
+
+## Mini-créature de la Créature (les monstres du Nécromancien, d'autres
+## éléments, n'en sont pas).
+static func is_chaos_mini(e: Enemy) -> bool:
+	return e.is_mini and e.element == Data.CHAOS
+
 static func _minis(w: World) -> int:
 	var n := 0
-	# Les monstres du Nécromancien, d'autres éléments, ne comptent pas.
 	for o in w.enemies:
-		if o.is_mini and o.element == Data.CHAOS:
+		if is_chaos_mini(o):
 			n += 1
 	return n
 
 ## Mini-créatures : monstres de mêlée ordinaires d'élément Chaos (brûlure et vol
 ## de vie), en cercle autour du boss.
 static func _summon(w: World, e: Enemy) -> void:
-	var n := mini(SUMMON_COUNT, MINIS_MAX - _minis(w))
+	var n := mini(SUMMON_COUNT, minis_max() - _minis(w))
 	var a0 := randf() * TAU
 	for i in n:
 		var m := Enemy.new()

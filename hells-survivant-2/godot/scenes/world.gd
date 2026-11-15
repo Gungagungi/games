@@ -578,8 +578,9 @@ func damage_enemy(e: Enemy, amount: float) -> void:
 	# l'y voie faire), et ne se touche pas en vol.
 	if BossMoves.evades(self, e):
 		return
-	# Conclave : on y observe les boss, on ne les combat pas.
-	if Game.boss_rush and _is_bulky(e):
+	# Conclave : on y observe les boss, on ne les combat pas ; les
+	# mini-créatures de la Créature cauchemardesque non plus.
+	if Game.boss_rush and (_is_bulky(e) or Nightmare.is_chaos_mini(e)):
 		Fx.float_text(fx_layer, e.position + Vector2(0, -e.top() - 12), "Invulnérable", Color("#b8b0c8"))
 		return
 	e.hp -= amount
