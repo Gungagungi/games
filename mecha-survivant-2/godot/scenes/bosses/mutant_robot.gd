@@ -6,9 +6,12 @@ extends BossBase
 ## d'excroissances vertes qui pulsent.
 ##
 ## Trois phases :
-##   1. trois grosses boules de métal lancées en éventail vers le mech, et un
-##      éclair tiré de l'antenne (`lightning_arc.gd`) : s'il touche, il reste
-##      accroché et coûte 5 % des PV max par seconde pendant 3 s ;
+##   1. trois grosses boules de métal lancées en éventail vers le mech, un
+##      laser tiré de la visière qui explose à son point d'impact — le mech
+##      s'il est sur sa trajectoire, sinon le premier mur ou le bout de sa
+##      portée (`LaserBeam.blast_radius`) —, et un éclair tiré de l'antenne
+##      (`lightning_arc.gd`) : s'il touche, il reste accroché et coûte 5 % des
+##      PV max par seconde pendant 3 s, bouclier d'abord ;
 ##   2. les boules partent en double salve, cadences resserrées ;
 ##   3. l'antenne tire un second éclair juste après le premier, visé là où le
 ##      mech s'est réfugié.
@@ -21,9 +24,10 @@ extends BossBase
 const PHASE_HP: Array[float] = [2400.0, 3000.0, 3600.0]
 ## Agrandissement du petit robot de `destroyer_robot.gd` (26×31 px).
 const SCALE := 4.0
-## Points d'ancrage, en coordonnées du boss : pointe de l'antenne et bras
-## lanceur de `Body`, multipliés par `SCALE`.
+## Points d'ancrage, en coordonnées du boss : pointe de l'antenne, visière
+## (l'œil jaune) et bras lanceur de `Body`, multipliés par `SCALE`.
 const ANTENNA := Vector2(0.0, -16.0) * SCALE
+const VISOR := Vector2(0.0, -2.0) * SCALE
 const ARM := Vector2(17.0, -2.0) * SCALE
 const MUTANT := Color(0.45, 0.95, 0.35)
 
@@ -33,9 +37,14 @@ const BALL_SPEED := 210.0
 const BALL_RADIUS := 15.0
 const LIGHTNING_INTERVAL := 7.0
 const LIGHTNING_WINDUP := 0.95
+const VISOR_INTERVAL := 4.4
+const VISOR_WINDUP := 1.1
+const VISOR_RANGE := 620.0
+const VISOR_BLAST_RADIUS := 78.0
 
 var _ball_cd := 1.5
 var _lightning_cd := 3.0
+var _visor_cd := 2.2
 var _body: DestroyerRobot.Body
 var _mutation: Mutation
 
@@ -79,6 +88,10 @@ func _behaviour(delta: float) -> void:
 			get_tree().create_timer(0.45).timeout.connect(func() -> void:
 				if alive and player != null and player.alive:
 					_throw_balls())
+	_visor_cd -= delta
+	if _visor_cd <= 0.0:
+		_visor_cd = VISOR_INTERVAL * _pace()
+		_visor_laser()
 	_lightning_cd -= delta
 	if _lightning_cd <= 0.0:
 		_lightning_cd = LIGHTNING_INTERVAL * _pace()
@@ -109,6 +122,28 @@ func _throw_balls() -> void:
 		get_parent().add_child(ball)
 	AudioManager.sfx("enemy_shoot")
 
+## Laser de visière, visé là où se tient le mech au départ et figé là
+## (`follow = false`) : esquiver de côté pendant la charge suffit. Il explose
+## au point d'impact — sur le mech, ou sur le terrain s'il le manque.
+func _visor_laser() -> void:
+	_play_attack()
+	if _mutation != null:
+		_mutation.charge_visor(VISOR_WINDUP)
+	var beam := LaserBeam.new()
+	beam.source = self
+	beam.offset = VISOR
+	beam.angle = (player.global_position - (global_position + VISOR)).angle()
+	beam.damage = hit_damage() * 0.5
+	beam.windup = VISOR_WINDUP
+	beam.firing = 0.3
+	beam.width = 12.0
+	beam.length = VISOR_RANGE
+	beam.follow = false
+	beam.blast_radius = VISOR_BLAST_RADIUS
+	beam.color = DestroyerRobot.Body.EYE
+	beam.core_color = Color(1.0, 0.97, 0.7)
+	get_parent().add_child(beam)
+
 ## Éclair de l'antenne, visé là où se tient le mech au départ.
 func _lightning() -> void:
 	_play_attack()
@@ -133,7 +168,7 @@ func die() -> void:
 	EventBus.enemy_died.emit(global_position, true)
 	var host := get_parent()
 	for n in host.get_children():
-		if n is EnemyProjectile or n is LightningArc:
+		if n is EnemyProjectile or n is LightningArc or n is LaserBeam:
 			n.queue_free()
 	_explode(host)
 	EventBus.dialogue_finished.connect(func() -> void: EventBus.boss_defeated.emit(),
@@ -172,14 +207,19 @@ class Mutation extends Node2D:
 	var body: Node2D
 	var phase := 0
 	var _charge := 0.0
+	var _visor := 0.0
 	var _t := 0.0
 
 	func charge(duration: float) -> void:
 		_charge = duration
 
+	func charge_visor(duration: float) -> void:
+		_visor = duration
+
 	func _process(delta: float) -> void:
 		_t += delta
 		_charge = maxf(0.0, _charge - delta)
+		_visor = maxf(0.0, _visor - delta)
 		queue_redraw()
 
 	func _draw() -> void:
@@ -200,6 +240,14 @@ class Mutation extends Node2D:
 				draw_circle(at, r + 2.0, Color(0, 0, 0))
 				draw_circle(at, r, MUTANT.darkened(0.35))
 				draw_circle(at + Vector2(-r * 0.3, -r * 0.3), r * 0.45, MUTANT.lightened(0.2))
+		# Visière : l'œil jaune s'embrase pendant la charge du laser.
+		if _visor > 0.0:
+			var eye := VISOR + Vector2(0, bob)
+			var g := clampf(_visor, 0.0, 1.0)
+			draw_rect(Rect2(eye - Vector2(5, 2) * SCALE, Vector2(10, 4) * SCALE),
+				Color(DestroyerRobot.Body.EYE, 0.25 + 0.25 * g))
+			draw_rect(Rect2(eye - Vector2(3, 1) * SCALE, Vector2(6, 2) * SCALE),
+				Color(1.0, 0.97, 0.7, 0.6 + 0.4 * g))
 		# Antenne : lueur bleutée qui grandit pendant la charge.
 		if _charge > 0.0:
 			var tip := ANTENNA + Vector2(0, bob)

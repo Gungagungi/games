@@ -263,13 +263,20 @@ func ignite(dps: float, duration: float) -> void:
 	burn_time = maxf(burn_time, duration)
 
 ## Dégâts continus d'un effet accroché au mech (éclair du Robot géant mutant),
-## appelés à chaque image : ni bouclier ni invulnérabilité de coup, comme
-## l'embrasement, et pas de flash ni de secousse — ils tomberaient en rafale.
-func take_dot_damage(amount: float) -> void:
+## appelés à chaque image : pas d'invulnérabilité de coup, pas de flash ni de
+## secousse — ils tomberaient en rafale. Avec `through_shield`, le bouclier
+## actif encaisse d'abord (l'éclair l'entame avant les PV) ; sans, il est
+## ignoré, comme l'embrasement.
+func take_dot_damage(amount: float, through_shield := false) -> void:
 	if not alive:
 		return
 	since_damage = 0.0
-	hp -= amount
+	var left := amount
+	if through_shield and shield > 0.0:
+		var absorbed := minf(shield, left)
+		shield -= absorbed
+		left -= absorbed
+	hp -= left
 	if hp <= 0.0:
 		die()
 

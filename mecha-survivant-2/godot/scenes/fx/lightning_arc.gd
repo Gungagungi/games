@@ -6,9 +6,10 @@ extends Node2D
 ##
 ## Si le mech est dans le cercle à cet instant, l'arc **s'accroche** à lui :
 ## `dps_ratio` de ses PV max par seconde pendant `hold` secondes (5 %/s sur
-## 3 s par défaut), via `Player.take_dot_damage()` — ni bouclier ni dash ne
-## le décrochent, c'est l'impact qu'il faut esquiver. Sinon, il frappe le sol
-## et s'éteint.
+## 3 s par défaut), via `Player.take_dot_damage()`. Un bouclier actif
+## encaisse en premier — l'éclair l'entame dès l'accroche, puis passe aux PV
+## une fois le bouclier à sec. Ni bouclier ni dash ne le décrochent : c'est
+## l'impact qu'il faut esquiver. Sinon, il frappe le sol et s'éteint.
 
 const STRIKE_RADIUS := 56.0
 const MISS_TIME := 0.25
@@ -57,7 +58,7 @@ func _process(delta: float) -> void:
 			queue_free()
 			return
 		target = p.global_position
-		p.take_dot_damage(p.max_hp * dps_ratio * delta)
+		p.take_dot_damage(p.max_hp * dps_ratio * delta, true)
 	queue_redraw()
 	if _t >= _end_at:
 		queue_free()
