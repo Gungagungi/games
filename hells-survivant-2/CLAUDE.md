@@ -234,6 +234,17 @@ l'un des 7 `Data.MOB_ELEMENTS` à l'apparition.
   âmes compris, jamais un boss ni un double de la Créature
   (`Projectile.from_boss`). Esquivé, un coup n'inflige ni dégâts, ni vol de
   vie, ni brûlure.
+- **Visuel de l'enchantement** (`Player`) : les calques corrompus (épée ;
+  armure, ou la peau à « Peau nue ») sont repeints en violet d'après leur
+  luminance (`Player._corrupted`, sur l'image, mis en cache), et des **pics**
+  violets en sortent (`Player.Spikes`, sous le calque, qui palpitent). Leur
+  place est tirée au chargement le long du contour du sprite, pointe vers
+  l'extérieur de la silhouette (`_spike_points`, tirage fixe) : tout niveau
+  d'épée ou d'armure en a, sans réglage à la main. Le recoloriage se fait sur
+  l'image et non par un second `ShaderMaterial` : dans l'export web, un
+  matériau propre à certains calques du `_rig` ne s'appliquait qu'à une partie
+  d'entre eux (casque violet, plastron resté doré). Aux poings nus, l'épée
+  corrompue n'a rien à montrer.
 
 ### Attaques spéciales des boss
 
