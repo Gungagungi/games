@@ -77,6 +77,9 @@ var puddles: Array[Vector3] = []
 ## Brouillard du Chevalier de cendres : frames restantes. Il est invisible tant
 ## qu'il dure (à peine visible dans le Conclave, où on l'observe).
 var fog_timer := 0
+## Sbire de l'ombre : frames avant de pouvoir de nouveau esquiver un coup en
+## s'envolant (`BossMoves.evades`).
+var fly_cooldown := 0
 
 var sprite_scale := 1.0
 ## Échelle de naissance : `sprite_scale` peut grandir ensuite (rage).

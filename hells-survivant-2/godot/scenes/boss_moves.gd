@@ -22,6 +22,8 @@ extends RefCounted
 ## - Voix Putréfiée : arbres qui jaillissent du sol en ligne jusqu'au héros puis
 ##   le fouettent de leurs branches, et arbre qui pousse près de lui et s'abat ;
 ## - Sbire de l'ombre : coup de tête en ruée, qui repousse et étourdit ;
+##   griffes en cône au contact ; cri qui porte loin ; et il s'envole pour
+##   esquiver les coups du héros (ou quand celui-ci le serre de trop près) ;
 ## - Nécromancien Putréfié : coup de bâton qui repousse, et invocation de
 ##   monstres ordinaires de n'importe quel élément (jamais de mini-créatures du
 ##   Chaos), qui meurent avec lui ; et trois âmes, monstres fragiles qui
@@ -38,7 +40,7 @@ const MOVES := {
 	"terre": ["roots", "treefall"],
 	"feu": ["firewave", "plunge"],
 	"destruction": ["devour"],
-	"ombre": ["headbutt"],
+	"ombre": ["headbutt", "claw", "scream", "fly"],
 	"final_ombre": ["staff", "raise", "souls"],
 }
 ## Distance au héros au-delà de laquelle une attaque n'est pas tentée.
@@ -47,6 +49,7 @@ const REACH := {
 	"devour": 300.0, "swords": 420.0, "shield": 130.0, "roots": 380.0,
 	"treefall": 460.0, "headbutt": 300.0, "staff": 150.0, "raise": INF,
 	"tornado": 380.0, "fog": 450.0, "souls": 520.0, "plunge": 440.0,
+	"claw": 120.0, "scream": 400.0, "fly": 100.0,
 }
 
 const BREATH_AIM := 36
@@ -170,6 +173,41 @@ const HEAD_SPEED := 9.0
 const HEAD_KNOCK := 150.0
 const HEAD_STUN := 70
 
+## Griffes du Sbire de l'ombre : deux coups en cône, l'un après l'autre, avec
+## un pas en avant.
+const CLAW_AIM := 26
+const CLAW_LOCK := 8
+const CLAW_TIME := 22
+const CLAW_R := 120.0
+const CLAW_HALF := 0.85
+const CLAW_STEP := 3.5
+## Frames (depuis le début de l'attaque) des deux coups de griffes.
+const CLAW_HIT1 := 4
+const CLAW_HIT2 := 13
+
+## Cri du Sbire de l'ombre : une onde en cône qui part vers le héros ; elle ne
+## blesse qu'au passage de son front.
+const SCREAM_AIM := 40
+const SCREAM_LOCK := 12
+const SCREAM_TIME := 50
+const SCREAM_SPEED := 8.5
+const SCREAM_HALF := 0.42
+const SCREAM_DEPTH := 22.0
+const SCREAM_KNOCK := 60.0
+
+## Envol du Sbire de l'ombre : il s'élève, file se poser loin du héros, puis
+## atterrit. Intouchable en vol. Réflexe sur un coup du héros (une chance sur
+## deux, au plus toutes les `FLY_REFLEX` frames), ou attaque choisie quand le
+## héros le serre de près.
+const FLY_UP := 14
+const FLY_GLIDE := 36
+const FLY_DOWN := 14
+const FLY_HEIGHT := 110.0
+const FLY_DIST := 230.0
+const FLY_CHANCE := 0.5
+const FLY_REFLEX := 300
+const SHADOW := Color(0.66, 0.33, 0.97)
+
 const STAFF_AIM := 26
 const STAFF_TIME := 12
 const STAFF_R := 150.0
@@ -229,6 +267,8 @@ static func tick_hazards(w: World, e: Enemy) -> void:
 	var p := w.player
 	if e.fog_timer > 0:
 		e.fog_timer -= 1
+	if e.fly_cooldown > 0:
+		e.fly_cooldown -= 1
 	for i in range(e.puddles.size() - 1, -1, -1):
 		var pd := e.puddles[i]
 		pd.z -= 1.0
@@ -261,6 +301,40 @@ static func try_start(w: World, e: Enemy, dist: float) -> bool:
 		played[pick] = int(played.get(pick, 0)) + 1
 	_begin(w, e, pick)
 	return true
+
+## Sbire de l'ombre frappé par le héros : en vol, il est intouchable ; au sol,
+## il esquive une fois sur deux en s'envolant. Vrai si le coup est esquivé.
+static func evades(w: World, e: Enemy) -> bool:
+	if not handles(e) or _key(e) != "ombre":
+		return false
+	if not e.sp_attack.begins_with("fly"):
+		if busy(e) or e.charging or e.fly_cooldown > 0 or randf() >= FLY_CHANCE:
+			return false
+		e.fly_cooldown = FLY_REFLEX
+		e.sp_last = "fly"
+		if Game.smoke_test:
+			played["fly"] = int(played.get("fly", 0)) + 1
+		_begin(w, e, "fly")
+	Fx.float_text(w.fx_layer, e.position + Vector2(0, -e.top() - e.nm_height - 12), "Esquive", e.glow)
+	return true
+
+## Point où le Sbire de l'ombre se pose : loin du héros, dans l'arène. Dans le
+## Conclave, il retombe sur place, pour rester là où on l'observe.
+static func _fly_target(w: World, e: Enemy) -> Vector2:
+	if Game.boss_rush:
+		return e.position
+	var p := w.player
+	var away := e.position - p.position
+	away = away.normalized() if away.length() > 1.0 else Vector2.from_angle(randf() * TAU)
+	var best := e.position
+	var best_d := -1.0
+	for i in 7:
+		var cand := _clamp(e, e.position + away.rotated((i - 3) * 0.45) * FLY_DIST)
+		var d := cand.distance_to(p.position)
+		if d > best_d:
+			best_d = d
+			best = cand
+	return best
 
 static func _begin(w: World, e: Enemy, move: String) -> void:
 	var p := w.player
@@ -327,6 +401,20 @@ static func _begin(w: World, e: Enemy, move: String) -> void:
 			Audio.sfx("boss_charge", 1.3)
 		"staff":
 			_start(e, "staff_aim", STAFF_AIM)
+		"claw":
+			_start(e, "claw_aim", CLAW_AIM)
+			Audio.sfx("boss_charge", 1.5)
+		"scream":
+			_start(e, "scream_aim", SCREAM_AIM)
+			Audio.sfx("boss_charge", 0.7)
+		"fly":
+			e.sp_points.assign([e.position])
+			e.sp_origin = _fly_target(w, e)
+			e.charging = false
+			e.charge_telegraph = 0
+			_start(e, "fly_up", FLY_UP)
+			Audio.sfx("throw", 1.4)
+			Fx.puff(w.fx_layer, e.position, SHADOW, 1.4)
 		"raise":
 			var a0 := randf() * TAU
 			for i in RAISE_COUNT:
@@ -617,6 +705,68 @@ static func tick(w: World, e: Enemy) -> void:
 				e.sp_timer = mini(e.sp_timer, 4)
 			if e.sp_timer <= 0:
 				_end(e)
+		"claw_aim":
+			if e.sp_timer > CLAW_LOCK:
+				e.sp_dir = dir
+			if e.sp_timer <= 0:
+				_start(e, "claw", CLAW_TIME)
+		"claw":
+			if e.sp_age < CLAW_HIT2:
+				e.position = _clamp(e, e.position + e.sp_dir * CLAW_STEP)
+			if e.sp_age == CLAW_HIT1 or e.sp_age == CLAW_HIT2:
+				Audio.sfx("attack", 1.3 if e.sp_age == CLAW_HIT1 else 1.1)
+				if _in_cone(e.position, e.sp_dir, CLAW_R, CLAW_HALF, p.position, p.radius):
+					# Un coup par griffe : `sp_hit` puis `sp_hit2`.
+					if e.sp_age == CLAW_HIT1 and not e.sp_hit:
+						e.sp_hit = true
+						_hurt(w, e, 0.7)
+					elif e.sp_age == CLAW_HIT2 and not e.sp_hit2:
+						e.sp_hit2 = true
+						_hurt(w, e, 0.7)
+					Fx.sparks(w.fx_layer, p.position, SHADOW)
+			if e.sp_timer <= 0:
+				_end(e)
+		"scream_aim":
+			if e.sp_timer > SCREAM_LOCK:
+				e.sp_dir = dir
+			if e.sp_timer <= 0:
+				e.sp_origin = e.position
+				_start(e, "scream", SCREAM_TIME)
+				Audio.sfx("boss_warning", 0.55)
+				w.shake(4.0)
+		"scream":
+			if not e.sp_hit:
+				var rel := p.position - e.sp_origin
+				var front := scream_dist(e)
+				if absf(rel.length() - front) < SCREAM_DEPTH + p.radius \
+						and _in_cone(e.sp_origin, e.sp_dir, front + SCREAM_DEPTH, SCREAM_HALF, p.position, p.radius):
+					e.sp_hit = true
+					_hurt(w, e, 1.4)
+					w.push_player(e.sp_dir, SCREAM_KNOCK, 10)
+					w.shake(5.0)
+			if e.sp_timer <= 0:
+				_end(e)
+		"fly_up":
+			var f := 1.0 - float(e.sp_timer) / FLY_UP
+			e.nm_height = FLY_HEIGHT * (1.0 - (1.0 - f) * (1.0 - f))
+			if e.sp_timer <= 0:
+				_start(e, "fly_glide", FLY_GLIDE)
+		"fly_glide":
+			var f := 1.0 - float(e.sp_timer) / FLY_GLIDE
+			e.position = e.sp_points[0].lerp(e.sp_origin, smoothstep(0.0, 1.0, f))
+			e.nm_height = FLY_HEIGHT + sin(e.sp_age * 0.3) * 6.0
+			if e.sp_timer <= 0:
+				_start(e, "fly_down", FLY_DOWN)
+		"fly_down":
+			var f := 1.0 - float(e.sp_timer) / FLY_DOWN
+			e.position = e.sp_origin
+			e.nm_height = FLY_HEIGHT * (1.0 - f * f)
+			if e.sp_timer <= 0:
+				Fx.puff(w.fx_layer, e.position, SHADOW, 1.2)
+				Audio.sfx("hit_enemy", 0.5)
+				_end(e)
+				# Posé : il riposte vite, sans enchaîner tout de suite.
+				e.sp_cooldown = 50 + randi() % 40
 		"staff_aim":
 			if e.sp_timer > 6:
 				e.sp_dir = dir
@@ -645,6 +795,10 @@ static func wave_dist(e: Enemy) -> float:
 
 static func wave_half(e: Enemy) -> float:
 	return lerpf(WAVE_HALF_MIN, WAVE_HALF_MAX, 1.0 - float(e.sp_timer) / WAVE_TIME)
+
+## Distance parcourue par le front du cri depuis son départ.
+static func scream_dist(e: Enemy) -> float:
+	return e.top() * 0.4 + SCREAM_SPEED * (SCREAM_TIME - e.sp_timer)
 
 ## Gueule du Mangeur de soldats, où il tient le héros (coordonnées locales).
 static func mouth(e: Enemy) -> Vector2:
@@ -865,6 +1019,28 @@ class Visual extends Node2D:
 				_band(e.position, e.sp_dir, BossMoves.SHIELD_SPEED * BossMoves.SHIELD_TIME + e.radius + 30.0, e.radius, Color(col, 0.12 + 0.12 * blink))
 			"headbutt_aim":
 				_band(e.position, e.sp_dir, BossMoves.HEAD_SPEED * BossMoves.HEAD_TIME + e.radius, e.radius * 0.8, Color(col, 0.12 + 0.15 * blink))
+			"claw_aim":
+				var locked := k <= BossMoves.CLAW_LOCK
+				_cone(e.position, e.sp_dir, BossMoves.CLAW_R, BossMoves.CLAW_HALF,
+					Color(BossMoves.SHADOW, 0.1 + (0.18 * blink if locked else 0.05)), Color(BossMoves.SHADOW, 0.85 if locked else 0.5))
+			"scream_aim":
+				var locked := k <= BossMoves.SCREAM_LOCK
+				var length := e.top() * 0.4 + BossMoves.SCREAM_SPEED * BossMoves.SCREAM_TIME
+				_cone(e.position, e.sp_dir, length, BossMoves.SCREAM_HALF,
+					Color(BossMoves.SHADOW, 0.06 + (0.12 * blink if locked else 0.03)), Color(BossMoves.SHADOW, 0.7 if locked else 0.35))
+				# Ondes qui partent déjà de lui, de plus en plus pressées.
+				var f := 1.0 - k / BossMoves.SCREAM_AIM
+				var a := e.sp_dir.angle()
+				for i in 3:
+					var r := fposmod(_t * 160.0 * (0.5 + f) + i * 50.0, 150.0) + e.top() * 0.4
+					draw_arc(e.position, r, a - BossMoves.SCREAM_HALF, a + BossMoves.SCREAM_HALF, 12, Color(BossMoves.SHADOW, 0.5 * (1.0 - r / 200.0)), 2.0)
+			"fly_up", "fly_glide", "fly_down":
+				# Là où il va se poser.
+				var c := e.sp_origin
+				draw_circle(c, e.radius * 1.6, Color(0.1, 0.02, 0.18, 0.3))
+				for j in 4:
+					var a := _t * 3.0 + TAU * j / 4.0
+					draw_arc(c, e.radius * 1.9, a, a + 0.9, 8, Color(BossMoves.SHADOW, 0.7), 2.5)
 			"staff_aim":
 				_cone(e.position, e.sp_dir, BossMoves.STAFF_R, BossMoves.STAFF_HALF, Color(ARCANE, 0.1 + 0.12 * blink), Color(ARCANE, 0.6))
 			"roots":
@@ -983,6 +1159,57 @@ class Visual extends Node2D:
 				if e.sp_attack == "shield":
 					var a := e.sp_dir.angle()
 					draw_arc(e.position, reach + 24.0, a - 0.7, a + 0.7, 16, Color(1, 1, 1, k / BossMoves.SHIELD_TIME), 5.0)
+			"claw":
+				# Trois lacérations parallèles par coup, en travers du cône.
+				var n := e.sp_dir.orthogonal()
+				var c := e.position + e.sp_dir * BossMoves.CLAW_R * 0.6
+				for hit in 2:
+					var at := BossMoves.CLAW_HIT1 if hit == 0 else BossMoves.CLAW_HIT2
+					var life := e.sp_age - at + 3
+					if life < 0 or life > 12:
+						continue
+					var fade := 1.0 - life / 12.0
+					var grow := clampf(life / 3.0, 0.0, 1.0)
+					var side := 1.0 if hit == 0 else -1.0
+					for j in 3:
+						var off := e.sp_dir * (j - 1) * 14.0
+						var a := c + off + n * side * 50.0
+						var b := c + off - n * side * 50.0
+						var mid := (a + b) / 2.0 + e.sp_dir * 18.0
+						var pts := PackedVector2Array()
+						for q in 9:
+							var u := float(q) / 8.0 * grow
+							pts.append(a.lerp(mid, u).lerp(mid.lerp(b, u), u))
+						draw_polyline(pts, Color(0.12, 0.0, 0.2, 0.8 * fade), 9.0)
+						draw_polyline(pts, Color(0.85, 0.6, 1.0, fade), 3.0)
+			"scream_aim":
+				# Il gonfle la poitrine : un halo sombre palpite autour de sa tête.
+				var f := 1.0 - k / BossMoves.SCREAM_AIM
+				var head := e.position + Vector2(0, -e.top() * 0.55)
+				draw_circle(head, 8.0 + 10.0 * f + sin(_t * 30.0) * 2.0, Color(BossMoves.SHADOW, 0.25 * f))
+			"scream":
+				# Front de l'onde et ses échos, qui pâlissent derrière lui.
+				var a := e.sp_dir.angle()
+				var front := BossMoves.scream_dist(e)
+				var fade := clampf(k / 10.0, 0.0, 1.0)
+				for i in 4:
+					var r := front - i * 26.0
+					if r <= e.top() * 0.4:
+						continue
+					var al := (1.0 - i * 0.25) * fade
+					var half := BossMoves.SCREAM_HALF * (1.0 + 0.04 * sin(_t * 40.0 + i))
+					draw_arc(e.sp_origin, r, a - half, a + half, 24, Color(0.1, 0.0, 0.18, 0.55 * al), 12.0 - i * 2.0)
+					draw_arc(e.sp_origin, r, a - half, a + half, 24, Color(0.82, 0.55, 1.0, 0.85 * al), 3.0)
+			"fly_glide":
+				# Traînée de fumée d'ombre derrière lui.
+				var body := e.position + Vector2(0, -e.nm_height - e.top() * 0.3)
+				var back := Vector2.ZERO
+				if not e.sp_points.is_empty() and e.sp_points[0] != e.sp_origin:
+					back = (e.sp_points[0] - e.sp_origin).normalized()
+				for i in 8:
+					var h := _hash(i * 4.1)
+					var pos := body + back * (14.0 + i * 12.0) + Vector2(sin(_t * 9.0 + i) * 5.0, h * 10.0 - 5.0)
+					draw_circle(pos, 12.0 - i * 1.1, Color(0.12, 0.03, 0.2, 0.45 * (1.0 - i / 8.0)))
 			"staff_aim":
 				var hand := e.position + Vector2(0, -e.top() * 0.3)
 				var a := e.sp_dir.angle() - BossMoves.STAFF_HALF - 0.5 + sin(_t * 18.0) * 0.05

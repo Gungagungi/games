@@ -54,11 +54,11 @@ exactement.
 
 ## Vérification
 
-`scripts/check.sh` joue huit parties accélérées via le mode smoke de
+`scripts/check.sh` joue neuf parties accélérées via le mode smoke de
 `scenes/main.gd` (`--headless -- --smoke [--element=X] [--difficulty=X]
 [--wave=N] [--duration=S] [--boss-rush]`) : vagues ordinaires (Sang, vague 1),
 boss de mêlée (Feu, vague 5), boss tireur de briques en Difficile (Destruction,
-vague 10), et boss final jusqu'à la **victoire** (Ombre, vague 30), puis trois
+vague 10), Sbire de l'ombre (Ombre, vague 25), et boss final jusqu'à la **victoire** (Ombre, vague 30), puis trois
 parties Chaos : vagues mélangées (vague 1), dernier boss de la file (vague 35)
 et Créature cauchemardesque jusqu'à la victoire (vague 40, sur 60 s au lieu de
 20 : elle saute, charge et se dédouble, le pilote automatique met plus
@@ -250,7 +250,7 @@ garde les siennes, dans `Nightmare`.
 | Mangeur de soldats | **dévoreur** : il bondit, saisit le héros (`Player.held_by`), le croque trois fois, puis le projette à l'autre bout de l'arène (même point d'arrivée que le champ de force, `Nightmare.knock_target`) |
 | Soldat blessé | **gerbe d'épées** (cinq projectiles `Projectile.sword`) ; **coup de bouclier** au contact, qui repousse |
 | Voix Putréfiée | **arbres** qui jaillissent du sol en ligne jusqu'au héros, puis le fouettent de leurs branches ; **arbre abattu** : il pousse près du héros et s'abat sur lui |
-| Sbire de l'ombre | **coup de tête** en ruée, qui repousse et **étourdit** (`Player.stun_timer` : ni déplacement ni coup) |
+| Sbire de l'ombre | **coup de tête** en ruée, qui repousse et **étourdit** (`Player.stun_timer` : ni déplacement ni coup) ; **griffes** : deux coups en cône au contact, avec un pas en avant ; **cri** : une onde en cône qui part vers le héros, blesse (×1,4) et repousse un peu au passage de son front ; **envol** : il s'élève (`Enemy.nm_height`), file se poser loin du héros (cercle au sol) et atterrit, intouchable en vol. C'est un **réflexe** : frappé au sol, il esquive une fois sur deux en s'envolant (`BossMoves.evades`, appelé par `World.damage_enemy`), au plus toutes les 5 s (`Enemy.fly_cooldown`) ; il le choisit aussi comme attaque quand le héros le serre de près. Dans le Conclave, il retombe sur place |
 | Nécromancien Putréfié | **coup de bâton** au contact, qui repousse ; **invocation** de trois monstres ordinaires d'un élément tiré parmi les 7 (jamais de mini-créature du Chaos), six au plus ; **âmes** : trois monstres fragiles (`Enemy.is_soul`) qui traquent le héros au contact, plus lents que lui, à abattre, six au plus |
 
 - **Déroulé** : `World._tick_enemies` passe la main à `BossMoves.tick` tant
@@ -416,7 +416,7 @@ fente de l'attaque, flash, dissolution, particules, halos). Fichiers renommés
 | Projectiles, or, fiole | `fx/brick`, `fx/bolt`, `fx/gold`, `fx/potion` | `effect/rock_0_new`, `effect/magic_bolt_1`, `item/gold/gold_pile_5`, `item/potion/ruby` |
 | Icônes d'attaque (Conclave) | `attacks/melee`, `heavy`, `fast`, `tough`, `charge`, `lifesteal`, `burn`, `bricks`, `bolts`, `giant` | `gui/spells/` : `components/sword`, `enchantment/berserker_rage_new`, `air/swiftness_new`, `earth/stoneskin_new`, `enchantment/haste_new`, `necromancy/vampiric_draining_new`, `fire/sticky_flame_new`, `components/stones`, `conjuration/magic_dart`, `necromancy/deaths_door_new` |
 | Icônes d'attaque de la Créature | `attacks/laser`, `whip`, `sweep`, `rush`, `leap`, `summon`, `field`, `split` | `gui/spells/` : `conjuration/searing_ray`, `summoning/summon_horrible_things`, `air/tornado`, `translocation/blink`, `earth/shatter_new`, `summoning/summon_shadow_creatures_new`, `translocation/gravitas`, `necromancy/simulacrum_new` |
-| Icônes des attaques spéciales | `attacks/ash_breath`, `ash_tornado` (passée en gris cendre), `ash_fog`, `blood_bite`, `blood_splash`, `fire_wave`, `devour`, `sword_throw`, `shield_bash`, `tree_rise`, `tree_fall`, `staff`, `raise`, `headbutt`, `plunge` | `gui/spells/monster/miasma_breath`, `monster/nonliving/spatial_vortex`, `gui/abilities/evoke_fog`, `item/weapon/artefact/spwpn_vampires_tooth`, `gui/spells/necromancy/sublimation_of_blood_new`, `gui/spells/fire/fire_storm_new`, `gui/spells/translocation/apportation_new`, `gui/spells/enchantment/tukimas_dance_new`, `item/armor/shields/large_shield_2_new`, `gui/spells/summoning/summon_forest`, `dungeon/trees/tree_1_red`, `item/staff/staff_3`, `gui/spells/necromancy/animate_dead_new`, `gui/spells/enchantment/confuse_new`, `gui/spells/fire/fire_brand` |
+| Icônes des attaques spéciales | `attacks/ash_breath`, `ash_tornado` (passée en gris cendre), `ash_fog`, `blood_bite`, `blood_splash`, `fire_wave`, `devour`, `sword_throw`, `shield_bash`, `tree_rise`, `tree_fall`, `staff`, `raise`, `headbutt`, `plunge`, `shadow_claw`, `shadow_scream`, `shadow_fly` | `gui/spells/monster/miasma_breath`, `monster/nonliving/spatial_vortex`, `gui/abilities/evoke_fog`, `item/weapon/artefact/spwpn_vampires_tooth`, `gui/spells/necromancy/sublimation_of_blood_new`, `gui/spells/fire/fire_storm_new`, `gui/spells/translocation/apportation_new`, `gui/spells/enchantment/tukimas_dance_new`, `item/armor/shields/large_shield_2_new`, `gui/spells/summoning/summon_forest`, `dungeon/trees/tree_1_red`, `item/staff/staff_3`, `gui/spells/necromancy/animate_dead_new`, `gui/spells/enchantment/confuse_new`, `gui/spells/fire/fire_brand`, `gui/spells/transmutation/blade_hands_new`, `gui/spells/enchantment/projected_noise`, `gui/spells/air/flight` |
 | Attaques spéciales (visuel) | `fx/fire_sword`, `fx/sword`, `shield`, `staff`, `blood_puddle`, `tree_0`, `tree_1` | `gui/spells/fire/fire_brand`, `item/weapon/short_sword_2_new`, `item/armor/shields/large_shield_2_new`, `item/staff/staff_3`, `misc/blood/blood_puddle_red`, `dungeon/trees/tree_1_red`, `tree_2_red` |
 | Âmes, Œil corrompu | `monsters/lost_soul`, `fx/corrupted_eye` | `monster/undead/lost_soul`, `monster/eyes/eye_of_draining` |
 | Icônes des âmes et de la rage | `attacks/souls`, `enrage` | `gui/spells/necromancy/haunt_new`, `gui/spells/transmutation/alter_self` |
