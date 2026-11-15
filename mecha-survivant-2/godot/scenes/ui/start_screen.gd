@@ -1,6 +1,6 @@
 class_name StartScreen
 extends CanvasLayer
-## Écran d'accueil : titre, sélecteur de vague de départ (1-20) et accès au
+## Écran d'accueil : titre, sélecteur de vague de départ (1-30) et accès au
 ## niveau spécial du Destructeur d'univers, puis — une fois la gemme dorée
 ## ramassée — au combat d'entraînement contre le Cristal.
 ##

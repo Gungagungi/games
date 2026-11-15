@@ -2,13 +2,15 @@ class_name WaveManager
 extends Node
 ## Orchestration des vagues, à l'identique de la v1 :
 ## `5 + n*2` ennemis, `tier = floor((n-1)/2)`, boss toutes les 5 vagues, plus
-## la vague 1 qui ouvre le jeu sur le Titan de la Mort.
+## la vague 1 qui ouvre le jeu sur le Titan de la Mort. Trente vagues en tout
+## (`GameState.FINAL_WAVE`) : la 30 conclut la partie.
 ##
 ## Le Titan de la Mort annoncé depuis la v1 n'a en réalité qu'1 point de vie —
 ## un leurre qui meurt au premier coup, dès la vague 1. Sa mort ne déclenche
 ## pas `boss_defeated` (voir `titan_decoy.gd`) mais une réplique pausée ; une
-## fois le dialogue refermé, la vague se termine normalement. Le vrai combat
-## final, le Boss Galaxie, apparaît directement à la vague 20 — sans leurre.
+## fois le dialogue refermé, la vague se termine normalement. Le Boss
+## Galaxie tient la vague 20, l'Esclave du Destructeur d'univers la 25, et le
+## Robot géant mutant ferme le jeu à la 30.
 
 const BOSS_BY_WAVE := {
 	1: "res://scenes/bosses/titan_decoy.gd",
@@ -16,6 +18,8 @@ const BOSS_BY_WAVE := {
 	10: "res://scenes/bosses/sewer_monster.gd",
 	15: "res://scenes/bosses/zombie_titan.gd",
 	20: "res://scenes/bosses/galaxy_boss.gd",
+	25: "res://scenes/bosses/destroyer_thrall.gd",
+	30: "res://scenes/bosses/mutant_robot.gd",
 }
 ## Boss du niveau spécial, hors de la boucle des vagues.
 const DESTROYER := "res://scenes/bosses/destroyer_boss.gd"
@@ -52,7 +56,7 @@ func start_wave(n: int) -> void:
 	if GameState.is_boss_wave(n):
 		remaining_to_spawn = 0
 		_spawn_boss(n)
-		AudioManager.play_music("titan" if n == 1 else "boss")
+		AudioManager.play_music("titan" if n == 1 or n == GameState.FINAL_WAVE else "boss")
 	else:
 		remaining_to_spawn = GameState.enemy_count(n)
 		spawn_cd = 0.0
@@ -137,9 +141,12 @@ func _spawn_boss_script(path: String) -> EnemyBase:
 	# moteur (« flushing queries ») ; différer l'ajout au prochain tour de
 	# boucle l'évite.
 	arena.call_deferred("add_child", boss)
-	return boss
+	# Tant qu'il vit, la vague ne se conclut que par `boss_defeated` (ou la
+	# mort du leurre) : un boss qui retarde sa défaite — la réplique d'adieu
+	# du Robot géant mutant — n'est pas pris pour une vague vidée.
 	_boss_alive = true
 	AudioManager.sfx("boss_spawn")
+	return boss
 
 func _on_boss_defeated() -> void:
 	_boss_alive = false

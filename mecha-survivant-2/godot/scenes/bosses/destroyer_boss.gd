@@ -123,7 +123,7 @@ func _on_spawn() -> void:
 			"Tu me trouves déjà à genoux... Peu importe : je t'emporte avec moi dans l'ANNIHILATION.")
 	else:
 		EventBus.dialogue_requested.emit(display_name,
-			"Vingt vagues pour arriver jusqu'ici... Je vais éteindre ton univers, une étoile après l'autre.")
+			"Trente vagues pour arriver jusqu'ici... Je vais éteindre ton univers, une étoile après l'autre.")
 
 ## Les cadences se resserrent de 10 % par phase passée.
 func _pace() -> float:

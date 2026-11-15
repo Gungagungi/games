@@ -7,8 +7,8 @@ extends BossBase
 ##
 ## Sa mort ne passe pas par `die()`/`boss_defeated` (qui ferait conclure la
 ## vague par une victoire) : elle émet `titan_decoy_defeated`, que
-## `WaveManager` relaie en réplique pausée. Le vrai boss final, le Boss
-## Galaxie, n'a aucun lien avec lui : il apparaît directement à la vague 20.
+## `WaveManager` relaie en réplique pausée. Les vrais boss (Boss Galaxie en
+## vague 20, Robot géant mutant en vague 30) n'ont aucun lien avec lui.
 
 func configure_boss(tier: int) -> void:
 	super(tier)

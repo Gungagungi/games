@@ -1,7 +1,7 @@
 extends Node
 ## État de partie transverse : vague courante, tier de difficulté, mode de test.
 
-const FINAL_WAVE: int = 20
+const FINAL_WAVE: int = 30
 const BOSS_EVERY: int = 5
 
 var wave: int = 0

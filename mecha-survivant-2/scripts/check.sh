@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Non-régression sans écran : joue sept parties en accéléré (leurre Titan de
+# Non-régression sans écran : joue neuf parties en accéléré (leurre Titan de
 # la Mort en vague 1, boss de vague 5, Zombie Titan en vague 15, Boss Galaxie
-# en vague 20, niveau spécial du Destructeur d'univers, puis son raccourci
+# en vague 20, Esclave du Destructeur en vague 25, Robot géant mutant en
+# vague 30 — la dernière —, niveau spécial du Destructeur d'univers, puis son raccourci
 # « PHASE 5 » à 1 % de vie, et l'entraînement contre le Cristal). Toute erreur
 # GDScript apparaît dans la sortie.
 set -euo pipefail
@@ -13,6 +14,8 @@ run --wave=1
 run --wave=5
 run --wave=15
 run --wave=20
+run --wave=25
+run --wave=30
 run --destroyer
 run --destroyer --destroyer-final
 run --crystal

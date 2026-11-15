@@ -1,7 +1,8 @@
 class_name GalaxyBoss
 extends BossBase
-## Boss Galaxie : le vrai combat final, à la vague 20 (voir `titan_decoy.gd`,
-## désormais un simple leurre comique de la vague 1, sans lien avec lui).
+## Boss Galaxie : le boss de la vague 20 (voir `titan_decoy.gd`, simple leurre
+## comique de la vague 1, sans lien avec lui). Ce n'est plus le dernier : la
+## partie continue jusqu'au Robot géant mutant de la vague 30.
 ## Trois phases : barrage d'étoiles en spirale, météores téléphonés,
 ## téléportation laissant une traînée explosive, et supernova finale à 360°
 ## en dernière phase.

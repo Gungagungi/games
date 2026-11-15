@@ -262,6 +262,17 @@ func ignite(dps: float, duration: float) -> void:
 	burn_dps = dps
 	burn_time = maxf(burn_time, duration)
 
+## Dégâts continus d'un effet accroché au mech (éclair du Robot géant mutant),
+## appelés à chaque image : ni bouclier ni invulnérabilité de coup, comme
+## l'embrasement, et pas de flash ni de secousse — ils tomberaient en rafale.
+func take_dot_damage(amount: float) -> void:
+	if not alive:
+		return
+	since_damage = 0.0
+	hp -= amount
+	if hp <= 0.0:
+		die()
+
 ## Attaque instantanée et imparable : tue net, sauf bouclier actif — qui est
 ## alors entièrement consommé. L'invulnérabilité du dash ne protège pas.
 func take_ultimate_damage() -> void:

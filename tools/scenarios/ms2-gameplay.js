@@ -5,9 +5,9 @@
 //
 // La boucle de jeu vit dans le wasm : `driver.js` n'a pas prise dessus, on
 // pilote donc par de vrais événements souris/clavier et par de l'attente.
-// La vague de départ se choisit avec MS2_WAVE (1-20) — la vague 20 enchaîne
-// le leurre du Titan de la Mort (mort en un coup) puis sa réplique, qui met
-// le jeu en pause en attendant un clic avant de faire entrer le Boss Galaxie.
+// La vague de départ se choisit avec MS2_WAVE (1-30). Les boss des vagues 25
+// (l'Esclave du Destructeur d'univers) et 30 (le Robot géant mutant) entrent
+// sur une réplique qui met le jeu en pause : le scénario la referme d'un clic.
 // MS2_DESTROYER=1 lance à la place le niveau spécial du Destructeur d'univers
 // (MS2_PLAY_MS règle la durée de jeu avant la capture) ; MS2_DESTROYER=final
 // clique à côté, sur PHASE 5 : le Destructeur en dernière phase, à 1 % de vie.
@@ -26,7 +26,7 @@ module.exports = async ({ page, out }) => {
   // dessinés par Godot dans le canvas, il n'y a pas de DOM à cliquer. À
   // réajuster si la mise en page de start_screen.gd change.
   const cx = 500;
-  const SELECT_Y = 336;
+  const SELECT_Y = 317;
   const PLAY_Y = 377;
   const DESTROYER_Y = 440;
   const FINAL_PHASE_X = 705;                   // PHASE 5, même ligne
@@ -47,6 +47,10 @@ module.exports = async ({ page, out }) => {
   }
   if (!process.env.MS2_DESTROYER) {
     await page.mouse.click(cx, PLAY_Y);        // LANCER
+    if (wave === 25 || wave === 30) {
+      await sleep(1500);
+      await page.mouse.click(cx, 600);         // referme la réplique d'entrée
+    }
   }
 
   await sleep(1000);

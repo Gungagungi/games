@@ -11,7 +11,8 @@ extends Node
 const SMOKE_DURATION := 25.0
 ## Le Destructeur d'univers encaisse ~20 000 PV sur cinq phases : il lui faut
 ## plus de temps que les vagues pour aller jusqu'à la gemme, quel que soit le
-## tirage des pouvoirs.
+## tirage des pouvoirs. Même durée pour la vague finale : le Robot géant
+## mutant encaisse ~9 000 PV sur trois phases avant sa réplique d'adieu.
 const SMOKE_DURATION_DESTROYER := 60.0
 const SMOKE_TIME_SCALE := 8.0
 
@@ -78,6 +79,8 @@ func _ready() -> void:
 			_begin_destroyer("--destroyer-final" in args)
 			return
 		print("[smoke] départ vague %d" % wave)
+		if wave >= GameState.FINAL_WAVE:
+			_smoke_left = SMOKE_DURATION_DESTROYER
 		_begin_game(wave)
 
 func _process(delta: float) -> void:
@@ -153,6 +156,9 @@ func _on_wave_cleared(n: int) -> void:
 		GameState.running = false
 		AudioManager.stop_music()
 		game_over_screen.show_result(true, n)
+		if GameState.smoke_test:
+			print("[smoke] vague %d conclue — partie gagnée" % n)
+			_smoke_left = 0.0
 		return
 	if GameState.smoke_test:
 		_auto_pick_upgrade()
@@ -174,7 +180,7 @@ func _on_golden_gem() -> void:
 	game_over_screen.show_golden_gem()
 
 ## Depuis l'écran-titre (Cristal débloqué) : nouvelle carte, et les pouvoirs
-## et le tier d'une partie menée à la vague 20, comme pour le Destructeur.
+## et le tier d'une partie menée à la vague finale, comme pour le Destructeur.
 func _begin_crystal_from_menu() -> void:
 	_prepare_run(GameState.FINAL_WAVE)
 	GameState.reset(GameState.FINAL_WAVE, true)

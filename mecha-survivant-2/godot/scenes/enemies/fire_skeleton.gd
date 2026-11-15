@@ -1,6 +1,6 @@
 class_name FireSkeleton
 extends EnemyBase
-## Squelette archer enflammé (vagues 1-19, jamais en combat de boss puisque le
+## Squelette archer enflammé (vagues ordinaires, jamais en combat de boss puisque le
 ## pool ordinaire ne tourne pas pendant ceux-ci). Ses flèches et son contact
 ## embrasent le joueur ; le laisser trop longtemps sans riposte lui vaut une
 ## boule de feu qui retire la moitié de sa vie max.
