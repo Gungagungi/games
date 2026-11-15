@@ -27,10 +27,9 @@ func _ready() -> void:
 	_sprite = Sprite2D.new()
 	_sprite.texture = load("res://assets/sprites/fx/%s.png" % ("corrupted_eye" if is_eye else "potion"))
 	_sprite.material = Fx.unshaded()
+	# L'Œil est découpé dans le sprite de la Créature (`unseen_horror`) et
+	# agrandi ×2 dans le fichier : à l'écran, il a la taille de l'œil du boss.
 	_sprite.scale = Vector2.ONE * SCALE
-	if is_eye:
-		# Œil rouge du pack, teinté vers le magenta du Chaos.
-		_sprite.modulate = Color(1.0, 0.7, 1.0)
 	add_child(_sprite)
 
 ## L'Œil ne se ramasse qu'une fois au sol.
