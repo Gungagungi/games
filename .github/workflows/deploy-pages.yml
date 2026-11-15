@@ -1,7 +1,7 @@
 name: Déploiement GitHub Pages
 
 # Les jeux sont du HTML/CSS/JS statique et se publient tels quels — à deux
-# exceptions près : mecha-survivant-2, mecha-survivant-3 et hells-survivant-2 sont des projets
+# exceptions près : mecha-survivant-2, mecha-survivant-3, mecha-survivant-3d et hells-survivant-2 sont des projets
 # Godot, dont l'export web est construit ici plutôt que versionné (39 Mo de
 # wasm à chaque rebuild).
 
@@ -65,6 +65,13 @@ jobs:
           mecha-survivant-3/scripts/build.sh
           mv mecha-survivant-3/export/* mecha-survivant-3/
           rmdir mecha-survivant-3/export
+
+      - name: Exporter Mecha Survivant 3D (prototype)
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          mecha-survivant-3d/scripts/build.sh
+          mv mecha-survivant-3d/export/* mecha-survivant-3d/
+          rmdir mecha-survivant-3d/export
 
       - name: Exporter Hell's Survivant 2
         run: |
