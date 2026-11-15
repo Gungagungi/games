@@ -33,6 +33,8 @@ run() {
 run --element=sang --wave=1
 run --element=feu --wave=5
 run --element=destruction --wave=10 --difficulty=difficile
+# Sbire de l'ombre : griffes, cri, et envol pour esquiver les coups.
+run --element=ombre --wave=25
 run --element=ombre --wave=30
 run --element=chaos --wave=1
 run --element=chaos --wave=35

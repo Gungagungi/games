@@ -152,6 +152,9 @@ const ATTACKS := {
 	"staff": "Coup de bâton qui vous repousse",
 	"raise": "Invoque des monstres de tous les éléments",
 	"headbutt": "Coup de tête : vous repousse et vous étourdit",
+	"shadow_claw": "Griffes : deux coups en cône, au contact",
+	"shadow_scream": "Cri déchirant qui porte loin et fait mal",
+	"shadow_fly": "S'envole pour esquiver vos coups, et se pose plus loin",
 	"souls": "Lance trois âmes qui vous traquent : abattez-les",
 	"enrage": "Enragée à 25 % de vie : plus grande et plus forte",
 }
@@ -165,7 +168,7 @@ const BOSS_ATTACKS := {
 	"terre": ["tough", "melee", "charge", "tree_rise", "tree_fall"],
 	"feu": ["melee", "burn", "charge", "fire_wave", "plunge"],
 	"destruction": ["bricks", "charge", "devour"],
-	"ombre": ["bolts", "charge", "headbutt"],
+	"ombre": ["bolts", "charge", "headbutt", "shadow_claw", "shadow_scream", "shadow_fly"],
 	"final_ombre": ["giant", "bolts", "charge", "staff", "raise", "souls"],
 	"final_chaos": ["giant", "burn", "lifesteal", "laser", "whip", "sweep", "rush",
 		"leap", "summon", "field", "split", "enrage"],

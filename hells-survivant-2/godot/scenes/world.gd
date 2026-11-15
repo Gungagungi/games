@@ -574,6 +574,10 @@ func damage_enemy(e: Enemy, amount: float) -> void:
 	# Déjà retiré : un double emporté par la mort du boss pendant le même coup.
 	if not enemies.has(e):
 		return
+	# Le Sbire de l'ombre esquive en s'envolant (Conclave compris, pour qu'on
+	# l'y voie faire), et ne se touche pas en vol.
+	if BossMoves.evades(self, e):
+		return
 	# Conclave : on y observe les boss, on ne les combat pas.
 	if Game.boss_rush and _is_bulky(e):
 		Fx.float_text(fx_layer, e.position + Vector2(0, -e.top() - 12), "Invulnérable", Color("#b8b0c8"))
