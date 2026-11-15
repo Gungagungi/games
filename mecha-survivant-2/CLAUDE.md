@@ -85,12 +85,8 @@ rendent cela tenable :
 
 ## Vérification
 
-`scripts/check.sh` joue sept parties en accéléré, sans rendu, via le mode
-<<<<<<< HEAD
+`scripts/check.sh` joue neuf parties en accéléré, sans rendu, via le mode
 smoke de `scenes/main.gd` (`--headless -- --smoke [--wave=N | --destroyer | --crystal]`) : le mech
-=======
-smoke de `scenes/main.gd` (`--headless -- --smoke [--wave=N | --destroyer]`) : le mech
->>>>>>> origin/main
 y est immortel et tire tout seul, sinon rien n'irait plus loin que la première
 vague. Toute erreur GDScript apparaît dans la sortie. C'est le test de
 non-régression du jeu — le lancer après chaque changement.
@@ -100,7 +96,7 @@ Pour le visuel, `tools/` (racine du dépôt) pilote un Chromium headless :
 ```sh
 scripts/serve.sh &
 node tools/capture.js http://localhost:8123/index.html tools/shots/ms2.png --wait 15000
-MS2_WAVE=20 node tools/capture.js http://localhost:8123/index.html tools/shots/final.png \
+MS2_WAVE=30 node tools/capture.js http://localhost:8123/index.html tools/shots/final.png \
   --scenario tools/scenarios/ms2-gameplay.js --no-step
 ```
 
@@ -131,8 +127,11 @@ Autoloads (`autoload/`) : `EventBus` (tous les signaux transverses),
 - `scenes/level.gd` — le niveau, voir « Le niveau » ci-dessous.
 - `systems/wave_manager.gd` — `5 + n*2` ennemis, `tier = floor((n-1)/2)`, boss
   si `n % 5 == 0` **ou `n == 1`** (mapping explicite `BOSS_BY_WAVE` pour
-  1/5/10/15/20). La vague 1 est spéciale : voir « Le faux Titan et le vrai
-  combat final » ci-dessous.
+  1/5/10/15/20/25/30). **Trente vagues** (`GameState.FINAL_WAVE`) : conclure la
+  30 gagne la partie. La vague 1 est spéciale : voir « Le faux Titan et le
+  vrai combat final » ci-dessous. `_spawn_boss_script()` pose `_boss_alive` :
+  tant qu'il est vrai, seule `boss_defeated` (ou la mort du leurre) conclut
+  une vague de boss.
 - `systems/enemy_stats.gd` — stats des six ennemis ordinaires et leur scaling
   par tier. **Les vitesses sont en pixels/seconde** : la v1 comptait en
   pixels/frame, tout a été multiplié par 60, timers compris.
@@ -140,7 +139,7 @@ Autoloads (`autoload/`) : `EventBus` (tous les signaux transverses),
   où la v1 faisait un `switch (e.type)`. `is_damage_immune()` est le **point de
   passage unique** de toute immunité (déphasage des ombres, bouclier d'un boss
   en phase) : toute nouvelle source de dégâts doit l'interroger.
-- `scenes/enemies/fire_skeleton.gd` — squelette de feu (vagues 1-19, jamais
+- `scenes/enemies/fire_skeleton.gd` — squelette de feu (vagues ordinaires, jamais
   pendant un combat de boss puisque le pool ordinaire ne tourne pas alors).
   Ses flèches et son contact embrasent le joueur (`Player.ignite()`, dégâts
   continus hors bouclier/invulnérabilité de coup) ; le laisser trop longtemps
@@ -153,7 +152,7 @@ Autoloads (`autoload/`) : `EventBus` (tous les signaux transverses),
   valeurs, jamais `self` ni `player` — un boss tué pendant l'annonce faisait
   planter l'impact.
 
-### Le faux Titan (vague 1) et le vrai combat final (vague 20)
+### Le faux Titan (vague 1) et le vrai combat final (vague 30)
 
 Le Titan de la Mort annoncé depuis la v1 n'a en réalité qu'1 point de vie
 (`scenes/bosses/titan_decoy.gd`) : c'est le boss qui ouvre le jeu, dès la
@@ -169,9 +168,35 @@ normalement, sans lien avec la suite — c'est la boucle habituelle de
 la vague. En mode smoke, la réplique est sautée instantanément, sinon
 `check.sh` resterait bloqué en attente d'un clic.
 
-Le vrai boss final, `scenes/bosses/galaxy_boss.gd` (trois phases), n'a aucun
+`scenes/bosses/galaxy_boss.gd` (trois phases), longtemps boss final, n'a aucun
 lien avec le leurre : il apparaît directement à la vague 20, via le même
-`BOSS_BY_WAVE` que les autres boss.
+`BOSS_BY_WAVE` que les autres boss. Deux boss viennent après lui :
+
+- **Vague 25, l'Esclave du Destructeur d'univers**
+  (`scenes/bosses/destroyer_thrall.gd`, deux phases, dessiné en code par sa
+  classe interne `Figure`) : les lasers de son maître **en plus lents** —
+  charges de 1,35 à 1,55 s au lieu de 0,85 à 0,95. Rayon de visière figé
+  (`LaserBeam.follow = false`) et raccourci (`LaserBeam.length`) qui s'arrête
+  sur la position du mech et y explose (télégraphe avec `blast`) ; fléau, une
+  boule piquante au bout d'une chaîne (`scenes/fx/chain_flail.gd`) ;
+  explosion sur place quand le mech s'approche à moins de `NEAR_DIST`. En
+  phase 2, éventail lent depuis la marque du torse et rayon explosif doublé.
+- **Vague 30, le Robot géant mutant** (`scenes/bosses/mutant_robot.gd`, trois
+  phases) : le petit robot du Destructeur (`DestroyerRobot.Body`) agrandi ×4,
+  plus une couche `Mutation` (excroissances vertes, veines, antenne qui
+  crépite). Trois grosses boules de métal en éventail ; éclair d'antenne
+  (`scenes/fx/lightning_arc.gd`) qui, s'il touche, **s'accroche** au mech :
+  5 % des PV max par seconde pendant 3 s via `Player.take_dot_damage()`, ni
+  bouclier ni dash ne le décrochent. À sa mort il explose en chaîne
+  (`scenes/fx/blast.gd`, explosion purement visuelle) et lance « tu auras
+  affaire à mon patron ». **`boss_defeated` attend `dialogue_finished`** : sans
+  ce délai, l'écran de victoire s'afficherait sous la réplique. La
+  connexion précède l'émission, car en smoke la réplique se referme dans
+  l'appel même. La victoire affiche « ROBOT GÉANT MUTANT VAINCU ».
+
+Pas d'invocations chez le robot : avec des renforts, le pilote du smoke
+s'acharnait sur un petit robot coincé derrière un mur et le combat ne
+finissait jamais. La vague 30 a droit aux 60 s de smoke du Destructeur.
 
 Piège rencontré (toujours d'actualité même sans l'enchaînement leurre → Boss
 Galaxie) : faire naître un boss **synchrone** avec la mort du boss précédent
@@ -200,7 +225,7 @@ référencés, mais toujours utilisables) — voir « Assets ».
 
 Un second bouton de l'écran-titre, **sous** LANCER pour ne pas décaler les
 clics du scénario de capture, lance `main._begin_destroyer()` : les pouvoirs
-et le tier d'une partie menée à la vague 20, puis
+et le tier d'une partie menée à la vague finale (30), puis
 `WaveManager.start_destroyer()`, qui fait entrer
 `scenes/bosses/destroyer_boss.gd` seul. Aucune vague ne tourne ;
 `GameState.special_level` coupe la conclusion de vague de `WaveManager`.
@@ -211,8 +236,10 @@ finales sans livrer tout le combat : `_begin_destroyer(true)` →
 **avant** l'entrée du boss dans l'arbre (l'ajout est différé). Il le met en
 dernière phase, avec les multiplicateurs de quatre passages de phase, à 1 % de
 la barre (58 PV) ; son `_ready()` corrige la barre que `BossBase` affiche
-pleine. En smoke : `--destroyer --destroyer-final` (sixième partie de
-`check.sh`) ; en capture : `MS2_DESTROYER=final`.
+pleine. En smoke : `--destroyer --destroyer-final` (avant-dernière partie
+de `check.sh`) ; en capture : `MS2_DESTROYER=final`. Sa réplique d'entrée
+compte les vagues (« Trente vagues pour arriver jusqu'ici ») : à changer
+avec `FINAL_WAVE`.
 
 - **Cinq phases**, chacune ajoute une attaque et resserre les cadences de
   10 % : rayon de visière, éventail du symbole, étoile de huit rayons + double
@@ -264,7 +291,7 @@ pleine. En smoke : `--destroyer --destroyer-final` (sixième partie de
   mode smoke n'écrit jamais). L'écran-titre affiche alors, sur la dernière
   ligne pour ne décaler aucun clic du scénario, ENTRAÎNEMENT : LE CRISTAL
   (`refresh_unlocks()` à chaque retour au menu) ; il se lance avec les
-  pouvoirs d'une partie menée à la vague 20, sur une carte neuve.
+  pouvoirs d'une partie menée à la vague 30, sur une carte neuve.
   Deux phases, une seule arme : des rafales de `LaserBeam` visés, tirés vite
   et à répétition ; en phase 2 il devient rouge, chaque tir devient un
   éventail de trois rayons et la charge raccourcit. Pas de dégâts de contact.
@@ -272,7 +299,7 @@ pleine. En smoke : `--destroyer --destroyer-final` (sixième partie de
   conservés) et pose `GameState.crystal_training` ; sa mort émet
   `EventBus.crystal_destroyed` → « Bravo, tu as détruit le cristal ! » avec
   RECOMBATTRE ou QUITTER L'ARÈNE (retour à l'écran-titre). Mourir face à lui
-  propose les mêmes boutons. Smoke : `--crystal`, septième partie de
+  propose les mêmes boutons. Smoke : `--crystal`, dernière partie de
   `check.sh`.
 
 ### Commandes tactiles (mobile, Safari iOS)

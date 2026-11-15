@@ -56,9 +56,9 @@ func _set_buttons(crystal_label: String, again_label: String) -> void:
 
 func show_result(victory: bool, wave: int) -> void:
 	if victory:
-		_title.text = "BOSS GALAXIE VAINCU"
+		_title.text = "ROBOT GÉANT MUTANT VAINCU"
 		_title.add_theme_color_override("font_color", Color(0.55, 1.0, 0.65))
-		_detail.text = "Les 20 vagues sont tombées."
+		_detail.text = "Les %d vagues sont tombées.\nSon patron, le Destructeur d'univers, t'attend dans le niveau spécial." % GameState.FINAL_WAVE
 		_set_buttons("", "REJOUER")
 	else:
 		_title.text = "MECH DÉTRUIT"

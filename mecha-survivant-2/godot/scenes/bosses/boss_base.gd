@@ -92,8 +92,10 @@ func _shoot_dir(dir: Vector2, spd: float, dmg: float, r: float, col: Color,
 ## Zone d'impact annoncée puis appliquée. Le télégraphe vit plus longtemps que
 ## le boss : sa closure ne capture donc que des valeurs, jamais `self` ni
 ## `player`, sinon un boss mort en cours d'annonce plante à l'impact.
+## `blast` ajoute une explosion (`Blast`) à l'impact, posée dans l'arène — qui,
+## elle, survit au boss.
 func _telegraph_strike(at: Vector2, r: float, dmg: float, wait: float,
-		col: Color = Color(1.0, 0.4, 0.3), shake: float = 12.0) -> void:
+		col: Color = Color(1.0, 0.4, 0.3), shake: float = 12.0, blast: bool = false) -> void:
 	_play_attack()
 	var tel := Telegraph.new()
 	tel.position = at
@@ -101,7 +103,11 @@ func _telegraph_strike(at: Vector2, r: float, dmg: float, wait: float,
 	tel.delay = wait
 	tel.color = col
 	var tree := get_tree()
+	var host := get_parent()
 	tel.on_fire = func(origin: Vector2) -> void:
+		if blast:
+			Blast.spawn(host, origin, r, col)
+			AudioManager.sfx("shockwave")
 		var p := tree.get_first_node_in_group("player") as Player
 		if p != null and p.alive and p.global_position.distance_to(origin) <= r:
 			p.take_damage(dmg)

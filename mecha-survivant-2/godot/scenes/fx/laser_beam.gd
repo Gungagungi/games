@@ -7,6 +7,10 @@ extends Node2D
 ## torse du Destructeur d'univers, par exemple — et suit la source si elle
 ## bouge. `sweep` (rad/s) fait balayer le rayon pendant qu'il tire : le contact
 ## est donc testé à chaque image de tir, et ne blesse qu'une fois par rayon.
+##
+## `length` raccourcit le rayon (l'Esclave du Destructeur vise un point, où il
+## explose) ; `follow = false` le fige là où il est né, pour que son extrémité
+## reste sur ce point même si la source bouge pendant la charge.
 
 const LENGTH := 1400.0
 
@@ -18,6 +22,8 @@ var windup := 1.0
 var firing := 0.4
 var width := 22.0
 var sweep := 0.0
+var length := LENGTH
+var follow := true
 var color := Color(1.0, 0.3, 0.3)
 var core_color := Color(1.0, 0.85, 0.6)
 
@@ -34,7 +40,8 @@ func _process(delta: float) -> void:
 	if not GameState.running or source == null or not is_instance_valid(source):
 		queue_free()
 		return
-	global_position = source.global_position + offset
+	if follow:
+		global_position = source.global_position + offset
 	_t += delta
 	queue_redraw()
 	if _t < windup:
@@ -56,7 +63,7 @@ func _try_hit() -> void:
 	var dir := Vector2.RIGHT.rotated(angle)
 	var to_player := p.global_position - global_position
 	var along := to_player.dot(dir)
-	if along < 0.0 or along > LENGTH:
+	if along < 0.0 or along > length:
 		return
 	if absf(to_player.cross(dir)) <= width:
 		_hit = true
@@ -68,11 +75,11 @@ func _draw() -> void:
 		var p := _t / windup
 		var aim := color
 		aim.a = 0.25 + 0.35 * p
-		draw_line(Vector2.ZERO, dir * LENGTH, aim, 1.0 + 3.0 * p)
+		draw_line(Vector2.ZERO, dir * length, aim, 1.0 + 3.0 * p)
 		draw_circle(Vector2.ZERO, 4.0 + 6.0 * p, Color(color, 0.5 + 0.5 * p))
 	else:
 		var fade := 1.0 - (_t - windup) / firing
-		draw_line(Vector2.ZERO, dir * LENGTH, Color(color, 0.45 * fade), width * 2.6)
-		draw_line(Vector2.ZERO, dir * LENGTH, Color(core_color, fade), width * 1.4)
-		draw_line(Vector2.ZERO, dir * LENGTH, Color(1.0, 1.0, 1.0, fade), width * 0.5)
+		draw_line(Vector2.ZERO, dir * length, Color(color, 0.45 * fade), width * 2.6)
+		draw_line(Vector2.ZERO, dir * length, Color(core_color, fade), width * 1.4)
+		draw_line(Vector2.ZERO, dir * length, Color(1.0, 1.0, 1.0, fade), width * 0.5)
 		draw_circle(Vector2.ZERO, width * 0.9, Color(core_color, fade))
