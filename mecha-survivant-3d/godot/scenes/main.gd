@@ -67,6 +67,7 @@ var touch_stick_origin := Vector2.ZERO
 var touch_stick_vec := Vector2.ZERO
 var _stick_index := -1
 var _look_index := -1
+var _look_last := Vector2.ZERO
 
 var _overlay: Control
 var _title: Label
@@ -171,6 +172,7 @@ func _touch_input(event: InputEvent) -> void:
 				touch_stick_active = true
 			elif _look_index < 0:
 				_look_index = event.index
+				_look_last = event.position
 		else:
 			if event.index == _stick_index:
 				_stick_index = -1
@@ -182,8 +184,14 @@ func _touch_input(event: InputEvent) -> void:
 		if event.index == _stick_index:
 			touch_stick_vec = ((event.position - touch_stick_origin) / 70.0).limit_length(1.0)
 		elif event.index == _look_index:
-			cam_yaw -= event.relative.x * TOUCH_SENS
-			cam_pitch = clampf(cam_pitch - event.relative.y * TOUCH_SENS, PITCH_MIN, PITCH_MAX)
+			# Pas event.relative : sur le web, Godot 4.7 le calcule par rapport
+			# au dernier doigt qui a bougé, pas à ce doigt-ci. Dès que le stick
+			# de marche bouge aussi, la caméra « sautait » de centaines de
+			# pixels. On garde donc nous-mêmes la dernière position du doigt.
+			var rel: Vector2 = event.position - _look_last
+			_look_last = event.position
+			cam_yaw -= rel.x * TOUCH_SENS
+			cam_pitch = clampf(cam_pitch - rel.y * TOUCH_SENS, PITCH_MIN, PITCH_MAX)
 
 
 func dash_button_center() -> Vector2:
