@@ -72,6 +72,9 @@ func _draw_crosshair(c: Vector2) -> void:
 	var col := Color(1, 1, 1, 0.85)
 	if game.camera.aim_enemy != null:
 		col = Color(1, 0.35, 0.25, 0.95)
+	if game.auto_fire:
+		# Tir automatique : un cercle autour du réticule.
+		draw_arc(c, 22.0, 0, TAU, 32, Color(1, 0.75, 0.3, 0.5), 1.5)
 	for d in [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]:
 		draw_line(c + d * 6.0, c + d * 16.0, col, 2.0)
 	draw_circle(c, 1.8, col)
@@ -113,6 +116,7 @@ func _draw_bars(vp: Vector2, mech: Mech) -> void:
 ## recharge qui descend, cadre doré quand elle est prête.
 func _draw_skills(origin: Vector2, mech: Mech) -> void:
 	var slots := [["speed", "MAJ", mech.dash_cd / Mech.DASH_COOLDOWN, mech.can_dash(), mech.dash_cd]]
+	slots.append(["firerate", "T  " + ("AUTO" if game.auto_fire else "MANUEL"), 0.0, game.auto_fire, 0.0])
 	if mech.aoe_unlocked:
 		slots.append(["aoe", "F", mech.aoe_cd / Mech.AOE_COOLDOWN, mech.aoe_cd <= 0.0, mech.aoe_cd])
 	for i in slots.size():
@@ -178,6 +182,8 @@ func _draw_touch(vp: Vector2, mech: Mech) -> void:
 	else:
 		_text(Vector2(30, vp.y - 80), "← glisser pour marcher", 16, Color(1, 1, 1, 0.45))
 	_touch_button(game.dash_button_center(), "DASH", mech.can_dash(), Color(0.3, 0.8, 1.0))
+	_touch_button(game.fire_button_center(), "TIR ON" if game.auto_fire else "TIR OFF", game.auto_fire,
+		Color(1.0, 0.75, 0.3))
 	if mech.aoe_unlocked:
 		_touch_button(game.wave_button_center(), "ONDE", mech.aoe_cd <= 0.0, Color(0.45, 0.85, 1.0))
 
@@ -185,4 +191,4 @@ func _touch_button(c: Vector2, label: String, ready: bool, col: Color) -> void:
 	var r: float = game.TOUCH_BUTTON_R
 	draw_circle(c, r, Color(col, 0.16 + (0.3 if ready else 0.0)))
 	draw_arc(c, r, 0, TAU, 32, Color(col, 0.7 if ready else 0.3), 2.0)
-	_text(c + Vector2(-22, 6), label, 17, Color(1, 1, 1, 0.85 if ready else 0.4))
+	_text(c + Vector2(-9.0 * label.length() * 0.5, 6), label, 17, Color(1, 1, 1, 0.85 if ready else 0.4))

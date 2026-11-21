@@ -53,10 +53,16 @@ diffère, c'est un bug, sauf les écarts listés ici.
 - Souris : viser (pointeur verrouillé au premier clic), clic gauche maintenu :
   tirer. ZQSD / WASD / flèches : marcher (touches **physiques**). Maj ou
   Espace : dash. F (ou E) : onde de choc, une fois débloquée. Échap : pause.
+- **Tir automatique**, bascule T ou clic droit (bouton TIR au doigt) : le
+  mech tire seul sur l'ennemi sous le réticule, sinon le plus près du réticule
+  dans un cône de 12°, sinon le plus proche à moins de 12 m dans n'importe
+  quelle direction — toujours un ennemi visible (`main._aim_assist`). Le torse
+  se tourne vers la cible. Éteint au départ à la souris (le clic gauche
+  maintenu tire toujours, droit sur le réticule), allumé d'office au premier
+  toucher.
 - Entre deux vagues : clic sur une carte, ou touches 1 / 2 / 3.
 - Tactile : glisser à gauche pour marcher, à droite pour tourner la caméra ;
-  tir automatique dès qu'un ennemi visible est à moins de 12° du réticule ;
-  boutons DASH et ONDE en bas à droite.
+  boutons TIR (bascule du tir automatique), DASH et ONDE en bas à droite.
 
 ## Outillage
 
@@ -68,7 +74,7 @@ par `scripts/build.sh` dans `export/`, non versionné, construit par la CI.
 scripts/play.sh            # joue dans Godot (machine avec écran)
 scripts/build.sh           # export HTML5 dans export/
 scripts/serve.sh [port]    # sert export/ (8123 par défaut)
-scripts/check.sh           # quatre parties accélérées sans écran (≈ 40 s)
+scripts/check.sh           # cinq parties accélérées sans écran (≈ 50 s)
 ```
 
 Mêmes règles de travail sans éditeur que la v2 : jamais d'`uid=` inventé, les
@@ -77,7 +83,7 @@ Mêmes règles de travail sans éditeur que la v2 : jamais d'`uid=` inventé, le
 
 ## Vérification
 
-`scripts/check.sh` lance quatre parties en mode smoke (`-- --smoke`) : le mech
+`scripts/check.sh` lance cinq parties en mode smoke (`-- --smoke`) : le mech
 y est en pilote automatique (il vise l'ennemi visible le plus proche, tourne
 autour, va chercher par les rues ceux qu'il ne voit pas), les pouvoirs se
 choisissent seuls, le temps est ×6.
@@ -87,12 +93,14 @@ choisissent seuls, le temps est ×6.
 3. vagues 29 et 30, jusqu'à la victoire ;
 4. dès la vague 22 avec `--mortal` : le mech n'est plus immortel, la partie
    s'arrête à sa destruction. C'est la seule qui passe par les dégâts subis,
-   l'embrasement jusqu'au bout et la mort.
+   l'embrasement jusqu'au bout et la mort ;
+5. vagues 8 et 9 avec `--auto-fire` : le pilote marche et oriente la caméra
+   mais ne tire plus, c'est le tir automatique du joueur qui tire.
 
 Chaque partie finit par `[smoke] OK` ; `[smoke] ÉCHEC` signale une vague qui
 ne se conclut pas dans le temps alloué (un ennemi inatteignable, un tireur
 bloqué), et le script sort alors en erreur. Options : `--wave=N`,
-`--waves=K`, `--mortal`.
+`--waves=K`, `--mortal`, `--auto-fire`.
 
 Pour le rendu, `tools/` (racine du dépôt) pilote un Chromium headless, avec
 `--no-step` obligatoire comme pour la v2 :
