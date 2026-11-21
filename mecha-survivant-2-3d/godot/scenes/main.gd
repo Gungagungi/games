@@ -13,6 +13,8 @@ extends Node3D
 ##        Avec --mortal, le mech n'est plus immortel : la partie se termine
 ##        aussi (en succès) quand il tombe — c'est ce qui exerce les dégâts,
 ##        l'embrasement et la mort, que le smoke ordinaire ne voit jamais.
+##        Avec --auto-fire, le pilote marche et oriente la caméra mais ne tire
+##        plus lui-même : c'est le tir automatique du joueur qui tire.
 ##   index.html?demo           même pilote automatique, à l'écran (captures).
 ##   index.html?vague=N        commence à la vague N (web, pour les captures).
 ##   index.html?galerie        les six ennemis alignés devant le mech, figés :
@@ -23,6 +25,12 @@ enum State { TITLE, PLAYING, UPGRADE, PAUSED, OVER }
 const MOUSE_SENS := 0.0025
 const TOUCH_SENS := 0.006
 const TOUCH_BUTTON_R := 46.0
+## Tir automatique : un ennemi à moins de `ASSIST_CONE` du réticule, ou
+## n'importe où à moins de `ASSIST_CLOSE` mètres, est visé tout seul — à
+## condition d'être visible.
+const ASSIST_CONE := deg_to_rad(12.0)
+const ASSIST_RANGE := 45.0
+const ASSIST_CLOSE := 12.0
 const SMOKE_TIME_SCALE := 6.0
 ## Temps de jeu (pas d'horloge murale) accordé au smoke par vague à conclure.
 const SMOKE_SECONDS_PER_WAVE := 150.0
@@ -47,6 +55,11 @@ var _look_index := -1
 var _look_last := Vector2.ZERO
 
 var _firing := false
+## Tir automatique (bascule T / clic droit / bouton TIR) : le mech tire seul
+## sur l'ennemi visé ou proche. Allumé d'office au premier toucher, éteint au
+## départ à la souris, où l'on tire en maintenant le clic gauche.
+var auto_fire := false
+var _auto_fire_touch_set := false
 var _capture_grace := 0.0
 var _start_wave := 1
 var _gallery := false
@@ -112,6 +125,7 @@ func _read_launch_options() -> void:
 			elif a.begins_with("--waves="):
 				_smoke_waves = maxi(1, int(a.trim_prefix("--waves=")))
 		_smoke_mortal = "--mortal" in args
+		auto_fire = "--auto-fire" in args
 		_smoke_budget = SMOKE_SECONDS_PER_WAVE * _smoke_waves
 		print("[smoke] départ vague %d, %d vague(s) à conclure" % [_start_wave, _smoke_waves])
 	if OS.has_feature("web"):
@@ -134,6 +148,7 @@ func _setup_input() -> void:
 		"move_right": [KEY_D, KEY_RIGHT],
 		"dash": [KEY_SHIFT, KEY_SPACE],
 		"shockwave": [KEY_F, KEY_E],
+		"toggle_fire": [KEY_T],
 	}
 	for action in map:
 		if not InputMap.has_action(action):
@@ -166,6 +181,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				_capture_mouse()
 				return
 		_firing = event.pressed and state == State.PLAYING
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed \
+			and state == State.PLAYING:
+		toggle_auto_fire()
 	elif event is InputEventMouseMotion and state == State.PLAYING \
 			and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		camera.add_look(event.relative.x * MOUSE_SENS, event.relative.y * MOUSE_SENS)
@@ -173,12 +191,24 @@ func _unhandled_input(event: InputEvent) -> void:
 		mech.try_dash()
 	elif state == State.PLAYING and event.is_action_pressed("shockwave"):
 		_shockwave()
+	elif state == State.PLAYING and event.is_action_pressed("toggle_fire"):
+		toggle_auto_fire()
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE and state == State.PLAYING:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		_pause()
 
+func toggle_auto_fire() -> void:
+	auto_fire = not auto_fire
+	AudioManager.sfx("ui_click", -6.0)
+	_show_banner("TIR AUTO : %s" % ("OUI" if auto_fire else "NON"), 1.2)
+
 func _touch_input(event: InputEvent) -> void:
 	GameState.touch_mode = true
+	if not _auto_fire_touch_set:
+		# Au doigt, le tir automatique est le seul moyen de tirer en
+		# marchant et en visant à la fois : allumé d'office, une fois.
+		_auto_fire_touch_set = true
+		auto_fire = true
 	var vp := get_viewport().get_visible_rect().size
 	if event is InputEventScreenTouch:
 		if event.pressed:
@@ -189,6 +219,8 @@ func _touch_input(event: InputEvent) -> void:
 				return
 			if event.position.distance_to(dash_button_center()) < TOUCH_BUTTON_R * 1.3:
 				mech.try_dash()
+			elif event.position.distance_to(fire_button_center()) < TOUCH_BUTTON_R * 1.1:
+				toggle_auto_fire()
 			elif mech.aoe_unlocked and event.position.distance_to(wave_button_center()) < TOUCH_BUTTON_R * 1.3:
 				_shockwave()
 			elif event.position.x < vp.x * 0.4 and _stick_index < 0:
@@ -222,6 +254,10 @@ func _release_stick() -> void:
 func dash_button_center() -> Vector2:
 	var vp := get_viewport().get_visible_rect().size
 	return Vector2(vp.x - 90, vp.y - 110)
+
+func fire_button_center() -> Vector2:
+	var vp := get_viewport().get_visible_rect().size
+	return Vector2(vp.x - 90, vp.y - 220)
 
 func wave_button_center() -> Vector2:
 	var vp := get_viewport().get_visible_rect().size
@@ -280,15 +316,19 @@ func _process(delta: float) -> void:
 	camera.update_aim(enemies)
 	var want_fire := _firing
 	var aim := camera.aim_point
-	if GameState.autopilot:
+	if GameState.autopilot and not auto_fire:
 		want_fire = auto_target != null
 		if auto_target != null:
 			aim = auto_target.aim_point()
-	elif GameState.touch_mode:
-		var assisted := _touch_aim_assist(enemies)
-		want_fire = assisted != null
-		if assisted != null and camera.aim_enemy == null:
+	elif auto_fire:
+		var assisted := _aim_assist(enemies)
+		if assisted != null:
 			aim = assisted.aim_point()
+			# Le torse se tourne vers la cible, même dans le dos : les canons
+			# suivent ce qu'ils visent.
+			var to := assisted.position - mech.position
+			mech.aim_yaw = atan2(-to.x, -to.z)
+		want_fire = _firing or assisted != null
 	if want_fire:
 		for shot in mech.fire(aim, delta):
 			var b := Bullet.new()
@@ -298,14 +338,19 @@ func _process(delta: float) -> void:
 	if GameState.smoke_test:
 		_smoke_tick(delta, enemies)
 
-## Au doigt, viser juste est difficile : un ennemi visible à moins de 12° du
-## réticule suffit à déclencher le tir, droit sur lui (prototype).
-func _touch_aim_assist(enemies: Array) -> Enemy:
-	if camera.aim_enemy != null:
+## Cible du tir automatique, par ordre de préférence : l'ennemi sous le
+## réticule ; sinon le plus près du réticule dans un cône de 12° ; sinon le
+## plus proche à moins de `ASSIST_CLOSE` mètres, dans n'importe quelle
+## direction. Toujours un ennemi touchable et visible (pas derrière un mur).
+func _aim_assist(enemies: Array) -> Enemy:
+	if camera.aim_enemy != null and not camera.aim_enemy.is_damage_immune():
 		return camera.aim_enemy
 	var fwd := camera.forward_flat()
-	var best_cos := cos(deg_to_rad(12.0))
-	var target: Enemy = null
+	var eye := mech.center() + Vector3(0, 0.6, 0)
+	var best_cos := cos(ASSIST_CONE)
+	var cone: Enemy = null
+	var close_d := ASSIST_CLOSE
+	var close: Enemy = null
 	for node in enemies:
 		var e := node as Enemy
 		if e == null or e.is_damage_immune():
@@ -313,13 +358,22 @@ func _touch_aim_assist(enemies: Array) -> Enemy:
 		var v: Vector3 = e.position - mech.position
 		v.y = 0
 		var dist := v.length()
-		if dist > 45.0 or dist < 0.1:
+		if dist > ASSIST_RANGE or dist < 0.1:
 			continue
 		var cs := v.dot(fwd) / dist
-		if cs > best_cos and village.segment_hit(mech.center() + Vector3(0, 0.6, 0), e.aim_point()) == null:
+		var in_cone := cs > best_cos
+		var is_close := dist < close_d
+		if not in_cone and not is_close:
+			continue
+		if village.segment_hit(eye, e.aim_point(), 0.4) != null:
+			continue
+		if in_cone:
 			best_cos = cs
-			target = e
-	return target
+			cone = e
+		if is_close:
+			close_d = dist
+			close = e
+	return cone if cone != null else close
 
 ## Séparation entre ennemis : sans elle, la horde se fond en un seul point.
 ## La poussée est appliquée par chaque ennemi, à travers `move_circle`, pour
@@ -709,8 +763,9 @@ func _show_title() -> void:
 	_subtitle.text = "Le village en ruine, trente vagues de morts-vivants"
 	_body.text = "Cliquer pour jouer\n\n" \
 		+ "Souris : viser   ·   Clic gauche : tirer   ·   ZQSD / WASD / flèches : marcher\n" \
-		+ "Maj ou Espace : dash   ·   F : onde de choc (une fois débloquée)   ·   Échap : pause\n\n" \
-		+ "Sur mobile : glisser à gauche pour marcher, à droite pour viser — le tir est automatique.\n" \
+		+ "Maj ou Espace : dash   ·   F : onde de choc (une fois débloquée)   ·   Échap : pause\n" \
+		+ "T ou clic droit : tir automatique (il vise seul les ennemis proches ou près du réticule)\n\n" \
+		+ "Sur mobile : glisser à gauche pour marcher, à droite pour viser — le bouton TIR coupe ou rallume le tir automatique.\n" \
 		+ "Le radar, en haut à droite, montre en rouge ce qui arrive dans le dos."
 	_overlay.visible = true
 
