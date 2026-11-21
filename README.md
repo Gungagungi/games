@@ -1,6 +1,6 @@
 # games
 
-Collection de petits jeux navigateur — un dossier par jeu. Tous sont en HTML/CSS/JS pur, sans dépendance ni étape de build, à l'exception de Mecha Survivant 2 et 3 et de Hell's Survivant 2, projets Godot exportés en WebAssembly.
+Collection de petits jeux navigateur — un dossier par jeu. Tous sont en HTML/CSS/JS pur, sans dépendance ni étape de build, à l'exception de Mecha Survivant 2, 3 et 3D (prototype et jeu complet) et de Hell's Survivant 2, projets Godot exportés en WebAssembly.
 
 **Jouer en ligne : https://jeux.lambertdeharosanchez.com/**
 
@@ -11,6 +11,7 @@ Collection de petits jeux navigateur — un dossier par jeu. Tous sont en HTML/C
 | **Mecha Survivant 2** | [en ligne](https://jeux.lambertdeharosanchez.com/mecha-survivant-2/) | Les mêmes mécaniques, refondues sous Godot 4 : rendu pixel art et bande-son en fichiers. Ne s'ouvre pas en `file://` — voir [`mecha-survivant-2/`](mecha-survivant-2/). |
 | **Mecha Survivant 3** | [en ligne](https://jeux.lambertdeharosanchez.com/mecha-survivant-3/) | Le jeu de la v2 (même code de départ), avec le mech et les monstres redessinés d'après le pack libre Dungeon Crawl Stone Soup et davantage de retours d'impact. Même outillage Godot que la v2 — voir [`mecha-survivant-3/`](mecha-survivant-3/). |
 | **Mecha Survivant 3D** (prototype) | [en ligne](https://jeux.lambertdeharosanchez.com/mecha-survivant-3d/) | Essai de vue à la troisième personne pour Mecha Survivant 2 : arène 3D, mech qui vise à la souris, trois sortes de morts-vivants, radar pour ce qui arrive dans le dos. Godot 4, même outillage que la v2 — voir [`mecha-survivant-3d/`](mecha-survivant-3d/). |
+| **Mecha Survivant 2 · 3D** | [en ligne](https://jeux.lambertdeharosanchez.com/mecha-survivant-2-3d/) | Mecha Survivant 2 en 3D, caméra à l'épaule du mech : le village en ruine régénéré à chaque partie, les trente vagues, les six sortes d'ennemis et les huit pouvoirs de la v2, un radar pour ce qui arrive dans le dos. Tout est modélisé en code. Les boss arrivent dans une prochaine étape. Godot 4, même outillage que la v2 — voir [`mecha-survivant-2-3d/`](mecha-survivant-2-3d/). |
 | **Hell's Survivant** | [`hells-survivant/index.html`](hells-survivant/index.html) | Roguelite en Canvas 2D contre des vagues démoniaques avec boss élémentaires ; boutique entre les parties (épée, armure) dont la progression est conservée en `localStorage`. |
 | **Hell's Survivant 2** | [en ligne](https://jeux.lambertdeharosanchez.com/hells-survivant-2/) | Les mêmes mécaniques, refondues sous Godot 4 dans un style pixel art façon Heroes of Might and Magic 2 : sprites Dungeon Crawl (CC0), éclairage, auras d'éléments, héros dont l'équipement se voit. Ne s'ouvre pas en `file://` — voir [`hells-survivant-2/`](hells-survivant-2/). |
 
@@ -20,7 +21,7 @@ Chaque jeu s'ouvre directement dans un navigateur. Si `file://` pose problème (
 >
 > Mecha Survivant 2 fait exception à tout ce qui précède : ses sources Godot sont dans [`mecha-survivant-2/godot/`](mecha-survivant-2/godot/), le jeu jouable est produit par `mecha-survivant-2/scripts/build.sh` et n'est pas versionné. Le plus simple pour y jouer est `mecha-survivant-2/scripts/install-godot.sh` puis `mecha-survivant-2/scripts/play.sh`, qui le lance directement dans Godot. Pour tester la version web, `scripts/build.sh` puis `scripts/serve.sh` et <http://localhost:8123> : un export Godot charge son `.pck` et son `.wasm` par requête réseau, il ne s'ouvre donc pas en `file://`.
 >
-> Mecha Survivant 3 et Hell's Survivant 2 suivent exactement le même modèle, dans [`mecha-survivant-3/`](mecha-survivant-3/) pour le premier. Hell's Survivant 2 est dans [`hells-survivant-2/`](hells-survivant-2/) : `scripts/play.sh` pour jouer dans Godot, `scripts/build.sh` puis `scripts/serve.sh` pour la version web (Godot s'installe via `mecha-survivant-2/scripts/install-godot.sh`, la version est commune).
+> Mecha Survivant 3, les deux Mecha Survivant 3D et Hell's Survivant 2 suivent exactement le même modèle, dans [`mecha-survivant-3/`](mecha-survivant-3/), [`mecha-survivant-3d/`](mecha-survivant-3d/) et [`mecha-survivant-2-3d/`](mecha-survivant-2-3d/) pour les Mecha. Hell's Survivant 2 est dans [`hells-survivant-2/`](hells-survivant-2/) : `scripts/play.sh` pour jouer dans Godot, `scripts/build.sh` puis `scripts/serve.sh` pour la version web (Godot s'installe via `mecha-survivant-2/scripts/install-godot.sh`, la version est commune).
 
 ## Développement
 
